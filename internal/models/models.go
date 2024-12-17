@@ -2,23 +2,38 @@ package models
 
 import (
 	"encoding/json"
+	"kori/internal/events"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type Team struct {
 	Base
-	Name         string        `gorm:"not null" json:"name"`
-	Settings     *TeamSettings `gorm:"type:jsonb" json:"settings"`
-	Users        []User        `gorm:"foreignKey:TeamID" json:"users,omitempty"`
-	MailingLists []MailingList `gorm:"foreignKey:TeamID" json:"mailingLists,omitempty"`
-	Webhooks     []Webhook     `gorm:"foreignKey:TeamID" json:"webhooks,omitempty"`
-	SMTPConfigs  []SMTPConfig  `gorm:"foreignKey:TeamID" json:"smtpConfigs,omitempty"`
-	Domains      []Domain      `gorm:"foreignKey:TeamID" json:"domains,omitempty"`
-	Invites      []TeamInvite  `gorm:"foreignKey:TeamID" json:"invites,omitempty"`
-	APIKeys      []APIKey      `gorm:"foreignKey:TeamID" json:"apiKeys,omitempty"`
-	Automations  []Automation  `gorm:"foreignKey:TeamID" json:"automations,omitempty"`
-	Models       []Model       `gorm:"foreignKey:TeamID" json:"models,omitempty"`
-	Campaigns    []Campaign    `gorm:"foreignKey:TeamID" json:"campaigns,omitempty"`
+	Name            string          `gorm:"not null" json:"name"`
+	Settings        *TeamSettings   `gorm:"type:jsonb" json:"settings"`
+	Users           []User          `gorm:"foreignKey:TeamID" json:"users,omitempty"`
+	MailingLists    []MailingList   `gorm:"foreignKey:TeamID" json:"mailingLists,omitempty"`
+	Webhooks        []Webhook       `gorm:"foreignKey:TeamID" json:"webhooks,omitempty"`
+	SMTPConfigs     []SMTPConfig    `gorm:"foreignKey:TeamID" json:"smtpConfigs,omitempty"`
+	Domains         []Domain        `gorm:"foreignKey:TeamID" json:"domains,omitempty"`
+	Invites         []TeamInvite    `gorm:"foreignKey:TeamID" json:"invites,omitempty"`
+	APIKeys         []APIKey        `gorm:"foreignKey:TeamID" json:"apiKeys,omitempty"`
+	Automations     []Automation    `gorm:"foreignKey:TeamID" json:"automations,omitempty"`
+	Models          []Model         `gorm:"foreignKey:TeamID" json:"models,omitempty"`
+	EmailCategories []EmailCategory `gorm:"foreignKey:TeamID" json:"emailCategories,omitempty"`
+	Campaigns       []Campaign      `gorm:"foreignKey:TeamID" json:"campaigns,omitempty"`
+}
+
+func (t *Team) AfterCreate(tx *gorm.DB) error {
+	// First load initial data
+	if err := LoadInitialData(tx, t.ID); err != nil {
+		return err
+	}
+
+	// Emit team created event
+	events.Emit("team.created", t)
+	return nil
 }
 
 type TeamInvite struct {
@@ -76,6 +91,7 @@ type MailingList struct {
 	Name        string    `gorm:"not null" json:"name"`
 	Description string    `json:"description"`
 	TeamID      string    `gorm:"type:uuid;not null" json:"teamId"`
+	Team        *Team     `json:"team,omitempty"`
 	Contacts    []Contact `gorm:"foreignKey:ListID" json:"contacts,omitempty"`
 }
 
@@ -86,6 +102,7 @@ type SMTPConfig struct {
 	Port         int    `gorm:"not null" json:"port"`
 	Username     string `json:"username"`
 	Password     string `json:"-"`
+	IsDefault    bool   `gorm:"not null;default:false" json:"isDefault"`
 	IsActive     bool   `gorm:"not null;default:false" json:"isActive"`
 	SupportsTLS  bool   `gorm:"not null;default:true" json:"supportsTls"`
 	RequiresAuth bool   `gorm:"not null;default:true" json:"requiresAuth"`
@@ -129,6 +146,8 @@ type EmailCategory struct {
 	Description string     `json:"description"`
 	Emails      []Email    `gorm:"foreignKey:CategoryID" json:"emails,omitempty"`
 	Templates   []Template `gorm:"foreignKey:CategoryID" json:"templates,omitempty"`
+	TeamID      string     `gorm:"type:uuid;not null" json:"teamId"`
+	Team        *Team      `json:"team,omitempty"`
 }
 
 type Template struct {
@@ -147,25 +166,26 @@ type Template struct {
 
 type Email struct {
 	Base
-	From         string         `gorm:"not null" json:"from"`
-	To           string         `gorm:"not null" json:"to"`
-	Subject      string         `gorm:"not null" json:"subject"`
-	Body         string         `gorm:"not null" json:"body"`
-	Status       string         `gorm:"not null" json:"status"`
-	Error        string         `json:"error"`
-	TemplateID   string         `gorm:"type:uuid;not null" json:"templateId"`
-	Template     *Template      `json:"template,omitempty"`
-	TeamID       string         `gorm:"type:uuid;not null" json:"teamId"`
-	Team         *Team          `json:"team,omitempty"`
-	ContactID    string         `gorm:"type:uuid;not null" json:"contactId"`
-	Contact      *Contact       `json:"contact,omitempty"`
-	SMTPConfigID string         `gorm:"type:uuid;not null" json:"smtpConfigId"`
-	SMTPConfig   *SMTPConfig    `json:"smtpConfig,omitempty"`
-	SentAt       time.Time      `json:"sentAt"`
-	CategoryID   string         `gorm:"type:uuid;not null" json:"categoryId"`
-	Category     *EmailCategory `json:"category,omitempty"`
-	CampaignID   string         `gorm:"type:uuid;not null" json:"campaignId"`
-	Campaign     *Campaign      `json:"campaign,omitempty"`
+	From         string          `gorm:"not null" json:"from"`
+	To           string          `gorm:"not null" json:"to"`
+	Subject      string          `gorm:"not null" json:"subject"`
+	Body         string          `gorm:"not null" json:"body"`
+	Status       EmailStatus     `gorm:"not null" json:"status"`
+	Error        string          `json:"error"`
+	Data         json.RawMessage `gorm:"type:jsonb" json:"data"`
+	TemplateID   string          `gorm:"type:uuid;not null" json:"templateId"`
+	Template     *Template       `json:"template,omitempty"`
+	TeamID       string          `gorm:"type:uuid;not null" json:"teamId"`
+	Team         *Team           `json:"team,omitempty"`
+	ContactID    string          `gorm:"type:uuid;not null" json:"contactId"`
+	Contact      *Contact        `json:"contact,omitempty"`
+	SMTPConfigID string          `gorm:"type:uuid;not null" json:"smtpConfigId"`
+	SMTPConfig   *SMTPConfig     `json:"smtpConfig,omitempty"`
+	SentAt       time.Time       `json:"sentAt"`
+	CategoryID   string          `gorm:"type:uuid;not null" json:"categoryId"`
+	Category     *EmailCategory  `json:"category,omitempty"`
+	CampaignID   string          `gorm:"type:uuid" json:"campaignId"`
+	Campaign     *Campaign       `json:"campaign,omitempty"`
 }
 
 type EmailTracking struct {
