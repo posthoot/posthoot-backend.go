@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/labstack/echo/v4"
-
 	"kori/internal/services"
+
+	"github.com/labstack/echo/v4"
 )
 
 // BaseController provides generic CRUD operations for any model

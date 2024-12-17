@@ -3,18 +3,20 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/go-advanced-admin/admin"
 	admingorm "github.com/go-advanced-admin/orm-gorm"
 	adminecho "github.com/go-advanced-admin/web-echo"
 	"golang.org/x/time/rate"
-	"log"
-	"net/http"
-	"time"
 
 	"kori/internal/api/validator"
 	"kori/internal/config"
 	"kori/internal/models"
 	"kori/internal/routes"
+
+	console "kori/internal/utils/logger"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -26,6 +28,8 @@ type Server struct {
 	config *config.Config
 	db     *gorm.DB
 }
+
+var log = console.New("API-Server")
 
 // @title Kori API
 // @version 1.0
@@ -68,15 +72,15 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 
 	// Seed permissions
 	if err := models.SeedPermissions(db); err != nil {
-		log.Printf("Warning: Failed to seed permissions: %v", err)
+		log.Warn("Warning: Failed to seed permissions: %v", err)
 	} else {
-		log.Println("Successfully seeded permissions")
+		log.Success("Successfully seeded permissions")
 	}
 
 	if err := models.CreateSuperAdminFromEnv(db); err != nil {
-		log.Printf("Warning: Failed to create super admin: %v", err)
+		log.Warn("Warning: Failed to create super admin: %v", err)
 	} else {
-		log.Println("Successfully created super admin")
+		log.Success("Successfully created super admin")
 	}
 
 	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
@@ -99,7 +103,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		gormIntegrator, echoIntegrator, permissionChecker, nil,
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Error("Failed to create admin panel", err)
 	}
 
 	// Register the admin panel
@@ -109,7 +113,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		nil,
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Error("Failed to create admin panel", err)
 	}
 
 	// Register routes

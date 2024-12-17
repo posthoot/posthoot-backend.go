@@ -2,6 +2,10 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"kori/internal/events"
+	"reflect"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -21,6 +25,11 @@ type BaseServiceImpl[T any] struct {
 	modelType T
 }
 
+func GormTableName(db *gorm.DB, v any) string {
+	struct_name := reflect.TypeOf(v).Name()
+	return db.NamingStrategy.TableName(struct_name)
+}
+
 // NewBaseService creates a new base service
 func NewBaseService[T any](db *gorm.DB, modelType T) BaseService[T] {
 	return &BaseServiceImpl[T]{
@@ -30,7 +39,14 @@ func NewBaseService[T any](db *gorm.DB, modelType T) BaseService[T] {
 }
 
 func (s *BaseServiceImpl[T]) Create(ctx context.Context, entity *T) error {
-	return s.db.WithContext(ctx).Create(entity).Error
+	if err := s.db.WithContext(ctx).Create(entity).Error; err != nil {
+		return err
+	}
+
+	// Get the table name of the gorm model
+	events.Emit(fmt.Sprintf("%s.created", GormTableName(s.db, s.modelType)), entity)
+
+	return nil
 }
 
 func (s *BaseServiceImpl[T]) Get(ctx context.Context, id string) (*T, error) {
@@ -72,9 +88,21 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 }
 
 func (s *BaseServiceImpl[T]) Update(ctx context.Context, id string, entity *T) error {
-	return s.db.WithContext(ctx).Model(entity).Where("id = ?", id).Updates(entity).Error
+	if err := s.db.WithContext(ctx).Model(entity).Where("id = ?", id).Updates(entity).Error; err != nil {
+		return err
+	}
+
+	events.Emit(fmt.Sprintf("%s.updated", GormTableName(s.db, s.modelType)), entity)
+
+	return nil
 }
 
 func (s *BaseServiceImpl[T]) Delete(ctx context.Context, id string) error {
-	return s.db.WithContext(ctx).Delete(s.modelType, "id = ?", id).Error
+	if err := s.db.WithContext(ctx).Model(s.modelType).Where("id = ?", id).Update("deleted_at", time.Now()).Update("is_deleted", true).Error; err != nil {
+		return err
+	}
+
+	events.Emit(fmt.Sprintf("%s.deleted", GormTableName(s.db, s.modelType)), id)
+
+	return nil
 }
