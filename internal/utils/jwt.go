@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"kori/internal/models"
 	"os"
 	"time"
+
+	"kori/internal/models"
 
 	"github.com/golang-jwt/jwt/v4"
 )

@@ -16,6 +16,7 @@ type Base struct {
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	DeletedAt time.Time `gorm:"index" json:"-"`
+	IsDeleted bool      `json:"isDeleted"`
 }
 
 // BeforeCreate will set a UUID rather than numeric ID
@@ -139,8 +140,9 @@ const (
 )
 
 type TeamSettings struct {
-	InviteTemplateID string `json:"inviteTemplateId"`
-	BrandingSettings `json:"branding"`
+	InviteTemplateID  string           `json:"inviteTemplateId"`
+	WelcomeTemplateID string           `json:"welcomeTemplateId"`
+	BrandingSettings  BrandingSettings `json:"branding"`
 }
 
 type BrandingSettings struct {

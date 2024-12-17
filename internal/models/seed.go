@@ -2,13 +2,17 @@ package models
 
 import (
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
-	"log"
 	"os"
 	"strings"
 
+	"golang.org/x/crypto/bcrypt"
+
+	console "kori/internal/utils/logger"
+
 	"gorm.io/gorm"
 )
+
+var log = console.New("SEEDER")
 
 // Default resources and their actions
 var defaultResources = []Resource{
@@ -139,7 +143,7 @@ func SeedPermissions(db *gorm.DB) error {
 
 	// Create resource permissions for each role
 	for role, permissions := range rolePermissions {
-		log.Printf("Creating permissions for role: %s", role)
+		log.Info(fmt.Sprintf("Creating permissions for role: %s", role))
 
 		for _, permScope := range permissions {
 			// Handle wildcard permissions
@@ -306,7 +310,6 @@ func CreateSuperAdminFromEnv(db *gorm.DB) error {
 	if err := db.Create(&team).Error; err != nil {
 		return fmt.Errorf("failed to create team: %v", err)
 	}
-
 	user := User{
 		FirstName: name,
 		LastName:  "",
