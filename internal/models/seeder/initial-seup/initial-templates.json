@@ -1,0 +1,1960 @@
+{
+  "mailing_lists": [
+    {
+      "name": "PLATFORM WELCOME",
+      "description": "This is a welcome email to the platform"
+    },
+    {
+      "name": "PLATFORM INVITE",
+      "description": "This is an invite email to the platform"
+    }
+  ],
+  "templates": [
+    {
+      "name": "PLATFORM WELCOME",
+      "category": "Transactional",
+      "variables": ["name", "team"],
+      "description": "This is a welcome email to the platform",
+      "subject": "Hey {{name}} 👋🏻! We're glad to have you onboard 🎉",
+      "designJson": {
+        "counters": {
+          "u_row": 23,
+          "u_column": 24,
+          "u_content_text": 6,
+          "u_content_image": 10,
+          "u_content_divider": 1,
+          "u_content_heading": 2
+        },
+        "body": {
+          "id": "PhfPbosFjA",
+          "rows": [
+            {
+              "id": "eB0Q_gFFw6",
+              "cells": [1, 1],
+              "columns": [
+                {
+                  "id": "srMe5ML5t0",
+                  "contents": [
+                    {
+                      "id": "MfryiABgzn",
+                      "type": "heading",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "headingType": "h1",
+                        "fontFamily": {
+                          "url": "",
+                          "label": "Comic Sans MS",
+                          "value": "comic sans ms,sans-serif",
+                          "weights": null,
+                          "defaultFont": true
+                        },
+                        "fontWeight": 700,
+                        "fontSize": "37px",
+                        "textAlign": "left",
+                        "lineHeight": "140%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_heading_1",
+                          "description": "",
+                          "htmlClassNames": "u_content_heading"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<span>Welcome to<br />{{team}}<br /></span>",
+                        "_languages": {}
+                      }
+                    },
+                    {
+                      "id": "61MMUvkn-C",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734425998505-Group%2041.png",
+                          "width": 993,
+                          "height": 139,
+                          "id": 26458271,
+                          "size": 13591,
+                          "contentType": "image/png"
+                        },
+                        "textAlign": "center",
+                        "altText": "Email icon with text.",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_3",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "pending": false
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_3",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                },
+                {
+                  "id": "eO2GeXqsXo",
+                  "contents": [
+                    {
+                      "id": "o_SHDsxF9e",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734425784680-Group%2040.png",
+                          "width": 952,
+                          "height": 509,
+                          "id": 26458175,
+                          "size": 193204,
+                          "contentType": "image/png"
+                        },
+                        "textAlign": "center",
+                        "altText": "Colorful envelopes and notification bell.",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_2",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "pending": false
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_4",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_3",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "TIUDrTM0R1",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "RHR9d4YBat",
+                  "contents": [
+                    {
+                      "id": "IHfoarHqhn",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734426186491-Yellow%20and%20Purple%203D%20Marketing%20Email%20Campaign%20Tips%20Infographic.png",
+                          "width": 1578,
+                          "height": 300,
+                          "id": 26458337,
+                          "size": 31075,
+                          "maxWidth": "64%",
+                          "autoWidth": false,
+                          "contentType": "image/png"
+                        },
+                        "textAlign": "center",
+                        "altText": "\"Short Email\" button with target.",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_5",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "pending": false
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_6",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_5",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "GUCI_7LXkb",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "9PNqsV1ism",
+                  "contents": [
+                    {
+                      "id": "TF2MyDebZq",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "textAlign": "center",
+                        "lineHeight": "140%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_1",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"line-height: 140%;\"><span style=\"color: #343434; font-kerning: none; line-height: 19.6px;\" class=\"OYPEnA font-feature-liga-off font-feature-clig-off font-feature-calt-off text-decoration-none text-strikethrough-none\">Define your email’s core: theme, audience, and perfect call-to-action 📝</span></p>",
+                        "_languages": {}
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_24",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_23",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "KBsvtJUNz_",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "KODlQ5O0TQ",
+                  "contents": [
+                    {
+                      "id": "Ixh0nudoV4",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734426253142-Yellow%20and%20Purple%203D%20Marketing%20Email%20Campaign%20Tips%20Infographic(1).png",
+                          "width": 1850,
+                          "height": 300,
+                          "id": 26458361,
+                          "size": 29630,
+                          "maxWidth": "70%",
+                          "autoWidth": false,
+                          "contentType": "image/png"
+                        },
+                        "textAlign": "center",
+                        "altText": "\"Creating Lists\" text button.",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_6",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "pending": false
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_23",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_22",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "VoN5uguc7x",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "KVWQvPRzn-",
+                  "contents": [
+                    {
+                      "id": "R2Ll1xjVl6",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "textAlign": "center",
+                        "lineHeight": "140%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_2",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"line-height: 140%;\"><span style=\"color: #343434; font-kerning: none; line-height: 19.6px;\" class=\"OYPEnA font-feature-liga-off font-feature-clig-off font-feature-calt-off text-decoration-none text-strikethrough-none\">Build your target audience list with precision 🎯</span></p>",
+                        "_languages": {}
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_22",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_21",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "wUrGXfLpGG",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "J9nU7SA3iZ",
+                  "contents": [
+                    {
+                      "id": "4jczl0FwGZ",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734426322079-Yellow%20and%20Purple%203D%20Marketing%20Email%20Campaign%20Tips%20Infographic(2).png",
+                          "width": 1959,
+                          "height": 300,
+                          "id": 26458387,
+                          "size": 27971,
+                          "maxWidth": "76%",
+                          "autoWidth": false,
+                          "contentType": "image/png"
+                        },
+                        "textAlign": "center",
+                        "altText": "Setup Template button, orange background.",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_7",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "pending": false
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_21",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_20",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "eF_0dm5ebI",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "wtN7u1-ttC",
+                  "contents": [
+                    {
+                      "id": "CpvBDjC9J1",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "textAlign": "center",
+                        "lineHeight": "140%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_3",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"line-height: 140%;\"><span style=\"color: #343434; font-kerning: none; line-height: 19.6px;\" class=\"OYPEnA font-feature-liga-off font-feature-clig-off font-feature-calt-off text-decoration-none text-strikethrough-none\">Transform your data into stunning email campaigns ✨</span></p>",
+                        "_languages": {}
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_20",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_19",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "DWrysFUY0h",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "xc-fLgC-on",
+                  "contents": [
+                    {
+                      "id": "YkjB1pseXi",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734426325628-Yellow%20and%20Purple%203D%20Marketing%20Email%20Campaign%20Tips%20Infographic(3).png",
+                          "width": 1231,
+                          "height": 300,
+                          "id": 26458388,
+                          "size": 22399,
+                          "maxWidth": "50%",
+                          "autoWidth": false,
+                          "contentType": "image/png"
+                        },
+                        "textAlign": "center",
+                        "altText": "Launch button with rocket.",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_8",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "pending": false
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_19",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_18",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "qxuHplFSHE",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "Mc61zeccH-",
+                  "contents": [
+                    {
+                      "id": "s-zEVyCNMW",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "textAlign": "center",
+                        "lineHeight": "140%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_4",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"line-height: 140%;\"><span style=\"color: #343434; font-kerning: none; line-height: 19.6px;\" class=\"OYPEnA font-feature-liga-off font-feature-clig-off font-feature-calt-off text-decoration-none text-strikethrough-none\">Schedule your email sequences for maximum impact 📅</span></p>",
+                        "_languages": {}
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_18",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_17",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "V74yPyGNj8",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "KDTm9mIG9O",
+                  "contents": [
+                    {
+                      "id": "KnmZYeVAUJ",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734426408178-Yellow%20and%20Purple%203D%20Marketing%20Email%20Campaign%20Tips%20Infographic(4).png",
+                          "width": 1203,
+                          "height": 300,
+                          "id": 26458415,
+                          "size": 19441,
+                          "maxWidth": "50%",
+                          "autoWidth": false,
+                          "contentType": "image/png"
+                        },
+                        "textAlign": "center",
+                        "altText": "Review button with chart.",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_9",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "pending": false
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_17",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_16",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "EZYzyeBb7l",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "W_dc3anBVR",
+                  "contents": [
+                    {
+                      "id": "36mZR64hfI",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "textAlign": "center",
+                        "lineHeight": "140%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_5",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"line-height: 140%;\"><span style=\"color: #343434; font-kerning: none; line-height: 19.6px;\" class=\"OYPEnA font-feature-liga-off font-feature-clig-off font-feature-calt-off text-decoration-none text-strikethrough-none\">Track success and optimize for better results 📈</span></p>",
+                        "_languages": {}
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_16",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_15",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "Nju6RCR89l",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "7Ij1zWSE0m",
+                  "contents": [
+                    {
+                      "id": "ZfKX63wncP",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "textAlign": "center",
+                        "lineHeight": "140%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_6",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p class=\"cvGsUA direction-ltr align-center para-style-body\" style=\"color: #343434; line-height: 140%;\"><span style=\"color: #343434; font-kerning: none; line-height: 19.6px;\" class=\"OYPEnA font-feature-liga-off font-feature-clig-off font-feature-calt-off text-decoration-none text-strikethrough-none\">Ready to revolutionize your email marketing? Let’s create magic together!</span><span style=\"color: #343434; font-kerning: none; line-height: 19.6px;\" class=\"OYPEnA font-feature-liga-off font-feature-clig-off font-feature-calt-off text-decoration-none text-strikethrough-none white-space-prewrap\"> </span></p>\n<p class=\"cvGsUA direction-ltr align-center para-style-body\" style=\"color: #343434; line-height: 140%;\"><span style=\"color: #343434; font-kerning: none; line-height: 19.6px;\" class=\"OYPEnA font-feature-liga-off font-feature-clig-off font-feature-calt-off text-decoration-none text-strikethrough-none\">✨</span></p>\n<p class=\"cvGsUA direction-ltr align-center para-style-body\" style=\"color: #343434; line-height: 140%;\"><span style=\"color: #343434; font-kerning: none; line-height: 19.6px;\" class=\"OYPEnA font-feature-liga-off font-feature-clig-off font-feature-calt-off text-decoration-none text-strikethrough-none\">Need help? We’re just a message away! 💌</span></p>",
+                        "_languages": {}
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_15",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "8px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_14",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            },
+            {
+              "id": "4uCBuV9hCS",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "RuWkYBgro3",
+                  "contents": [
+                    {
+                      "id": "455zwRaK8q",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734427107597-Clip path group.png",
+                          "width": 371,
+                          "height": 251,
+                          "source": "user",
+                          "autoWidth": false,
+                          "maxWidth": "21%"
+                        },
+                        "textAlign": "center",
+                        "altText": "",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_10",
+                          "htmlClassNames": "u_content_image",
+                          "description": ""
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true
+                      }
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_5",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "0px",
+                    "borderRadius": "0px",
+                    "backgroundColor": "#f9f9f9"
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "center"
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_4",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true
+              }
+            }
+          ],
+          "headers": [],
+          "footers": [],
+          "values": {
+            "_styleGuide": null,
+            "popupPosition": "center",
+            "popupWidth": "600px",
+            "popupHeight": "auto",
+            "borderRadius": "10px",
+            "contentAlign": "center",
+            "contentVerticalAlign": "center",
+            "contentWidth": "500px",
+            "fontFamily": {
+              "label": "Verdana",
+              "value": "verdana,geneva",
+              "url": "",
+              "weights": null,
+              "defaultFont": true
+            },
+            "textColor": "#000000",
+            "popupBackgroundColor": "#FFFFFF",
+            "popupBackgroundImage": {
+              "url": "",
+              "fullWidth": true,
+              "repeat": "no-repeat",
+              "size": "cover",
+              "position": "center"
+            },
+            "popupOverlay_backgroundColor": "rgba(0, 0, 0, 0.1)",
+            "popupCloseButton_position": "top-right",
+            "popupCloseButton_backgroundColor": "#DDDDDD",
+            "popupCloseButton_iconColor": "#000000",
+            "popupCloseButton_borderRadius": "0px",
+            "popupCloseButton_margin": "0px",
+            "popupCloseButton_action": {
+              "name": "close_popup",
+              "attrs": {
+                "onClick": "document.querySelector('.u-popup-container').style.display = 'none';"
+              }
+            },
+            "language": {},
+            "backgroundColor": "#fff0ef",
+            "preheaderText": "",
+            "linkStyle": {
+              "body": true,
+              "linkColor": "#0000ee",
+              "linkHoverColor": "#0000ee",
+              "linkUnderline": true,
+              "linkHoverUnderline": true
+            },
+            "backgroundImage": {
+              "url": "",
+              "fullWidth": true,
+              "repeat": "no-repeat",
+              "size": "custom",
+              "position": "center"
+            },
+            "_meta": {
+              "htmlID": "u_body",
+              "description": "",
+              "htmlClassNames": "u_body"
+            }
+          }
+        },
+        "schemaVersion": 18
+      },
+      "htmlFile": "https://c72gdackzgkn7zoa.public.blob.vercel-storage.com/welcome-8apMJAnlAXmcb2OwDmwqW0EWOV6ny6.html"
+    },
+    {
+      "name": "PLATFORM INVITE",
+      "category": "Transactional",
+      "variables": ["team", "company_phone", "company_email"],
+      "description": "This is an invite email to the platform",
+      "subject": "Hey {{name}} 👋🏻! You've been invited to join {{team}} 🐦",
+      "designJson": {
+        "counters": {
+          "u_row": 6,
+          "u_column": 6,
+          "u_content_text": 8,
+          "u_content_image": 3,
+          "u_content_button": 1,
+          "u_content_social": 1
+        },
+        "body": {
+          "id": "yiaJBx_TBa",
+          "rows": [
+            {
+              "id": "DTnzFcAvVU",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "oiTKRxF4VL",
+                  "contents": [
+                    {
+                      "id": "Fj5FZmIpaK",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "20px",
+                        "anchor": "",
+                        "src": {
+                          "url": "{{logo_url}}",
+                          "width": 1600,
+                          "height": 400,
+                          "maxWidth": "32%",
+                          "autoWidth": false
+                        },
+                        "textAlign": "center",
+                        "altText": "Image",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_1",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "pending": false,
+                        "hideMobile": false
+                      }
+                    },
+                    {
+                      "id": "YE1VK3eu9P",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "40px 10px 10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734425784680-Group%2040.png",
+                          "width": 952,
+                          "height": 509,
+                          "id": 26458175,
+                          "preview": {
+                            "url": "https://assets.unlayer.com/projects/260505/1734425784680-Group 40.png",
+                            "width": 952,
+                            "height": 509
+                          },
+                          "maxWidth": "32%",
+                          "autoWidth": false
+                        },
+                        "textAlign": "center",
+                        "altText": "Image",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_2",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "pending": false,
+                        "hideMobile": false
+                      }
+                    },
+                    {
+                      "id": "m_PsEsQBPG",
+                      "type": "image",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "src": {
+                          "url": "https://assets.unlayer.com/projects/260505/1734425998505-Group%2041.png",
+                          "width": 993,
+                          "height": 139,
+                          "source": "user",
+                          "maxWidth": "37%",
+                          "autoWidth": false
+                        },
+                        "textAlign": "center",
+                        "altText": "",
+                        "action": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_image_3",
+                          "description": "",
+                          "htmlClassNames": "u_content_image"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true
+                      }
+                    },
+                    {
+                      "id": "02zLnAtlu3",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "color": "#e5eaf5",
+                        "textAlign": "center",
+                        "lineHeight": "140%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_3",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"font-size: 14px; line-height: 140%;\"><strong>You have been invited to join {{team}}<br /></strong></p>",
+                        "hideMobile": false
+                      },
+                      "hasDeprecatedFontControls": true
+                    },
+                    {
+                      "id": "t7AkPMlpVz",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "0px 10px 31px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "color": "#e5eaf5",
+                        "textAlign": "center",
+                        "lineHeight": "140%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_4",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"font-size: 14px; line-height: 140%;\"><span style=\"font-size: 28px; line-height: 39.2px;\"><strong><span style=\"line-height: 39.2px; font-size: 28px;\">Join you team!<br /></span></strong></span></p>",
+                        "hideMobile": false
+                      },
+                      "hasDeprecatedFontControls": true
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_3",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "0px",
+                    "backgroundColor": ""
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "#000000",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "top-center",
+                  "customPosition": ["50%", "0%"]
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_3",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true,
+                "hideMobile": false,
+                "noStackMobile": false
+              }
+            },
+            {
+              "id": "qwVcDqxuQa",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "Q6n8f-IYGV",
+                  "contents": [
+                    {
+                      "id": "DOVJiY4poL",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "33px 55px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "textAlign": "center",
+                        "lineHeight": "160%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_6",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"font-size: 14px; line-height: 160%;\"><span style=\"font-size: 22px; line-height: 35.2px;\">Hi, </span></p>\n<p style=\"line-height: 160%;\">You're just about set to go! Simply click on the button below to verify your email address and become part of your team! 😊</p>",
+                        "hideMobile": false
+                      },
+                      "hasDeprecatedFontControls": true
+                    },
+                    {
+                      "id": "H3GrWY1Xl5",
+                      "type": "button",
+                      "values": {
+                        "href": {
+                          "name": "web",
+                          "values": {
+                            "href": "",
+                            "target": "_blank"
+                          }
+                        },
+                        "buttonColors": {
+                          "color": "#FFFFFF",
+                          "backgroundColor": "#000000",
+                          "hoverColor": "#FFFFFF",
+                          "hoverBackgroundColor": "#3AAEE0"
+                        },
+                        "size": {
+                          "autoWidth": true,
+                          "width": "100%"
+                        },
+                        "fontSize": "14px",
+                        "lineHeight": "120%",
+                        "textAlign": "center",
+                        "padding": "14px 44px 13px",
+                        "border": {},
+                        "borderRadius": "4px",
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "_meta": {
+                          "htmlID": "u_content_button_1",
+                          "description": "",
+                          "htmlClassNames": "u_content_button"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<span style=\"font-size: 16px; line-height: 19.2px;\"><strong><span style=\"line-height: 19.2px; font-size: 16px;\">VERIFY YOUR EMAIL</span></strong></span>",
+                        "hideMobile": false,
+                        "calculatedWidth": 235,
+                        "calculatedHeight": 46
+                      },
+                      "hasDeprecatedFontControls": true
+                    },
+                    {
+                      "id": "nTm74M_ZC6",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "33px 55px 60px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "textAlign": "center",
+                        "lineHeight": "160%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_7",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"line-height: 160%; font-size: 14px;\"><span style=\"font-size: 18px; line-height: 28.8px;\">Thanks,</span></p>\n<p style=\"line-height: 160%; font-size: 14px;\"><span style=\"font-size: 18px; line-height: 28.8px;\">{{team}}</span></p>",
+                        "hideMobile": false
+                      },
+                      "hasDeprecatedFontControls": true
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_4",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "0px",
+                    "backgroundColor": ""
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "#ffffff",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "top-center",
+                  "customPosition": ["50%", "0%"]
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_4",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true,
+                "hideMobile": false,
+                "noStackMobile": false
+              }
+            },
+            {
+              "id": "dBeI5prUR-",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "mdQTbIuSQm",
+                  "contents": [
+                    {
+                      "id": "dnfnyfKj5c",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "41px 55px 18px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "color": "#000000",
+                        "textAlign": "center",
+                        "lineHeight": "160%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_5",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"font-size: 14px; line-height: 160%;\"><span style=\"font-size: 20px; line-height: 32px;\"><strong>Get in touch</strong></span></p>\n<p style=\"font-size: 14px; line-height: 160%;\"><span style=\"font-size: 16px; line-height: 25.6px; color: #000000;\">{{company_phone}}</span></p>\n<p style=\"font-size: 14px; line-height: 160%;\"><span style=\"font-size: 16px; line-height: 25.6px; color: #000000;\">{{company_email}}</span></p>",
+                        "hideMobile": false
+                      },
+                      "hasDeprecatedFontControls": true
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_5",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "0px",
+                    "backgroundColor": ""
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "#e5eaf5",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "top-center",
+                  "customPosition": ["50%", "0%"]
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_5",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true,
+                "hideMobile": false,
+                "noStackMobile": false
+              }
+            },
+            {
+              "id": "3F83bQ_uaj",
+              "cells": [1],
+              "columns": [
+                {
+                  "id": "R1haTTz0wt",
+                  "contents": [
+                    {
+                      "id": "BM7f8qhC_n",
+                      "type": "text",
+                      "values": {
+                        "containerPadding": "10px",
+                        "anchor": "",
+                        "fontSize": "14px",
+                        "color": "#fafafa",
+                        "textAlign": "center",
+                        "lineHeight": "180%",
+                        "linkStyle": {
+                          "inherit": true,
+                          "linkColor": "#0000ee",
+                          "linkHoverColor": "#0000ee",
+                          "linkUnderline": true,
+                          "linkHoverUnderline": true
+                        },
+                        "hideDesktop": false,
+                        "displayCondition": null,
+                        "_styleGuide": null,
+                        "_meta": {
+                          "htmlID": "u_content_text_8",
+                          "description": "",
+                          "htmlClassNames": "u_content_text"
+                        },
+                        "selectable": true,
+                        "draggable": true,
+                        "duplicatable": true,
+                        "deletable": true,
+                        "hideable": true,
+                        "text": "<p style=\"font-size: 14px; line-height: 180%;\"><span style=\"font-size: 16px; line-height: 28.8px;\">Copyrights © Company All Rights Reserved</span></p>",
+                        "hideMobile": false
+                      },
+                      "hasDeprecatedFontControls": true
+                    }
+                  ],
+                  "values": {
+                    "_meta": {
+                      "htmlID": "u_column_6",
+                      "htmlClassNames": "u_column"
+                    },
+                    "border": {},
+                    "padding": "0px",
+                    "backgroundColor": ""
+                  }
+                }
+              ],
+              "values": {
+                "displayCondition": null,
+                "columns": false,
+                "_styleGuide": null,
+                "backgroundColor": "",
+                "columnsBackgroundColor": "#000000",
+                "backgroundImage": {
+                  "url": "",
+                  "fullWidth": true,
+                  "repeat": "no-repeat",
+                  "size": "custom",
+                  "position": "top-center",
+                  "customPosition": ["50%", "0%"]
+                },
+                "padding": "0px",
+                "anchor": "",
+                "hideDesktop": false,
+                "_meta": {
+                  "htmlID": "u_row_6",
+                  "description": "",
+                  "htmlClassNames": "u_row"
+                },
+                "selectable": true,
+                "draggable": true,
+                "duplicatable": true,
+                "deletable": true,
+                "hideable": true,
+                "hideMobile": false,
+                "noStackMobile": false
+              }
+            }
+          ],
+          "headers": [],
+          "footers": [],
+          "values": {
+            "_styleGuide": null,
+            "popupPosition": "center",
+            "popupWidth": "600px",
+            "popupHeight": "auto",
+            "borderRadius": "10px",
+            "contentAlign": "center",
+            "contentVerticalAlign": "center",
+            "contentWidth": "600px",
+            "fontFamily": {
+              "label": "Cabin",
+              "value": "'Cabin',sans-serif",
+              "url": "https://fonts.googleapis.com/css?family=Cabin:400,700",
+              "defaultFont": true
+            },
+            "textColor": "#000000",
+            "popupBackgroundColor": "#FFFFFF",
+            "popupBackgroundImage": {
+              "url": "",
+              "fullWidth": true,
+              "repeat": "no-repeat",
+              "size": "cover",
+              "position": "center"
+            },
+            "popupOverlay_backgroundColor": "rgba(0, 0, 0, 0.1)",
+            "popupCloseButton_position": "top-right",
+            "popupCloseButton_backgroundColor": "#DDDDDD",
+            "popupCloseButton_iconColor": "#000000",
+            "popupCloseButton_borderRadius": "0px",
+            "popupCloseButton_margin": "0px",
+            "popupCloseButton_action": {
+              "name": "close_popup",
+              "attrs": {
+                "onClick": "document.querySelector('.u-popup-container').style.display = 'none';"
+              }
+            },
+            "language": {},
+            "backgroundColor": "#f9f9f9",
+            "preheaderText": "",
+            "linkStyle": {
+              "body": true,
+              "linkColor": "#0000ee",
+              "linkHoverColor": "#0000ee",
+              "linkUnderline": true,
+              "linkHoverUnderline": true
+            },
+            "backgroundImage": {
+              "url": "",
+              "fullWidth": true,
+              "repeat": "no-repeat",
+              "size": "custom",
+              "position": "top-center",
+              "customPosition": ["50%", "0%"]
+            },
+            "_meta": {
+              "htmlID": "u_body",
+              "htmlClassNames": "u_body"
+            }
+          }
+        },
+        "schemaVersion": 18
+      },
+      "htmlFile": "https://c72gdackzgkn7zoa.public.blob.vercel-storage.com/invite-VwC0pjqtlhE1y45tGrMKJnXiRIETYQ.html"
+    }
+  ]
+}
