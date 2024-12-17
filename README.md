@@ -67,6 +67,64 @@
     - ⚡ Event-based triggers
     - 📊 Delivery tracking
 
+### 🚌 Event Bus System
+- 🎯 Decoupled service communication
+- ⚡ Asynchronous event handling
+- 🔌 Service hooks integration
+- 🛡️ Panic recovery in event handlers
+
+```mermaid
+graph LR
+    A[Email Service] -->|Emit| B[Event Bus]
+    B -->|Notify| C[Template Service]
+    B -->|Notify| D[Campaign Service]
+    B -->|Notify| E[Webhook Service]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#bbf,stroke:#333,stroke-width:4px
+    style C fill:#bfb,stroke:#333,stroke-width:2px
+    style D fill:#bfb,stroke:#333,stroke-width:2px
+    style E fill:#bfb,stroke:#333,stroke-width:2px
+```
+
+#### Event Flow Architecture
+
+```mermaid
+sequenceDiagram
+    participant M as Models
+    participant E as Event Bus
+    participant S as Services
+    participant H as Hooks
+    
+    M->>E: Emit Event
+    activate E
+    E->>S: Notify Service
+    E->>H: Trigger Hooks
+    S-->>E: Process Event
+    H-->>E: Execute Hook
+    deactivate E
+```
+
+#### Available Events
+| Event Name | Description | Payload |
+|------------|-------------|---------|
+| email.sent | Triggered when email is sent | EmailData |
+| template.updated | Triggered on template changes | TemplateData |
+| campaign.started | Triggered when campaign starts | CampaignData |
+| user.registered | Triggered on new registration | UserData |
+| team.created | Triggered when a new team is created | TeamData |
+
+#### Example Usage
+```go
+// Register event handler
+events.On("email.sent", func(data interface{}) {
+    // Handle email sent event
+})
+
+// Emit event
+events.Emit("email.sent", emailData)
+```
+
 ## 🚀 Getting Started
 
 ### 📋 Prerequisites
@@ -212,6 +270,7 @@ POST /api/v1/auth/password-reset
  ┃ ┃ ┣ 📂 validator          # Request validators
  ┃ ┃ ┗ 📜 server.go          # Server setup
  ┃ ┣ 📂 config               # Configuration
+ ┃ ┣ 📂 events               # Event bus system
  ┃ ┣ 📂 handlers             # Request handlers
  ┃ ┣ 📂 models               # Database models
  ┃ ┣ 📂 routes               # Route definitions
