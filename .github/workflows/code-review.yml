@@ -1,11 +1,9 @@
-name: AI Code Review
+name: CoriAI ✨ Code Review
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: ['*']
-  pull_request_review_comment:
-    types: [created, edited]
 
 jobs:
   code-review:
@@ -20,13 +18,23 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: LLM AI Code Review
-        uses: galihlprakoso/llm-ai-code-reviewer-action@v1.1.2
+      
+      - name: Cori Auth Step
+        id: generate-token
+        uses: actions/create-github-app-token@v1
         with:
-          ai_provider: 'GEMINI'
-          ai_provider_model: 'gemini-1.5-pro'
-          codebase_high_overview_descripton: |
+          app-id: ${{ secrets.CORI_APP_ID }}
+          private-key: ${{ secrets.CORI_APP_PRIVATE_KEY }}
+      
+      - name: CoriAI ✨ Code Review
+        uses: theboringhumane/cori-ai@1.2.9
+        with:
+          provider: "openai"
+          model: gpt-4o-mini
+          github_token: ${{ steps.generate-token.outputs.token }}
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
+          extra_prompt: |
             Kori is an enterprise email orchestration platform built with Go 1.22. The backend follows Clean Architecture principles and includes:
 
             Core Features:
@@ -62,8 +70,3 @@ jobs:
             - Database query optimization
             - Error handling patterns
             - Code readability and maintainability
-
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          GOOGLE_GEMINI_API_KEY: ${{ secrets.GOOGLE_GEMINI_API_KEY }}
-          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
