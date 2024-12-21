@@ -119,7 +119,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	// Register routes
 	s.registerRoutes()
 	routes.SetupAuthRoutes(s.echo, s.db)
-
+	routes.SetupSMTPRoutes(s.echo, s.config)
 	return s
 }
 

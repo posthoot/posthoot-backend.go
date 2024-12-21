@@ -14,7 +14,7 @@ func RegisterCRUDRoutes(g *echo.Group) {
 	// Teams
 	teamService := services.NewBaseService(db.DB, models.Team{})
 	teamController := controllers.NewBaseController(teamService)
-	teamController.RegisterRoutes(g, "/teams", "read", "update")
+	teamController.RegisterRoutes(g, "/teams", "GET", "PUT")
 
 	// Contacts
 	contactService := services.NewBaseService(db.DB, models.Contact{})
@@ -55,6 +55,11 @@ func RegisterCRUDRoutes(g *echo.Group) {
 	apiKeyService := services.NewBaseService(db.DB, models.APIKey{})
 	apiKeyController := controllers.NewBaseController(apiKeyService)
 	apiKeyController.RegisterRoutes(g, "/api-keys")
+
+	// API Key Permissions
+	apiKeyPermissionService := services.NewBaseService(db.DB, models.APIKeyPermission{})
+	apiKeyPermissionController := controllers.NewBaseController(apiKeyPermissionService)
+	apiKeyPermissionController.RegisterRoutes(g, "/api-key-permissions")
 
 	// Team Invites
 	teamInviteService := services.NewBaseService(db.DB, models.TeamInvite{})

@@ -30,7 +30,10 @@ func Connect(cfg *config.Config) error {
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger:                                   logger.Default.LogMode(logger.Info),
+		DisableForeignKeyConstraintWhenMigrating: true,
+		PrepareStmt:                              true,
+		AllowGlobalUpdate:                        false,
 	})
 	if err != nil {
 		return log.Error("Failed to connect to database", err)
@@ -51,38 +54,69 @@ func Connect(cfg *config.Config) error {
 
 func runMigrations() error {
 	log.Info("Running migrations...")
-	return DB.AutoMigrate(
+	// Begin transaction for migrations
+	tx := DB.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	// Defer rollback in case of error
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.AutoMigrate(
+		// Base models without foreign keys
 		&models.User{},
-		&models.PasswordReset{},
 		&models.Team{},
+		&models.BrandingSettings{},
+		&models.Resource{},
+		&models.Model{},
+
+		// Models with single foreign key dependencies
+		&models.PasswordReset{},
+		&models.TeamSettings{},
 		&models.Contact{},
 		&models.MailingList{},
 		&models.SMTPConfig{},
 		&models.Domain{},
 		&models.Webhook{},
-		&models.Delivery{},
 		&models.Template{},
+		&models.APIKey{},
+		&models.TeamInvite{},
+		&models.RateLimit{},
+		&models.AuthTransaction{},
+		&models.Campaign{},
+
+		// Email-related models
 		&models.Email{},
 		&models.EmailTracking{},
 		&models.EmailReply{},
 		&models.EmailBounce{},
 		&models.EmailComplaint{},
-		&models.APIKey{},
-		&models.TeamInvite{},
-		&models.TeamSettings{},
-		&models.RateLimit{},
-		&models.APIKeyUsage{},
+		&models.Delivery{},
+
+		// Permission models
+		&models.UserPermission{},
 		&models.ResourcePermission{},
 		&models.APIKeyPermission{},
-		&models.Resource{},
-		&models.UserPermission{},
+
+		// Usage and monitoring
+		&models.APIKeyUsage{},
+
+		// Automation models
 		&models.Automation{},
 		&models.AutomationNode{},
 		&models.AutomationNodeEdge{},
 		&models.LLMEmailWriterJob{},
-		&models.Model{},
-		&models.Campaign{},
-	)
+	); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
 
 func Close() error {
