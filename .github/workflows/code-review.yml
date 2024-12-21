@@ -70,3 +70,5 @@ jobs:
             - Database query optimization
             - Error handling patterns
             - Code readability and maintainability
+
+            Do not respond with diff changes in your comments only point out issues and use emojis, review like a senior dev.
