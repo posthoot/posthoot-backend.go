@@ -143,6 +143,16 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate token"})
 	}
 
+	authtransaction := &models.AuthTransaction{
+		UserID: user.ID,
+		TeamID: user.TeamID,
+		Token:  token,
+	}
+
+	if err := h.db.Create(authtransaction).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create auth transaction"})
+	}
+
 	return c.JSON(http.StatusOK, map[string]string{"token": token, "refresh_token": refreshToken})
 }
 
