@@ -12,7 +12,7 @@
   "templates": [
     {
       "name": "PLATFORM WELCOME",
-      "category": "Transactional",
+      "categoryName": "Transactional",
       "variables": ["name", "team"],
       "description": "This is a welcome email to the platform",
       "subject": "Hey {{name}} 👋🏻! We're glad to have you onboard 🎉",
@@ -1294,7 +1294,7 @@
     },
     {
       "name": "PLATFORM INVITE",
-      "category": "Transactional",
+      "categoryName": "Transactional",
       "variables": ["team", "company_phone", "company_email"],
       "description": "This is an invite email to the platform",
       "subject": "Hey {{name}} 👋🏻! You've been invited to join {{team}} 🐦",
