@@ -1,9 +1,6 @@
 package models
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -140,14 +137,19 @@ const (
 )
 
 type TeamSettings struct {
-	InviteTemplateID  string           `json:"inviteTemplateId"`
-	WelcomeTemplateID string           `json:"welcomeTemplateId"`
-	BrandingSettings  BrandingSettings `json:"branding"`
+	Base
+	InviteTemplateID   string            `json:"inviteTemplateId"`
+	WelcomeTemplateID  string            `json:"welcomeTemplateId"`
+	BrandingSettingsID string            `gorm:"type:uuid;not null" json:"brandingSettingsId"`
+	BrandingSettings   *BrandingSettings `gorm:"constraint:OnDelete:CASCADE" json:"branding,omitempty"`
+	TeamID             string            `gorm:"type:uuid;uniqueIndex;not null" json:"teamId"`
 }
 
 type BrandingSettings struct {
-	DashboardName string `json:"dashboardName"`
-	LogoURL       string `json:"logoUrl"`
+	Base
+	DashboardName string         `gorm:"not null" json:"dashboardName"`
+	LogoURL       string         `json:"logoUrl"`
+	TeamSettings  []TeamSettings `gorm:"foreignKey:BrandingSettingsID;references:ID" json:"-"`
 }
 
 type ContactImportStatus string
@@ -167,34 +169,3 @@ const (
 	EmailTrackingEventBounce    EmailTrackingEvent = "bounce"
 	EmailTrackingEventComplaint EmailTrackingEvent = "complaint"
 )
-
-// StringArray is a custom type for handling string arrays in PostgreSQL
-type StringArray []string
-
-// Scan implements the sql.Scanner interface
-func (a *StringArray) Scan(value interface{}) error {
-	if value == nil {
-		*a = StringArray{}
-		return nil
-	}
-
-	var array []string
-	switch v := value.(type) {
-	case []byte:
-		if err := json.Unmarshal(v, &array); err != nil {
-			return err
-		}
-		*a = StringArray(array)
-		return nil
-	default:
-		return errors.New("failed to scan StringArray")
-	}
-}
-
-// Value implements the driver.Valuer interface
-func (a StringArray) Value() (driver.Value, error) {
-	if a == nil {
-		return nil, nil
-	}
-	return json.Marshal(a)
-}

@@ -1,32 +1,64 @@
 package models
 
 import (
-	"encoding/json"
 	"kori/internal/events"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/lib/pq"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
 type Team struct {
 	Base
-	Name            string          `gorm:"not null" json:"name"`
-	Settings        *TeamSettings   `gorm:"type:jsonb" json:"settings"`
-	Users           []User          `gorm:"foreignKey:TeamID" json:"users,omitempty"`
-	MailingLists    []MailingList   `gorm:"foreignKey:TeamID" json:"mailingLists,omitempty"`
-	Webhooks        []Webhook       `gorm:"foreignKey:TeamID" json:"webhooks,omitempty"`
-	SMTPConfigs     []SMTPConfig    `gorm:"foreignKey:TeamID" json:"smtpConfigs,omitempty"`
-	Domains         []Domain        `gorm:"foreignKey:TeamID" json:"domains,omitempty"`
-	Invites         []TeamInvite    `gorm:"foreignKey:TeamID" json:"invites,omitempty"`
-	APIKeys         []APIKey        `gorm:"foreignKey:TeamID" json:"apiKeys,omitempty"`
-	Automations     []Automation    `gorm:"foreignKey:TeamID" json:"automations,omitempty"`
-	Models          []Model         `gorm:"foreignKey:TeamID" json:"models,omitempty"`
-	EmailCategories []EmailCategory `gorm:"foreignKey:TeamID" json:"emailCategories,omitempty"`
-	Campaigns       []Campaign      `gorm:"foreignKey:TeamID" json:"campaigns,omitempty"`
+	Name            string          `gorm:"not null" json:"name" validate:"required,min=2"`
+	Settings        []TeamSettings  `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"settings,omitempty"`
+	Users           []User          `gorm:"foreignKey:TeamID;references:ID" json:"users,omitempty"`
+	MailingLists    []MailingList   `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"mailingLists,omitempty"`
+	Webhooks        []Webhook       `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"webhooks,omitempty"`
+	SMTPConfigs     []SMTPConfig    `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"smtpConfigs,omitempty"`
+	Domains         []Domain        `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"domains,omitempty"`
+	Invites         []TeamInvite    `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"invites,omitempty"`
+	APIKeys         []APIKey        `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"apiKeys,omitempty"`
+	Automations     []Automation    `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"automations,omitempty"`
+	Models          []Model         `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"models,omitempty"`
+	EmailCategories []EmailCategory `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"emailCategories,omitempty"`
+	Campaigns       []Campaign      `gorm:"foreignKey:TeamID;references:ID;constraint:OnDelete:CASCADE" json:"campaigns,omitempty"`
+}
+
+func (t *Team) BeforeCreate(tx *gorm.DB) error {
+	if t.ID == "" {
+		t.ID = uuid.New().String()
+	}
+	return nil
 }
 
 func (t *Team) AfterCreate(tx *gorm.DB) error {
-	// First load initial data
+	// Create default branding settings
+	branding := &BrandingSettings{
+		DashboardName: t.Name,
+		LogoURL:       "",
+	}
+
+	if err := tx.Create(branding).Error; err != nil {
+		return err
+	}
+
+	// Create team settings with branding reference
+	settings := &TeamSettings{
+		InviteTemplateID:   "",
+		WelcomeTemplateID:  "",
+		BrandingSettingsID: branding.ID,
+		TeamID:             t.ID,
+	}
+
+	if err := tx.Create(settings).Error; err != nil {
+		return err
+	}
+
+	// Load initial data
 	if err := LoadInitialData(tx, t.ID); err != nil {
 		return err
 	}
@@ -38,188 +70,189 @@ func (t *Team) AfterCreate(tx *gorm.DB) error {
 
 type TeamInvite struct {
 	Base
-	Email     string       `gorm:"not null" json:"email"`
-	Name      string       `gorm:"not null" json:"name"`
-	TeamID    string       `gorm:"type:uuid;not null" json:"teamId"`
+	Email     string       `gorm:"not null" json:"email" validate:"required,email"`
+	Name      string       `gorm:"not null" json:"name" validate:"required,min=2"`
+	TeamID    string       `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team      *Team        `json:"team,omitempty"`
-	InviterID string       `gorm:"type:uuid;not null" json:"inviterId"`
+	InviterID string       `gorm:"type:uuid;not null" json:"inviterId" validate:"required,uuid"`
 	Inviter   *User        `json:"inviter,omitempty"`
-	Status    InviteStatus `gorm:"not null;default:'PENDING'" json:"status"`
-	ExpiresAt time.Time    `gorm:"not null" json:"expiresAt"`
+	Status    InviteStatus `gorm:"not null;default:'PENDING'" json:"status" validate:"required,oneof=PENDING ACCEPTED REJECTED"`
+	ExpiresAt time.Time    `gorm:"not null" json:"expiresAt" validate:"required,gt=now"`
 }
 
 type Contact struct {
 	Base
-	Email     string                 `gorm:"not null" json:"email"`
-	FirstName string                 `json:"firstName"`
-	LastName  string                 `json:"lastName"`
-	Metadata  map[string]interface{} `gorm:"type:jsonb" json:"metadata"`
+	Email     string                 `gorm:"not null" json:"email" validate:"required,email"`
+	FirstName string                 `json:"firstName" validate:"omitempty,min=2"`
+	LastName  string                 `json:"lastName" validate:"omitempty,min=2"`
+	Metadata  map[string]interface{} `gorm:"type:jsonb" json:"metadata" validate:"omitempty"`
 	Tags      []Tag                  `gorm:"many2many:contact_tags;" json:"tags"`
-	ListID    string                 `gorm:"type:uuid;not null" json:"listId"`
-	TeamID    string                 `gorm:"type:uuid;not null" json:"teamId"`
+	ListID    string                 `gorm:"type:uuid;not null" json:"listId" validate:"required,uuid"`
+	TeamID    string                 `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	List      *MailingList           `json:"list,omitempty"`
-	ImportID  string                 `gorm:"type:uuid;not null" json:"importId"`
+	ImportID  string                 `gorm:"type:uuid;not null" json:"importId" validate:"required,uuid"`
 	Import    *ContactImport         `json:"import,omitempty"`
 }
 
 type ContactImport struct {
 	Base
-	Status    ContactImportStatus `gorm:"not null;default:'PENDING'" json:"status"`
-	TeamID    string              `gorm:"type:uuid;not null" json:"teamId"`
+	Status    ContactImportStatus `gorm:"not null;default:'PENDING'" json:"status" validate:"required,oneof=PENDING PROCESSING COMPLETED FAILED"`
+	TeamID    string              `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team      *Team               `json:"team,omitempty"`
-	FileID    string              `gorm:"type:uuid;not null" json:"fileId"`
+	FileID    string              `gorm:"type:uuid;not null" json:"fileId" validate:"required,uuid"`
 	File      *File               `json:"file,omitempty"`
-	FieldsMap string              `gorm:"type:jsonb" json:"fieldsMap"`
+	FieldsMap string              `gorm:"type:jsonb" json:"fieldsMap" validate:"required,json"`
 	Contacts  []Contact           `gorm:"foreignKey:ImportID" json:"contacts,omitempty"`
 }
 
 type File struct {
 	Base
-	TeamID string `gorm:"type:uuid;not null" json:"teamId"`
+	TeamID string `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team   *Team  `json:"team,omitempty"`
-	Path   string `gorm:"not null" json:"path"`
+	Path   string `gorm:"not null" json:"path" validate:"required"`
 }
 
 type Tag struct {
 	Base
-	Name  string `gorm:"not null" json:"name"`
-	Value string `json:"value"`
+	Name  string `gorm:"not null" json:"name" validate:"required,min=1"`
+	Value string `json:"value" validate:"omitempty"`
 }
 
 type MailingList struct {
 	Base
-	Name        string    `gorm:"not null" json:"name"`
-	Description string    `json:"description"`
-	TeamID      string    `gorm:"type:uuid;not null" json:"teamId"`
+	Name        string    `gorm:"not null" json:"name" validate:"required,min=2"`
+	Description string    `json:"description" validate:"omitempty"`
+	TeamID      string    `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team        *Team     `json:"team,omitempty"`
 	Contacts    []Contact `gorm:"foreignKey:ListID" json:"contacts,omitempty"`
 }
 
 type SMTPConfig struct {
 	Base
-	Provider     string `gorm:"not null" json:"provider"`
-	Host         string `gorm:"not null" json:"host"`
-	Port         int    `gorm:"not null" json:"port"`
-	Username     string `json:"username"`
-	Password     string `json:"-"`
+	Provider     string `gorm:"not null" json:"provider" validate:"required,oneof=CUSTOM GMAIL OUTLOOK AMAZON"`
+	Host         string `gorm:"not null" json:"host" validate:"required,hostname"`
+	Port         int    `gorm:"not null" json:"port" validate:"required,min=1,max=65535"`
+	Username     string `json:"username" validate:"required,email"`
+	Password     string `json:"password" validate:"required,min=8"`
 	IsDefault    bool   `gorm:"not null;default:false" json:"isDefault"`
-	IsActive     bool   `gorm:"not null;default:false" json:"isActive"`
+	IsActive     bool   `gorm:"not null;default:true" json:"isActive"`
 	SupportsTLS  bool   `gorm:"not null;default:true" json:"supportsTls"`
 	RequiresAuth bool   `gorm:"not null;default:true" json:"requiresAuth"`
-	MaxSendRate  int    `gorm:"not null;default:10" json:"maxSendRate"`
-	TeamID       string `gorm:"type:uuid;not null" json:"teamId"`
+	MaxSendRate  int    `gorm:"not null;default:10" json:"maxSendRate" validate:"required,min=1"`
+	TeamID       string `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 }
 
 type Domain struct {
 	Base
-	Domain     string `gorm:"uniqueIndex;not null" json:"domain"`
+	Domain     string `gorm:"uniqueIndex;not null" json:"domain" validate:"required,fqdn"`
 	IsVerified bool   `gorm:"not null;default:false" json:"isVerified"`
-	DNSRecord  string `json:"dnsRecord"`
-	TeamID     string `gorm:"type:uuid;not null" json:"teamId"`
+	DNSRecord  string `json:"dnsRecord" validate:"omitempty"`
+	TeamID     string `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 }
 
 type Webhook struct {
 	Base
-	Name       string      `gorm:"not null" json:"name"`
-	URL        string      `gorm:"not null" json:"url"`
-	Events     StringArray `gorm:"type:text[]" json:"events"`
-	IsActive   bool        `gorm:"not null;default:true" json:"isActive"`
-	Secret     string      `json:"-"`
-	TeamID     string      `gorm:"type:uuid;not null" json:"teamId"`
-	Deliveries []Delivery  `gorm:"foreignKey:WebhookID" json:"deliveries,omitempty"`
+	Name       string         `gorm:"not null" json:"name" validate:"required,min=2"`
+	URL        string         `gorm:"not null" json:"url" validate:"required,url"`
+	Events     pq.StringArray `gorm:"type:text[]" json:"events" validate:"required,min=1,dive,oneof=click open reply bounce complaint"`
+	IsActive   bool           `gorm:"not null;default:true" json:"isActive"`
+	Secret     string         `json:"secret" validate:"required,min=16"`
+	TeamID     string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
+	Deliveries []Delivery     `gorm:"foreignKey:WebhookID" json:"deliveries,omitempty"`
 }
 
 type Delivery struct {
 	Base
-	WebhookID    string          `gorm:"type:uuid;not null" json:"webhookId"`
-	Event        string          `gorm:"not null" json:"event"`
-	Payload      json.RawMessage `gorm:"type:jsonb;not null" json:"payload"`
-	ResponseCode int             `json:"responseCode"`
-	ResponseBody string          `json:"responseBody"`
-	Error        string          `json:"error"`
-	Status       string          `gorm:"not null" json:"status"`
+	WebhookID    string         `gorm:"type:uuid;not null" json:"webhookId" validate:"required,uuid"`
+	Event        string         `gorm:"not null" json:"event" validate:"required,oneof=click open reply bounce complaint"`
+	Payload      datatypes.JSON `gorm:"type:jsonb;not null" json:"payload" validate:"required,json"`
+	ResponseCode int            `json:"responseCode" validate:"omitempty,min=100,max=599"`
+	ResponseBody string         `json:"responseBody" validate:"omitempty"`
+	Error        string         `json:"error" validate:"omitempty"`
+	Status       string         `gorm:"not null" json:"status" validate:"required,oneof=PENDING SUCCESS FAILED"`
 }
 
 type EmailCategory struct {
 	Base
-	Name        string     `gorm:"not null" json:"name"`
-	Description string     `json:"description"`
+	Name        string     `gorm:"not null" json:"name" validate:"required,min=2"`
+	Description string     `json:"description" validate:"omitempty"`
 	Emails      []Email    `gorm:"foreignKey:CategoryID" json:"emails,omitempty"`
 	Templates   []Template `gorm:"foreignKey:CategoryID" json:"templates,omitempty"`
-	TeamID      string     `gorm:"type:uuid;not null" json:"teamId"`
+	TeamID      string     `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team        *Team      `json:"team,omitempty"`
 }
 
 type Template struct {
 	Base
-	Name       string         `gorm:"not null" json:"name"`
-	Subject    string         `gorm:"not null" json:"subject"`
-	HtmlFile   string         `gorm:"not null" json:"htmlFile"`
-	DesignJSON string         `gorm:"not null" json:"designJson"`
-	TeamID     string         `gorm:"type:uuid;not null" json:"teamId"`
+	Name       string         `gorm:"not null" json:"name" validate:"required,min=2"`
+	Subject    string         `gorm:"not null" json:"subject" validate:"required"`
+	HtmlFile   string         `gorm:"not null" json:"htmlFile" validate:"required"`
+	DesignJSON datatypes.JSON `gorm:"not null" json:"designJson" validate:"required,json"`
+	TeamID     string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team       *Team          `json:"team,omitempty"`
 	Emails     []Email        `gorm:"foreignKey:TemplateID" json:"emails,omitempty"`
-	Variables  StringArray    `gorm:"type:text[]" json:"variables"`
-	CategoryID string         `gorm:"type:uuid;not null" json:"categoryId"`
+	Variables  pq.StringArray `gorm:"type:text[]" json:"variables" validate:"omitempty,dive,min=1"`
+	CategoryID string         `gorm:"type:uuid;not null" json:"categoryId" validate:"required,uuid"`
 	Category   *EmailCategory `json:"category,omitempty"`
 }
 
 type Email struct {
 	Base
-	From         string          `gorm:"not null" json:"from"`
-	To           string          `gorm:"not null" json:"to"`
-	Subject      string          `gorm:"not null" json:"subject"`
-	Body         string          `gorm:"not null" json:"body"`
-	Status       EmailStatus     `gorm:"not null" json:"status"`
-	Error        string          `json:"error"`
-	Data         json.RawMessage `gorm:"type:jsonb" json:"data"`
-	TemplateID   string          `gorm:"type:uuid;not null" json:"templateId"`
-	Template     *Template       `json:"template,omitempty"`
-	TeamID       string          `gorm:"type:uuid;not null" json:"teamId"`
-	Team         *Team           `json:"team,omitempty"`
-	ContactID    string          `gorm:"type:uuid;not null" json:"contactId"`
-	Contact      *Contact        `json:"contact,omitempty"`
-	SMTPConfigID string          `gorm:"type:uuid;not null" json:"smtpConfigId"`
-	SMTPConfig   *SMTPConfig     `json:"smtpConfig,omitempty"`
-	SentAt       time.Time       `json:"sentAt"`
-	CategoryID   string          `gorm:"type:uuid;not null" json:"categoryId"`
-	Category     *EmailCategory  `json:"category,omitempty"`
-	CampaignID   string          `gorm:"type:uuid" json:"campaignId"`
-	Campaign     *Campaign       `json:"campaign,omitempty"`
+	From         string         `gorm:"not null" json:"from" validate:"required,email"`
+	To           string         `gorm:"not null" json:"to" validate:"required,email"`
+	Subject      string         `gorm:"not null" json:"subject" validate:"required"`
+	Body         string         `gorm:"not null" json:"body" validate:"required"`
+	Status       EmailStatus    `gorm:"not null" json:"status" validate:"required,oneof=DRAFT QUEUED SENDING SENT FAILED"`
+	Error        string         `json:"error" validate:"omitempty"`
+	Data         datatypes.JSON `gorm:"type:jsonb" json:"data" validate:"omitempty,json"`
+	TemplateID   string         `gorm:"type:uuid;not null" json:"templateId" validate:"required,uuid"`
+	Template     *Template      `json:"template,omitempty"`
+	TeamID       string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
+	Team         *Team          `json:"team,omitempty"`
+	ContactID    string         `gorm:"type:uuid;not null" json:"contactId" validate:"required,uuid"`
+	Contact      *Contact       `json:"contact,omitempty"`
+	SMTPConfigID string         `gorm:"type:uuid;not null" json:"smtpConfigId" validate:"required,uuid"`
+	SMTPConfig   *SMTPConfig    `json:"smtpConfig,omitempty"`
+	SentAt       time.Time      `json:"sentAt" validate:"omitempty"`
+	CategoryID   string         `gorm:"type:uuid;not null" json:"categoryId" validate:"required,uuid"`
+	Category     *EmailCategory `json:"category,omitempty"`
+	CampaignID   string         `gorm:"type:uuid" json:"campaignId" validate:"omitempty,uuid"`
+	Campaign     *Campaign      `json:"campaign,omitempty"`
 }
 
 type EmailTracking struct {
 	Base
-	EmailID    string             `gorm:"type:uuid;not null" json:"emailId"`
+	EmailID    string             `gorm:"type:uuid;not null" json:"emailId" validate:"required,uuid"`
 	Email      *Email             `json:"email,omitempty"`
-	CampaignID string             `gorm:"type:uuid;not null" json:"campaignId"`
+	CampaignID string             `gorm:"type:uuid;not null" json:"campaignId" validate:"required,uuid"`
 	Campaign   *Campaign          `json:"campaign,omitempty"`
-	ContactID  string             `gorm:"type:uuid;not null" json:"contactId"`
+	ContactID  string             `gorm:"type:uuid;not null" json:"contactId" validate:"required,uuid"`
 	Contact    *Contact           `json:"contact,omitempty"`
-	Event      EmailTrackingEvent `gorm:"not null" json:"event"`
-	Timestamp  time.Time          `json:"timestamp"`
+	Event      EmailTrackingEvent `gorm:"not null" json:"event" validate:"required,oneof=click open reply bounce complaint"`
+	Timestamp  time.Time          `json:"timestamp" validate:"required"`
 }
 
 type EmailClick struct {
 	Base
-	EmailID   string    `gorm:"type:uuid;not null" json:"emailId"`
+	EmailID   string    `gorm:"type:uuid;not null" json:"emailId" validate:"required,uuid"`
 	Email     *Email    `json:"email,omitempty"`
-	URL       string    `gorm:"not null" json:"url"`
-	Timestamp time.Time `json:"timestamp"`
+	URL       string    `gorm:"not null" json:"url" validate:"required,url"`
+	Timestamp time.Time `json:"timestamp" validate:"required"`
 }
 
 type EmailOpen struct {
 	Base
-	EmailID   string    `gorm:"type:uuid;not null" json:"emailId"`
+	EmailID   string    `gorm:"type:uuid;not null" json:"emailId" validate:"required,uuid"`
 	Email     *Email    `json:"email,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp" validate:"required"`
 }
 
 type EmailReply struct {
 	Base
-	EmailID   string    `gorm:"type:uuid;not null" json:"emailId"`
+	EmailID   string    `gorm:"type:uuid;not null" json:"emailId" validate:"required,uuid"`
 	Email     *Email    `json:"email,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	Content   string    `gorm:"not null" json:"content" validate:"required"`
+	Timestamp time.Time `json:"timestamp" validate:"required"`
 }
 
 type EmailBounce struct {
@@ -239,7 +272,7 @@ type EmailComplaint struct {
 type APIKey struct {
 	Base
 	Key         string             `gorm:"not null" json:"key"`
-	TeamID      string             `gorm:"type:uuid;not null" json:"teamId"`
+	TeamID      string             `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team        *Team              `json:"team,omitempty"`
 	CreatedAt   time.Time          `json:"createdAt"`
 	LastUsedAt  time.Time          `json:"lastUsedAt"`
@@ -247,17 +280,32 @@ type APIKey struct {
 	Permissions []APIKeyPermission `gorm:"foreignKey:KeyID" json:"permissions,omitempty"`
 }
 
+func (a *APIKey) BeforeCreate(tx *gorm.DB) error {
+	if a.ID == "" {
+		a.ID = uuid.New().String()
+	}
+	if a.Key == "" {
+		// i dont want have - in the key
+		key_without_dashes := strings.ReplaceAll(uuid.New().String(), "-", "")
+		a.Key = "kori_" + key_without_dashes
+	}
+	if a.ExpiresAt.IsZero() {
+		a.ExpiresAt = time.Now().Add(24 * 90 * time.Hour)
+	}
+	return nil
+}
+
 type APIKeyUsage struct {
 	Base
-	APIKeyID  string    `gorm:"type:uuid;not null" json:"apiKeyId"`
-	APIKey    *APIKey   `json:"apiKey,omitempty"`
-	Endpoint  string    `gorm:"not null" json:"endpoint"`
-	Method    string    `gorm:"not null" json:"method"`
-	Timestamp time.Time `json:"timestamp"`
-	Success   bool      `gorm:"not null;default:true" json:"success"`
-	Error     string    `json:"error"`
-	IPAddress string    `json:"ipAddress"`
-	UserAgent string    `json:"userAgent"`
+	APIKeyID  string    `gorm:"type:uuid;not null" json:"apiKeyId" validate:"required,uuid"`
+	APIKey    *APIKey   `json:"apiKey,omitempty" validate:"required"`
+	Endpoint  string    `gorm:"not null" json:"endpoint" validate:"required"`
+	Method    string    `gorm:"not null" json:"method" validate:"required,oneof=GET POST PUT DELETE"`
+	Timestamp time.Time `json:"timestamp" validate:"required"`
+	Success   bool      `gorm:"not null;default:true" json:"success" validate:"required"`
+	Error     string    `json:"error" validate:"omitempty"`
+	IPAddress string    `json:"ipAddress" validate:"omitempty"`
+	UserAgent string    `json:"userAgent" validate:"omitempty"`
 }
 
 type Campaign struct {
@@ -325,15 +373,15 @@ type LLMEmailWriterJob struct {
 	Input        string      `json:"input"`
 	Prompt       string      `json:"prompt"`
 	Model        *Model      `json:"model,omitempty"`
-	ModelID      string      `gorm:"type:uuid;not null" json:"modelId"`
+	ModelID      string      `gorm:"type:uuid;not null" json:"modelId" validate:"required,uuid"`
 }
 
 type AutomationNode struct {
 	Base
 	AutomationID string               `gorm:"type:uuid;not null" json:"automationId"`
 	Automation   *Automation          `json:"automation,omitempty"`
-	Type         NodeType             `gorm:"not null" json:"type"`
-	Data         json.RawMessage      `gorm:"type:jsonb" json:"data"`
+	Type         NodeType             `gorm:"not null" json:"type" validate:"required,oneof=EMAIL_WRITER"`
+	Data         datatypes.JSON       `gorm:"type:jsonb" json:"data" validate:"required,json"`
 	EdgesFrom    []AutomationNodeEdge `gorm:"foreignKey:SourceID" json:"edgesFrom,omitempty"`
 	EdgesTo      []AutomationNodeEdge `gorm:"foreignKey:TargetID" json:"edgesTo,omitempty"`
 }
