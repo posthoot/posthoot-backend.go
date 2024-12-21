@@ -9,6 +9,8 @@ import (
 	"kori/internal/utils"
 
 	console "kori/internal/utils/logger"
+
+	"gorm.io/datatypes"
 )
 
 var logger = console.New("EMAIL")
@@ -50,7 +52,7 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 
 	var template *models.Template
 
-	if team.Settings.InviteTemplateID == "" {
+	if team.Settings[0].InviteTemplateID == "" {
 		// Get invite template
 		template = &models.Template{}
 		if err := tx.Where("name = ? AND team_id = ?", "PLATFORM INVITE", invite.TeamID).First(template).Error; err != nil {
@@ -59,7 +61,7 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		}
 	} else {
 		template = &models.Template{}
-		if err := tx.Where("id = ? AND team_id = ?", team.Settings.InviteTemplateID, invite.TeamID).First(template).Error; err != nil {
+		if err := tx.Where("id = ? AND team_id = ?", team.Settings[0].InviteTemplateID, invite.TeamID).First(template).Error; err != nil {
 			tx.Rollback()
 			return logger.Error("failed to get invite template", err)
 		}
@@ -121,14 +123,14 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		},
 		smtpConfig.Provider,
 		template.CategoryID,
-		emailData,
+		datatypes.JSON(emailData),
 		"",
 		mailingList.ID,
 		"",
 	)
 }
 
-func sendEmail(teamId string, templateId string, to string, variables map[string]string, SMTPProvider string, categoryId string, data json.RawMessage, subject string, listId string, campaignId string) error {
+func sendEmail(teamId string, templateId string, to string, variables map[string]string, SMTPProvider string, categoryId string, data datatypes.JSON, subject string, listId string, campaignId string) error {
 	// Start transaction
 	tx := db.DB.Begin()
 	if tx.Error != nil {
@@ -203,7 +205,7 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 		Subject:      parsedSubject,
 		Body:         parsedBody,
 		Status:       models.EmailStatusPending,
-		Data:         data,
+		Data:         datatypes.JSON(data),
 		ContactID:    contact.ID,
 		CategoryID:   category.ID,
 		SMTPConfigID: smtpConfig.ID,
