@@ -1,7 +1,13 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"kori/internal/db"
+	"kori/internal/models"
+	"kori/internal/utils/logger"
 	"net/http"
 	"strings"
 	"time"
@@ -9,6 +15,8 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 )
+
+var log = logger.New("auth")
 
 type AuthMiddleware struct {
 	jwtSecret string
@@ -67,22 +75,38 @@ func (m *AuthMiddleware) Middleware() echo.MiddlewareFunc {
 }
 
 func (m *AuthMiddleware) validateAPIKey(c echo.Context, key string, next echo.HandlerFunc) error {
-	info, exists := m.apiKeys[key]
-	if !exists {
+
+	apiKey := &models.APIKey{}
+	if err := db.DB.Where("key = ?", key).Preload("Permissions").First(apiKey).Error; err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid API key")
 	}
 
 	// Check expiration
-	if !info.ExpiresAt.IsZero() && time.Now().After(info.ExpiresAt) {
+	if !apiKey.ExpiresAt.IsZero() && time.Now().After(apiKey.ExpiresAt) {
 		return echo.NewHTTPError(http.StatusUnauthorized, "API key has expired")
 	}
 
+	// check apikey permissions
+	if err := m.validateAPIKeyPermissions(c, apiKey, next); err != nil {
+		return err
+	}
+
 	// Set context values
-	c.Set("teamID", info.TeamID)
+	c.Set("teamID", apiKey.TeamID)
 	c.Set("isAPIKey", true)
-	c.Set("permissions", info.Permissions)
+	c.Set("permissions", apiKey.Permissions)
 
 	return next(c)
+}
+
+func (m *AuthMiddleware) validateAPIKeyPermissions(c echo.Context, apiKey *models.APIKey, next echo.HandlerFunc) error {
+	for _, permission := range apiKey.Permissions {
+		if permission.ResourcePermission.Scope == "ADMIN" || permission.ResourcePermission.Scope == "READ" || permission.ResourcePermission.Scope == "WRITE" {
+			return nil
+		}
+	}
+
+	return echo.NewHTTPError(http.StatusForbidden, "Insufficient permissions")
 }
 
 func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next echo.HandlerFunc) error {
@@ -105,6 +129,44 @@ func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next ec
 	// Validate expiration
 	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Token has expired")
+	}
+
+	authtransaction := &models.AuthTransaction{}
+	if err := db.DB.Where("user_id = ? AND team_id = ? AND token = ?", claims.UserID, claims.TeamID, tokenString).First(authtransaction).Error; err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Auth transaction not found")
+	}
+
+	// check if user exists and auth transaction exists
+	user := &models.User{}
+	if err := db.DB.Where("id = ?", claims.UserID).First(user).Error; err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "User not found")
+	}
+
+	team := &models.Team{}
+	if err := db.DB.Joins("JOIN users ON users.team_id = teams.id").Where("teams.id = ? AND users.id = ?", claims.TeamID, claims.UserID).First(team).Error; err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Team not found")
+	}
+
+	// if request is a post request, we need to add teamId to the request body and validate it
+	if c.Request().Method == "POST" || c.Request().Method == "PUT" {
+		body := c.Request().Body
+		defer body.Close()
+
+		var bodyMap map[string]interface{}
+		if err := json.NewDecoder(body).Decode(&bodyMap); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid JSON body")
+		}
+
+		// Set or update teamId
+		bodyMap["teamId"] = team.ID
+
+		// Re-encode with updated teamId
+		newBody, err := json.Marshal(bodyMap)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to encode body")
+		}
+
+		c.Request().Body = io.NopCloser(bytes.NewBuffer(newBody))
 	}
 
 	// Set context values
