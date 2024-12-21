@@ -12,10 +12,10 @@ import (
 
 // BaseService interface defines common CRUD operations
 type BaseService[T any] interface {
-	Create(ctx context.Context, entity *T) error
-	Get(ctx context.Context, id string) (*T, error)
-	List(ctx context.Context, page, limit int, filters map[string]interface{}) ([]T, int64, error)
-	Update(ctx context.Context, id string, entity *T) error
+	Create(ctx context.Context, entity *T, includes ...string) error
+	Get(ctx context.Context, id string, includes ...string) (*T, error)
+	List(ctx context.Context, page, limit int, filters map[string]interface{}, includes ...string) ([]T, int64, error)
+	Update(ctx context.Context, id string, entity *T, includes ...string) error
 	Delete(ctx context.Context, id string) error
 }
 
@@ -38,9 +38,24 @@ func NewBaseService[T any](db *gorm.DB, modelType T) BaseService[T] {
 	}
 }
 
-func (s *BaseServiceImpl[T]) Create(ctx context.Context, entity *T) error {
+// applyIncludes adds preload statements to the query for each include
+func (s *BaseServiceImpl[T]) applyIncludes(query *gorm.DB, includes ...string) *gorm.DB {
+	for _, include := range includes {
+		query = query.Preload(include)
+	}
+	return query
+}
+
+func (s *BaseServiceImpl[T]) Create(ctx context.Context, entity *T, includes ...string) error {
 	if err := s.db.WithContext(ctx).Create(entity).Error; err != nil {
 		return err
+	}
+
+	// Reload the entity with includes if any are specified
+	if len(includes) > 0 {
+		if err := s.applyIncludes(s.db.WithContext(ctx), includes...).First(entity, "id = ?", reflect.ValueOf(*entity).FieldByName("ID").String()).Error; err != nil {
+			return err
+		}
 	}
 
 	// Get the table name of the gorm model
@@ -49,15 +64,18 @@ func (s *BaseServiceImpl[T]) Create(ctx context.Context, entity *T) error {
 	return nil
 }
 
-func (s *BaseServiceImpl[T]) Get(ctx context.Context, id string) (*T, error) {
+func (s *BaseServiceImpl[T]) Get(ctx context.Context, id string, includes ...string) (*T, error) {
 	var entity T
-	if err := s.db.WithContext(ctx).First(&entity, "id = ?", id).Error; err != nil {
+	query := s.db.WithContext(ctx)
+	query = s.applyIncludes(query, includes...)
+
+	if err := query.First(&entity, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &entity, nil
 }
 
-func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters map[string]interface{}) ([]T, int64, error) {
+func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters map[string]interface{}, includes ...string) ([]T, int64, error) {
 	var entities []T
 	var total int64
 
@@ -73,6 +91,9 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 		return nil, 0, err
 	}
 
+	// Apply includes
+	query = s.applyIncludes(query, includes...)
+
 	// Apply pagination
 	if page > 0 && limit > 0 {
 		offset := (page - 1) * limit
@@ -87,9 +108,16 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 	return entities, total, nil
 }
 
-func (s *BaseServiceImpl[T]) Update(ctx context.Context, id string, entity *T) error {
+func (s *BaseServiceImpl[T]) Update(ctx context.Context, id string, entity *T, includes ...string) error {
 	if err := s.db.WithContext(ctx).Model(entity).Where("id = ?", id).Updates(entity).Error; err != nil {
 		return err
+	}
+
+	// Reload the entity with includes if any are specified
+	if len(includes) > 0 {
+		if err := s.applyIncludes(s.db.WithContext(ctx), includes...).First(entity, "id = ?", id).Error; err != nil {
+			return err
+		}
 	}
 
 	events.Emit(fmt.Sprintf("%s.updated", GormTableName(s.db, s.modelType)), entity)

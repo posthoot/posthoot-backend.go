@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"kori/internal/services"
 
@@ -21,18 +22,28 @@ func NewBaseController[T any](service services.BaseService[T]) *BaseController[T
 	}
 }
 
+// parseIncludes parses the include query parameter and returns a slice of relationships to preload
+func parseIncludes(ctx echo.Context) []string {
+	include := ctx.QueryParam("include")
+	if include == "" {
+		return nil
+	}
+	return strings.Split(include, ",")
+}
+
 // Create handles creation of new entities
 func (c *BaseController[T]) Create(ctx echo.Context) error {
 	var entity T
 	if err := ctx.Bind(&entity); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body "+err.Error())
 	}
 
 	if err := ctx.Validate(&entity); err != nil {
 		return err
 	}
 
-	if err := c.service.Create(ctx.Request().Context(), &entity); err != nil {
+	includes := parseIncludes(ctx)
+	if err := c.service.Create(ctx.Request().Context(), &entity, includes...); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
@@ -46,7 +57,8 @@ func (c *BaseController[T]) Get(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id parameter")
 	}
 
-	entity, err := c.service.Get(ctx.Request().Context(), id)
+	includes := parseIncludes(ctx)
+	entity, err := c.service.Get(ctx.Request().Context(), id, includes...)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "entity not found")
 	}
@@ -69,12 +81,13 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 	// Parse filters from query parameters
 	filters := make(map[string]interface{})
 	for key, values := range ctx.QueryParams() {
-		if key != "page" && key != "limit" && len(values) > 0 {
+		if key != "page" && key != "limit" && key != "include" && len(values) > 0 {
 			filters[key] = values[0]
 		}
 	}
 
-	entities, total, err := c.service.List(ctx.Request().Context(), page, limit, filters)
+	includes := parseIncludes(ctx)
+	entities, total, err := c.service.List(ctx.Request().Context(), page, limit, filters, includes...)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -103,7 +116,8 @@ func (c *BaseController[T]) Update(ctx echo.Context) error {
 		return err
 	}
 
-	if err := c.service.Update(ctx.Request().Context(), id, &entity); err != nil {
+	includes := parseIncludes(ctx)
+	if err := c.service.Update(ctx.Request().Context(), id, &entity, includes...); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
@@ -133,11 +147,13 @@ func (c *BaseController[T]) RegisterRoutes(g *echo.Group, path string, methods .
 	for _, method := range methods {
 		switch method {
 		case "POST":
+			// validate the request body
 			g.POST(path, c.Create)
 		case "GET":
 			g.GET(path+"/:id", c.Get)
 			g.GET(path, c.List)
 		case "PUT":
+			// validate the request body
 			g.PUT(path+"/:id", c.Update)
 		case "DELETE":
 			g.DELETE(path+"/:id", c.Delete)
