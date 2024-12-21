@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/lib/pq"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
+type JSONTemplate struct {
+	*Template
+	CategoryName string `json:"categoryName"`
+}
+
 type InitialTemplates struct {
-	MailingLists []MailingList `json:"mailing_lists"`
-	Templates    []Template    `json:"templates"`
+	MailingLists []MailingList  `json:"mailing_lists"`
+	Templates    []JSONTemplate `json:"templates"`
 }
 
 type InitialCategories struct {
@@ -60,7 +67,7 @@ func loadJSON[T any](filename string) (*T, error) {
 
 func loadCategories(db *gorm.DB, teamId string) error {
 	log.Info("Loading categories")
-	categories, err := loadJSON[InitialCategories]("internal/models/initial-seup/initial-categories.json")
+	categories, err := loadJSON[InitialCategories]("internal/models/seeder/initial-setup/initial-categories.json")
 	if err != nil {
 		return err
 	}
@@ -79,7 +86,7 @@ func loadCategories(db *gorm.DB, teamId string) error {
 
 func loadLists(db *gorm.DB, teamId string) error {
 	log.Info("Loading lists")
-	lists, err := loadJSON[InitialLists]("internal/models/initial-seup/initial-lists.json")
+	lists, err := loadJSON[InitialLists]("internal/models/seeder/initial-setup/initial-lists.json")
 	if err != nil {
 		return err
 	}
@@ -95,7 +102,7 @@ func loadLists(db *gorm.DB, teamId string) error {
 }
 
 func loadTemplates(db *gorm.DB, teamId string) error {
-	templates, err := loadJSON[InitialTemplates]("internal/models/initial-seup/initial-templates.json")
+	templates, err := loadJSON[InitialTemplates]("internal/models/seeder/initial-setup/initial-templates.json")
 	if err != nil {
 		return err
 	}
@@ -112,12 +119,19 @@ func loadTemplates(db *gorm.DB, teamId string) error {
 	for _, tmpl := range templates.Templates {
 		tmpl.TeamID = teamId
 		category := EmailCategory{}
-		if err := db.Where("name = ? AND team_id = ?", tmpl.Category, teamId).First(&category).Error; err != nil {
+		if err := db.Where("name = ? AND team_id = ?", tmpl.CategoryName, teamId).First(&category).Error; err != nil {
 			return log.Error("Failed to find category", err)
 		}
-		tmpl.Category = nil
-		tmpl.CategoryID = category.ID
-		if err := db.Create(&tmpl).Error; err != nil {
+		template := Template{
+			Name:       tmpl.Name,
+			Subject:    tmpl.Subject,
+			HtmlFile:   tmpl.HtmlFile,
+			DesignJSON: datatypes.JSON(tmpl.DesignJSON),
+			TeamID:     teamId,
+			CategoryID: category.ID,
+			Variables:  pq.StringArray(tmpl.Variables),
+		}
+		if err := db.Create(&template).Error; err != nil {
 			return log.Error("Failed to create template", err)
 		}
 	}
