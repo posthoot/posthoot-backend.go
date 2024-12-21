@@ -273,7 +273,7 @@ func CreateSuperAdminFromEnv(db *gorm.DB) error {
 	// check if super admin already exists
 	var count int64
 	db.Model(&User{}).Where("role = ?", UserRoleSuperAdmin).Count(&count)
-	fmt.Println(count)
+	log.Info(fmt.Sprintf("Super admin count: %d", count))
 	if count > 0 {
 		return nil
 	}
