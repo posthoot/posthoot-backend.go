@@ -71,4 +71,6 @@ jobs:
             - Error handling patterns
             - Code readability and maintainability
 
-            Do not respond with diff changes in your comments only point out issues and use emojis, review like a senior dev.
+            IMPORTANT GUIDELINES
+            - Mandatory to Use emojis in your comments add code examples as well with your comments (markdown format)
+            - Do not repeat the commit message or what user is doing right, just point out issues and things which can be improved. Do not bombard with too much comments decide what's important.
