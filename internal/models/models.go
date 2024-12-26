@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"kori/internal/events"
 	"strings"
 	"time"
@@ -107,9 +108,38 @@ type ContactImport struct {
 
 type File struct {
 	Base
-	TeamID string `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
-	Team   *Team  `json:"team,omitempty"`
-	Path   string `gorm:"not null" json:"path" validate:"required"`
+	TeamID    string `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
+	Team      *Team  `json:"team,omitempty"`
+	Path      string `gorm:"not null" json:"path" validate:"required"`
+	UserID    string `gorm:"type:uuid;not null" json:"userId" validate:"required,uuid"`
+	User      *User  `json:"user,omitempty"`
+	Name      string `gorm:"not null" json:"name" validate:"required"`
+	Size      int64  `gorm:"not null" json:"size" validate:"required,min=1"`
+	Type      string `gorm:"not null" json:"type" validate:"required"`
+	SignedURL string `gorm:"-" json:"signedUrl,omitempty"` // Virtual field
+}
+
+func (f *File) BeforeCreate(tx *gorm.DB) error {
+	if f.ID == "" {
+		f.ID = uuid.New().String()
+	}
+	return nil
+}
+
+func (f *File) AfterFind(tx *gorm.DB) error {
+	registryMu.RLock()
+	generator := urlGenerator
+	registryMu.RUnlock()
+
+	if generator != nil {
+		// Generate URL with 1-hour expiry
+		url, err := generator.GetSignedURL(tx.Statement.Context, f.Path, time.Hour)
+		if err != nil {
+			return fmt.Errorf("failed to generate signed URL: %w", err)
+		}
+		f.SignedURL = url
+	}
+	return nil
 }
 
 type Tag struct {
@@ -186,7 +216,8 @@ type Template struct {
 	Base
 	Name       string         `gorm:"not null" json:"name" validate:"required,min=2"`
 	Subject    string         `gorm:"not null" json:"subject" validate:"required"`
-	HtmlFile   string         `gorm:"not null" json:"htmlFile" validate:"required"`
+	HtmlFileID string         `gorm:"type:uuid" json:"htmlFileId" validate:"omitempty,uuid"`
+	HtmlFile   *File          `json:"htmlFile,omitempty"`
 	DesignJSON datatypes.JSON `gorm:"not null" json:"designJson" validate:"required,json"`
 	TeamID     string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team       *Team          `json:"team,omitempty"`
@@ -218,6 +249,26 @@ type Email struct {
 	Category     *EmailCategory `json:"category,omitempty"`
 	CampaignID   string         `gorm:"type:uuid" json:"campaignId" validate:"omitempty,uuid"`
 	Campaign     *Campaign      `json:"campaign,omitempty"`
+}
+
+func (e *Email) BeforeUpdate(tx *gorm.DB) error {
+	e.UpdatedAt = time.Now()
+	return nil
+}
+
+func (e *Email) AfterUpdate(tx *gorm.DB) error {
+	events.Emit("email.updated", e)
+	return nil
+}
+
+func (e *Email) AfterCreate(tx *gorm.DB) error {
+	events.Emit("email.created", e)
+	return nil
+}
+
+func (e *Email) AfterDelete(tx *gorm.DB) error {
+	events.Emit("email.deleted", e)
+	return nil
 }
 
 type EmailTracking struct {
@@ -396,4 +447,22 @@ type AutomationNodeEdge struct {
 	Target       *AutomationNode `json:"target,omitempty"`
 	Label        string          `json:"label"`
 	Animated     bool            `gorm:"not null;default:true" json:"animated"`
+}
+
+// IsValidUserRole checks if a given role is valid
+func IsValidUserRole(role UserRole) bool {
+	switch role {
+	case UserRoleAdmin, UserRoleMember, UserRoleSuperAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
+func GetEmailByID(id string, db *gorm.DB) (*Email, error) {
+	var email Email
+	if err := db.Where("id = ?", id).Preload("SMTPConfig").First(&email).Error; err != nil {
+		return nil, err
+	}
+	return &email, nil
 }
