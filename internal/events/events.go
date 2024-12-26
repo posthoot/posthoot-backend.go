@@ -48,7 +48,10 @@ func (bus *EventBus) Emit(event string, data interface{}) {
 		go func(h EventHandler) {
 			defer func() {
 				if r := recover(); r != nil {
-					log.Error("Panic in event handler", fmt.Errorf("panic: %v", r))
+					err := log.Error("Panic in event handler", fmt.Errorf("panic: %v", r))
+					if err != nil {
+						return
+					}
 				}
 			}()
 			h(data)
@@ -56,7 +59,7 @@ func (bus *EventBus) Emit(event string, data interface{}) {
 	}
 }
 
-// Global event functions that use the default event bus
+// On Global event functions that use the default event bus
 func On(event string, handler EventHandler) {
 	defaultBus.On(event, handler)
 }
