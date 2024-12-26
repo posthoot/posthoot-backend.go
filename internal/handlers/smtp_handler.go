@@ -73,7 +73,7 @@ func (h *SMTPHandler) TestSMTPConnection(c echo.Context) error {
 		}
 	}
 
-	log.Success(fmt.Sprintf("SMTP connection test successful for team %s", teamID))
+	log.Success("SMTP connection test successful for team %s", teamID)
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "SMTP connection test successful",
 	})

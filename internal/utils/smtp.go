@@ -2,8 +2,11 @@ package utils
 
 import (
 	"fmt"
-	"os"
+	"kori/internal/db"
+	"kori/internal/models"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
@@ -11,67 +14,135 @@ import (
 
 // EmailConfig holds the configuration for the email server
 type EmailConfig struct {
-	Host     string
-	Port     int
-	Username string
-	Password string
+	Host         string
+	Port         int
+	Username     string
+	Password     string
+	MaxSendRate  int
+	SupportsTLS  bool
+	RequiresAuth bool
 }
 
-// Email represents an email message
-type Email struct {
-	From    string
-	To      []string
-	Subject string
-	Body    string
+// BatchEmailResult represents the result of sending a batch of emails
+type BatchEmailResult struct {
+	Email *models.Email
+	Error error
 }
 
-// AppleMailHandler handles sending emails using Apple's custom mail via SMTP
-type AppleMailHandler struct {
-	Config EmailConfig
+// EmailHandler handles sending emails via SMTP
+type EmailHandler struct {
+	config      EmailConfig
+	rateLimiter chan struct{}
 }
 
-var MailHandler = NewAppleMailHandler(EmailConfig{
-	Host: "smtp.gmail.com",
-	Port: 587,
-})
+var MailHandler *EmailHandler
 
-// NewAppleMailHandler creates a new AppleMailHandler
-func NewAppleMailHandler(config EmailConfig) *AppleMailHandler {
-	return &AppleMailHandler{
-		Config: config,
+// NewEmailHandler creates a new EmailHandler
+func NewEmailHandler(config EmailConfig) *EmailHandler {
+	// Initialize rate limiter channel based on max send rate
+	rateLimiter := make(chan struct{}, config.MaxSendRate)
+
+	// Fill the rate limiter initially
+	for i := 0; i < config.MaxSendRate; i++ {
+		rateLimiter <- struct{}{}
+	}
+
+	return &EmailHandler{
+		config:      config,
+		rateLimiter: rateLimiter,
 	}
 }
 
-// SendEmail sends an email using the configured SMTP server
-func (h *AppleMailHandler) SendEmail(email Email) error {
+// SendEmail sends a single email using the configured SMTP server
+func (h *EmailHandler) SendEmail(email *models.Email) error {
+	// Acquire rate limit token
+	<-h.rateLimiter
+	defer func() {
+		// Release token after 1 second to maintain rate limit
+		time.Sleep(time.Second)
+		h.rateLimiter <- struct{}{}
+	}()
 
-	// Set the SMTP server configuration
-	h.Config.Username = os.Getenv("EMAIL_USERNAME")
-	h.Config.Password = os.Getenv("EMAIL_PASSWORD")
-	email.From = os.Getenv("EMAIL_FROM")
+	smtpConfig := email.SMTPConfig
 
-	// Authenticate with the SMTP server
-	fmt.Println("Authenticating with SMTP server...")
-
-	auth := sasl.NewPlainClient("", h.Config.Username, h.Config.Password)
+	auth := sasl.NewPlainClient("", smtpConfig.Username, smtpConfig.Password)
 
 	// Compose the email
 	subject := fmt.Sprintf("Subject: %s\n", email.Subject)
-
-	toFormatted := fmt.Sprintf("To: %s\nContent-Type: text/html; charset=UTF-8\n", strings.Join(email.To, ", "))
-
+	toFormatted := fmt.Sprintf("To: %s\nContent-Type: text/html; charset=UTF-8\n", email.To)
 	msg := strings.NewReader(toFormatted + subject + email.Body)
 
 	// Send the email
-	addr := fmt.Sprintf("%s:%d", h.Config.Host, h.Config.Port)
-
-	err := smtp.SendMail(addr, auth, email.From, email.To, msg)
+	addr := fmt.Sprintf("%s:%d", smtpConfig.Host, smtpConfig.Port)
+	err := smtp.SendMail(addr, auth, email.From, []string{email.To}, msg)
 
 	if err != nil {
+		email.Error = err.Error()
+		email.Status = models.EmailStatusFailed
+		h.UpdateEmail(email)
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
-	fmt.Println("Email sent successfully!")
+	email.SentAt = time.Now()
+	email.Status = models.EmailStatusSent
+	email.Error = ""
+
+	if err := h.UpdateEmail(email); err != nil {
+		return fmt.Errorf("failed to update email: %w", err)
+	}
 
 	return nil
+}
+
+// SendBatchEmails sends multiple emails in parallel with rate limiting
+func (h *EmailHandler) SendBatchEmails(emails []*models.Email) []BatchEmailResult {
+	results := make([]BatchEmailResult, len(emails))
+	var wg sync.WaitGroup
+
+	for i, email := range emails {
+		wg.Add(1)
+		go func(index int, e *models.Email) {
+			defer wg.Done()
+			err := h.SendEmail(e)
+			results[index] = BatchEmailResult{
+				Email: e,
+				Error: err,
+			}
+		}(i, email)
+	}
+
+	wg.Wait()
+	return results
+}
+
+// SendCampaignEmails sends campaign emails in batches
+func (h *EmailHandler) SendCampaignEmails(campaign *models.Campaign, emails []*models.Email, batchSize int) []BatchEmailResult {
+	totalEmails := len(emails)
+	results := make([]BatchEmailResult, totalEmails)
+
+	// Process in batches
+	for i := 0; i < totalEmails; i += batchSize {
+		end := i + batchSize
+		if end > totalEmails {
+			end = totalEmails
+		}
+
+		// Send batch
+		batchResults := h.SendBatchEmails(emails[i:end])
+
+		// Copy batch results to final results
+		copy(results[i:end], batchResults)
+
+		// Optional: Add delay between batches to prevent overwhelming the SMTP server
+		if end < totalEmails {
+			time.Sleep(time.Second * 2)
+		}
+	}
+
+	return results
+}
+
+func (h *EmailHandler) UpdateEmail(email *models.Email) error {
+	db := db.GetDB()
+	return db.Save(email).Error
 }
