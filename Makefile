@@ -11,7 +11,7 @@ BINARY_UNIX=$(BINARY_NAME)_unix
 BUILD_DIR=build
 MAIN_PATH=cmd/main.go
 
-.PHONY: all build test clean run deps
+.PHONY: all build test clean run deps dev
 
 all: test build
 
@@ -27,8 +27,7 @@ clean:
 	rm -f $(BINARY_UNIX)
 
 run:
-	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) -v $(MAIN_PATH)
-	./$(BUILD_DIR)/$(BINARY_NAME)
+	~/.air -c .air.toml
 
 deps:
 	$(GOMOD) download
@@ -40,3 +39,6 @@ docs:
 # Cross compilation
 build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_UNIX) -v $(MAIN_PATH)
+
+dev:
+	nodemon

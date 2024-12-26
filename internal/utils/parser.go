@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"encoding/json"
 	"regexp"
 	"strings"
+
+	"gorm.io/datatypes"
 )
 
 // input is html text with variables in the form of {{variable}}
@@ -27,4 +30,22 @@ func ReplaceVariables(input string, variables map[string]string) string {
 		input = strings.Replace(input, "{{"+variable+"}}", value, -1)
 	}
 	return input
+}
+
+// convert datatypes.JSON to map[string]string
+func JSONToMap(jsonData datatypes.JSON) (map[string]string, error) {
+	var result map[string]string
+	err := json.Unmarshal(jsonData, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// usecase is to replace all the images in the html with our redirect url
+// so we can track the number of opens
+func ReplaceImagesWithRedirect(html string) string {
+	re := regexp.MustCompile(`<img src="([^"]+)"`)
+	html = re.ReplaceAllString(html, `<img src="https://kori.so/img/$1">`)
+	return html
 }

@@ -44,28 +44,29 @@ func (l *Logger) formatMessage(level, emoji, msg string) string {
 	)
 }
 
-func (l *Logger) Info(msg string) {
-	formatted := l.formatMessage("INFO", INFO_EMOJI, msg)
+func (l *Logger) Info(msg string, args ...interface{}) {
+	formatted := l.formatMessage("INFO", INFO_EMOJI, fmt.Sprintf(msg, args...))
 	color.Cyan(formatted)
 }
 
-func (l *Logger) Success(msg string) {
-	formatted := l.formatMessage("SUCCESS", SUCCESS_EMOJI, msg)
+func (l *Logger) Success(msg string, args ...interface{}) {
+	formatted := l.formatMessage("SUCCESS", SUCCESS_EMOJI, fmt.Sprintf(msg, args...))
 	color.Green(formatted)
 }
 
-func (l *Logger) Warn(msg string, err error) {
-	formatted := l.formatMessage("WARN", WARN_EMOJI, fmt.Sprintf("%s: %v", msg, err))
+func (l *Logger) Warn(msg string, args ...interface{}) {
+	formatted := l.formatMessage("WARN", WARN_EMOJI, fmt.Sprintf(msg, args...))
 	color.Yellow(formatted)
 }
 
-func (l *Logger) Error(msg string, err error) error {
-	formatted := l.formatMessage("ERROR", ERROR_EMOJI, fmt.Sprintf("%s: %v", msg, err))
+func (l *Logger) Error(msg string, err error, args ...interface{}) error {
+	args = append(args, err)
+	formatted := l.formatMessage("ERROR", ERROR_EMOJI, fmt.Sprintf(msg, args...))
 	color.Red(formatted)
 	return fmt.Errorf("%s: %w", msg, err)
 }
 
-func (l *Logger) Debug(msg string) {
-	formatted := l.formatMessage("DEBUG", DEBUG_EMOJI, msg)
+func (l *Logger) Debug(msg string, args ...interface{}) {
+	formatted := l.formatMessage("DEBUG", DEBUG_EMOJI, fmt.Sprintf(msg, args...))
 	color.Magenta(formatted)
 }
