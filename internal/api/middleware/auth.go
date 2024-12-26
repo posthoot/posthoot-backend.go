@@ -16,7 +16,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var log = logger.New("auth")
+var log = logger.New("auth_middleware")
 
 type AuthMiddleware struct {
 	jwtSecret string
@@ -87,7 +87,7 @@ func (m *AuthMiddleware) validateAPIKey(c echo.Context, key string, next echo.Ha
 	}
 
 	// check apikey permissions
-	if err := m.validateAPIKeyPermissions(c, apiKey, next); err != nil {
+	if err := m.validateAPIKeyPermissions(c, apiKey); err != nil {
 		return err
 	}
 
@@ -99,17 +99,46 @@ func (m *AuthMiddleware) validateAPIKey(c echo.Context, key string, next echo.Ha
 	return next(c)
 }
 
-func (m *AuthMiddleware) validateAPIKeyPermissions(c echo.Context, apiKey *models.APIKey, next echo.HandlerFunc) error {
-	for _, permission := range apiKey.Permissions {
-		if permission.ResourcePermission.Scope == "ADMIN" || permission.ResourcePermission.Scope == "READ" || permission.ResourcePermission.Scope == "WRITE" {
-			return nil
-		}
+func (m *AuthMiddleware) validateAPIKeyPermissions(c echo.Context, apiKey *models.APIKey) error {
+	method := c.Request().Method
+	requiredScope := GetRequiredPermissionForMethod(method)
+	if requiredScope == "" {
+		return echo.NewHTTPError(http.StatusForbidden, "Invalid request method")
 	}
 
-	return echo.NewHTTPError(http.StatusForbidden, "Insufficient permissions")
+	// Get the request path to determine the resource
+	path := c.Request().URL.Path
+	resource := m.getResourceFromPath(path)
+	requiredPermission := fmt.Sprintf("%s:%s", resource, requiredScope)
+
+	// Check permissions using the common validation function
+	if err := ValidateAPIKeyPermissions(c.Request().Context(), db.DB, apiKey.ID, []string{requiredPermission}); err != nil {
+		return echo.NewHTTPError(http.StatusForbidden, "Insufficient permissions")
+	}
+
+	// Set context values
+	c.Set("apiKeyID", apiKey.ID)
+	c.Set("teamID", apiKey.TeamID)
+	c.Set("isAPIKey", true)
+	c.Set("permissions", []string{requiredPermission})
+
+	return nil
+}
+
+func (m *AuthMiddleware) getResourceFromPath(path string) string {
+	// Remove API version prefix if exists
+	path = strings.TrimPrefix(path, "/api/v1")
+
+	// Split path and get the first segment
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	return "unknown"
 }
 
 func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next echo.HandlerFunc) error {
+
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -118,12 +147,8 @@ func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next ec
 		return []byte(m.jwtSecret), nil
 	})
 
-	if err != nil {
+	if err != nil || !token.Valid {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
-	}
-
-	if !token.Valid {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Token is not valid")
 	}
 
 	// Validate expiration
@@ -131,42 +156,79 @@ func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next ec
 		return echo.NewHTTPError(http.StatusUnauthorized, "Token has expired")
 	}
 
-	authtransaction := &models.AuthTransaction{}
-	if err := db.DB.Where("user_id = ? AND team_id = ? AND token = ?", claims.UserID, claims.TeamID, tokenString).First(authtransaction).Error; err != nil {
+	// Verify auth transaction
+	transaction := &models.AuthTransaction{}
+	if err := db.DB.Where("user_id = ? AND team_id = ? AND token = ?",
+		claims.UserID, claims.TeamID, tokenString).First(transaction).Error; err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Auth transaction not found")
 	}
 
-	// check if user exists and auth transaction exists
+	// Verify user exists
 	user := &models.User{}
 	if err := db.DB.Where("id = ?", claims.UserID).First(user).Error; err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "User not found")
 	}
 
+	log.Info("User found: %s", user.Email)
+
+	// Verify team membership
 	team := &models.Team{}
-	if err := db.DB.Joins("JOIN users ON users.team_id = teams.id").Where("teams.id = ? AND users.id = ?", claims.TeamID, claims.UserID).First(team).Error; err != nil {
+	if err := db.DB.Joins("JOIN users ON users.team_id = teams.id").
+		Where("teams.id = ? AND users.id = ?", claims.TeamID, claims.UserID).
+		First(team).Error; err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Team not found")
 	}
 
-	// if request is a post request, we need to add teamId to the request body and validate it
-	if c.Request().Method == "POST" || c.Request().Method == "PUT" {
+	requestContentType := strings.Split(c.Request().Header.Get("Content-Type"), ";")[0]
+
+	log.Info("Request content type: %s", requestContentType)
+
+	if (c.Request().Method == "POST" || c.Request().Method == "PUT") && requestContentType != "multipart/form-data" {
 		body := c.Request().Body
-		defer body.Close()
+		defer func(body io.ReadCloser) {
+			err := body.Close()
+			if err != nil {
+				log.Error("Failed to close request body", err)
+			}
+		}(body)
 
 		var bodyMap map[string]interface{}
 		if err := json.NewDecoder(body).Decode(&bodyMap); err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid JSON body")
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid JSON Fbody")
 		}
 
-		// Set or update teamId
 		bodyMap["teamId"] = team.ID
-
-		// Re-encode with updated teamId
 		newBody, err := json.Marshal(bodyMap)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to encode body")
 		}
 
 		c.Request().Body = io.NopCloser(bytes.NewBuffer(newBody))
+	}
+
+	// Check method-based permissions
+	method := c.Request().Method
+	requiredScope := GetRequiredPermissionForMethod(method)
+	if requiredScope == "" {
+		return echo.NewHTTPError(http.StatusForbidden, "Invalid request method")
+	}
+
+	// Admin role has all permissions
+	if user.Role == models.UserRoleAdmin || user.Role == models.UserRoleSuperAdmin {
+		c.Set("hasAdminAccess", true)
+	} else {
+		// Check if user has the required scope
+		hasPermission := false
+		for _, scope := range claims.Scopes {
+			if ValidateMethodPermission(method, scope) {
+				hasPermission = true
+				break
+			}
+		}
+
+		if !hasPermission {
+			return echo.NewHTTPError(http.StatusForbidden, "Insufficient permissions")
+		}
 	}
 
 	// Set context values
@@ -180,7 +242,7 @@ func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next ec
 	return next(c)
 }
 
-// Helper functions to get values from context
+// GetUserID Helper functions to get values from context
 func GetUserID(c echo.Context) string {
 	if id, ok := c.Get("userID").(string); ok {
 		return id

@@ -2,152 +2,153 @@ package middleware
 
 import (
 	"context"
-	"errors"
-	"kori/internal/models"
+	"fmt"
+	"net/http"
+	"strings"
 
+	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
 
-var (
-	ErrInsufficientPermissions = errors.New("insufficient permissions")
-	ErrInvalidAPIKey           = errors.New("invalid API key")
-	ErrInvalidUser             = errors.New("invalid user")
+// Permission scopes
+const (
+	ScopeAdmin = "ADMIN"
+	ScopeRead  = "READ"
+	ScopeWrite = "WRITE"
 )
 
-// ValidateAPIKeyPermissions checks if an API key has the required permissions
+// ValidateAPIKeyPermissions validates if an API key has the required permissions
 func ValidateAPIKeyPermissions(ctx context.Context, db *gorm.DB, apiKeyID string, requiredPermissions []string) error {
-	var apiKey models.APIKey
-	if err := db.WithContext(ctx).
-		Preload("Permissions.ResourcePermission.Resource").
-		First(&apiKey, "id = ?", apiKeyID).Error; err != nil {
-		return ErrInvalidAPIKey
+	var permissions []string
+	err := db.Raw(`
+		SELECT CONCAT(resource, ':', scope) as permission
+		FROM api_key_permissions
+		WHERE key_id = ?
+	`, apiKeyID).Scan(&permissions).Error
+	if err != nil {
+		return fmt.Errorf("failed to get permissions: %w", err)
 	}
 
-	// Create a map of the API key's permissions for faster lookup
-	permissionMap := make(map[string]bool)
-	for _, perm := range apiKey.Permissions {
-		if perm.ResourcePermission != nil && perm.ResourcePermission.Resource != nil {
-			scope := perm.ResourcePermission.Scope
-			permissionMap[scope] = true
-		}
-	}
-
-	// Check if the API key has all required permissions
-	for _, required := range requiredPermissions {
-		if !permissionMap[required] {
-			return ErrInsufficientPermissions
-		}
-	}
-
-	return nil
-}
-
-// ValidateUserPermissions checks if a user has the required permissions
-func ValidateUserPermissions(ctx context.Context, db *gorm.DB, userID string, requiredPermissions []string) error {
-	var user models.User
-	if err := db.WithContext(ctx).First(&user, "id = ?", userID).Error; err != nil {
-		return ErrInvalidUser
-	}
-
-	// Super admins and admins have all permissions
-	if user.Role == models.UserRoleSuperAdmin || user.Role == models.UserRoleAdmin {
-		return nil
-	}
-
-	// For regular users, check their specific permissions
-	var permissions []models.UserPermission
-	if err := db.WithContext(ctx).
-		Preload("ResourcePermission.Resource").
-		Where("user_id = ?", userID).
-		Find(&permissions).Error; err != nil {
-		return err
-	}
-
-	// Create a map of the user's permissions for faster lookup
-	permissionMap := make(map[string]bool)
+	// Check if the API key has admin scope
 	for _, perm := range permissions {
-		if perm.ResourcePermission != nil {
-			scope := perm.ResourcePermission.Scope
-			permissionMap[scope] = true
+		if strings.HasSuffix(perm, ":"+ScopeAdmin) {
+			return nil // Admin has all permissions
 		}
 	}
 
-	// Check if the user has all required permissions
+	// Check each required permission
 	for _, required := range requiredPermissions {
-		if !permissionMap[required] {
-			return ErrInsufficientPermissions
+		hasPermission := false
+		requiredParts := strings.Split(required, ":")
+		if len(requiredParts) != 2 {
+			continue // Invalid permission format
+		}
+
+		requiredResource := requiredParts[0]
+		requiredScope := requiredParts[1]
+
+		for _, perm := range permissions {
+			permParts := strings.Split(perm, ":")
+			if len(permParts) != 2 {
+				continue
+			}
+
+			permResource := permParts[0]
+			permScope := permParts[1]
+
+			// Check if the permission matches
+			if permResource == requiredResource {
+				switch permScope {
+				case ScopeAdmin:
+					hasPermission = true
+				case ScopeWrite:
+					hasPermission = requiredScope == ScopeWrite || requiredScope == ScopeRead
+				case ScopeRead:
+					hasPermission = requiredScope == ScopeRead
+				}
+				if hasPermission {
+					break
+				}
+			}
+		}
+
+		if !hasPermission {
+			return echo.NewHTTPError(http.StatusForbidden, fmt.Sprintf("missing required permission: %s", required))
 		}
 	}
 
 	return nil
 }
 
-// ValidateTeamPermissions checks if a user has the required permissions within a team
-func ValidateTeamPermissions(ctx context.Context, db *gorm.DB, userID string, teamID string, requiredPermissions []string) error {
-	var user models.User
-	if err := db.WithContext(ctx).First(&user, "id = ? AND team_id = ?", userID, teamID).Error; err != nil {
-		return ErrInvalidUser
+// ValidateMethodPermission validates if a given scope allows a specific HTTP method
+func ValidateMethodPermission(method string, scope string) bool {
+	switch scope {
+	case ScopeAdmin:
+		return true
+	case ScopeWrite:
+		return method == http.MethodPost || method == http.MethodPut ||
+			method == http.MethodDelete || method == http.MethodPatch
+	case ScopeRead:
+		return method == http.MethodGet
+	default:
+		return false
 	}
-
-	// Super admins and admins have all permissions
-	if user.Role == models.UserRoleSuperAdmin || user.Role == models.UserRoleAdmin {
-		return nil
-	}
-
-	// For regular users, check their team-specific permissions
-	var permissions []models.UserPermission
-	if err := db.WithContext(ctx).
-		Preload("ResourcePermission.Resource").
-		Where("user_id = ? AND team_id = ?", userID, teamID).
-		Find(&permissions).Error; err != nil {
-		return err
-	}
-
-	// Create a map of the user's team permissions for faster lookup
-	permissionMap := make(map[string]bool)
-	for _, perm := range permissions {
-		if perm.ResourcePermission != nil {
-			scope := perm.ResourcePermission.Scope
-			permissionMap[scope] = true
-		}
-	}
-
-	// Check if the user has all required permissions in the team context
-	for _, required := range requiredPermissions {
-		if !permissionMap[required] {
-			return ErrInsufficientPermissions
-		}
-	}
-
-	return nil
 }
 
-// Helper function to check if a user has a specific permission scope
-func HasPermissionScope(permissions []models.ResourcePermission, scope string) bool {
-	for _, p := range permissions {
-		if p.Scope == scope {
-			return true
+// GetRequiredPermissionForMethod returns the required permission scope for a given HTTP method
+func GetRequiredPermissionForMethod(method string) string {
+	switch method {
+	case http.MethodGet:
+		return ScopeRead
+	case http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch:
+		return ScopeWrite
+	default:
+		return ""
+	}
+}
+
+// RequirePermissions middleware checks if the user/API key has the required permissions
+func RequirePermissions(db *gorm.DB, requiredPermissions ...string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			// Check if user has admin access first
+			if hasAdmin, ok := c.Get("hasAdminAccess").(bool); ok && hasAdmin {
+				return next(c)
+			}
+
+			isAPIKey := c.Get("isAPIKey").(bool)
+			method := c.Request().Method
+
+			if isAPIKey {
+				apiKeyID := c.Get("apiKeyID").(string)
+				if err := ValidateAPIKeyPermissions(c.Request().Context(), db, apiKeyID, requiredPermissions); err != nil {
+					return err
+				}
+			} else {
+				// For JWT auth, check role-based permissions
+				role := c.Get("role").(string)
+				scopes := c.Get("scopes").([]string)
+
+				// Admin role has all permissions
+				if role == "admin" {
+					return next(c)
+				}
+
+				// Check if user has any of the required permissions
+				hasPermission := false
+				for _, scope := range scopes {
+					if ValidateMethodPermission(method, scope) {
+						hasPermission = true
+						break
+					}
+				}
+
+				if !hasPermission {
+					return echo.NewHTTPError(http.StatusForbidden, "insufficient permissions")
+				}
+			}
+
+			return next(c)
 		}
 	}
-	return false
-}
-
-// Helper function to check if a user has a specific role
-func HasRole(user models.User, roles ...models.UserRole) bool {
-	for _, role := range roles {
-		if user.Role == role {
-			return true
-		}
-	}
-	return false
-}
-
-// Helper function to check if a user is an admin or super admin
-func IsAdminUser(user models.User) bool {
-	return user.Role == models.UserRoleAdmin || user.Role == models.UserRoleSuperAdmin
-}
-
-// Helper function to build a permission scope string
-func BuildPermissionScope(resource, action string) string {
-	return action + ":" + resource
 }
