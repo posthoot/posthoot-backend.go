@@ -1290,7 +1290,7 @@
         },
         "schemaVersion": 18
       },
-      "htmlFile": "https://c72gdackzgkn7zoa.public.blob.vercel-storage.com/welcome-8apMJAnlAXmcb2OwDmwqW0EWOV6ny6.html"
+      "htmlFileId": "welcome.html"
     },
     {
       "name": "PLATFORM INVITE",
@@ -1954,7 +1954,7 @@
         },
         "schemaVersion": 18
       },
-      "htmlFile": "https://c72gdackzgkn7zoa.public.blob.vercel-storage.com/invite-VwC0pjqtlhE1y45tGrMKJnXiRIETYQ.html"
+      "htmlFileId": "invite.html"
     }
   ]
 }
