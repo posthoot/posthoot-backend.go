@@ -13,6 +13,7 @@ type Config struct {
 	Storage  StorageConfig
 	Worker   WorkerConfig
 	Redis    RedisConfig
+	S3       S3Config
 }
 
 type ServerConfig struct {
@@ -40,10 +41,11 @@ type StorageConfig struct {
 }
 
 type S3Config struct {
-	Bucket    string
-	Region    string
-	AccessKey string
-	SecretKey string
+	BucketName string `env:"S3_BUCKET_NAME" required:"true"`
+	Endpoint   string `env:"S3_ENDPOINT"`
+	Region     string `env:"S3_REGION" required:"true"`
+	AccessKey  string `env:"S3_ACCESS_KEY" required:"true"`
+	SecretKey  string `env:"S3_SECRET_KEY" required:"true"`
 }
 
 type WorkerConfig struct {
@@ -79,10 +81,11 @@ func Load() (*Config, error) {
 			Provider: getEnv("STORAGE_PROVIDER", "local"),
 			BasePath: getEnv("STORAGE_BASE_PATH", "./storage"),
 			S3: S3Config{
-				Bucket:    getEnv("S3_BUCKET", ""),
-				Region:    getEnv("S3_REGION", ""),
-				AccessKey: getEnv("S3_ACCESS_KEY", ""),
-				SecretKey: getEnv("S3_SECRET_KEY", ""),
+				BucketName: getEnv("S3_BUCKET_NAME", ""),
+				Endpoint:   getEnv("S3_ENDPOINT", ""),
+				Region:     getEnv("S3_REGION", ""),
+				AccessKey:  getEnv("S3_ACCESS_KEY", ""),
+				SecretKey:  getEnv("S3_SECRET_KEY", ""),
 			},
 		},
 		Worker: WorkerConfig{
