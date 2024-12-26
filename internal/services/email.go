@@ -1,31 +1,80 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"kori/internal/config"
 	"kori/internal/db"
 	"kori/internal/events"
 	"kori/internal/models"
+	"kori/internal/tasks"
 	"kori/internal/utils"
-
-	console "kori/internal/utils/logger"
+	"kori/internal/utils/logger"
 
 	"gorm.io/datatypes"
 )
 
-var logger = console.New("EMAIL")
+var log = logger.New("EMAIL")
 
 func init() {
+	taskClient := tasks.NewTaskClient(
+		config.Config{}.Redis.Addr,
+		config.Config{}.Redis.Password,
+		config.Config{}.Redis.Username,
+		config.Config{}.Redis.DB,
+	)
+
 	// Register event handlers
 	events.On("invite.created", func(data interface{}) {
 		invite := data.(*models.TeamInvite)
-		logger.Info(fmt.Sprintf("Sending invite email to %s", invite.Email))
-		sendTeamInviteEmail(invite)
+		log.Info("Sending invite email to %s", invite.Email)
+		if err := sendTeamInviteEmail(invite); err != nil {
+			log.Error("Failed to send invite email: %v", err)
+		}
 	})
+
+	events.On("email.created", func(data interface{}) {
+		email := data.(*models.Email)
+		log.Info("Enqueueing email task for %s", email.ID)
+
+		task := tasks.EmailTask{
+			EmailID:    email.ID,
+			AttemptNum: 1,
+		}
+
+		if err := taskClient.EnqueueEmailTask(context.Background(), task); err != nil {
+			log.Error("Failed to enqueue email task: %v", err)
+		}
+	})
+
 	events.On("users.created", func(data interface{}) {
 		user := data.(*models.User)
-		logger.Info(fmt.Sprintf("Sending welcome email to %s", user.Email))
-		// sendWelcomeEmail(user)
+		log.Info("Sending welcome email to %s", user.Email)
+	})
+
+	events.On("email.send", func(data interface{}) {
+		email := data.(*models.Email)
+		log.Info("Sending email to %s", email.To)
+		data, err := utils.JSONToMap(email.Data)
+		if err != nil {
+			log.Error("Failed to convert data to map: %v", err)
+			return
+		}
+		if err := sendEmail(
+			email.TeamID,
+			email.TemplateID,
+			email.To,
+			data.(map[string]string),
+			email.SMTPConfig.Provider,
+			email.CategoryID,
+			email.Data,
+			email.Subject,
+			email.SMTPConfig.ID,
+			email.CampaignID,
+		); err != nil {
+			log.Error("Failed to send email: %v", err)
+		}
 	})
 }
 
@@ -33,21 +82,21 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 	// Start transaction
 	tx := db.DB.Begin()
 	if tx.Error != nil {
-		return logger.Error("failed to begin transaction", tx.Error)
+		return log.Error("failed to begin transaction", tx.Error)
 	}
 
 	// Get team details
 	team := &models.Team{}
 	if err := tx.First(team, invite.TeamID).Error; err != nil {
 		tx.Rollback()
-		return logger.Error("failed to get team details", err)
+		return log.Error("failed to get team details", err)
 	}
 
 	// Get inviter details
 	inviter := &models.User{}
 	if err := tx.First(inviter, invite.InviterID).Error; err != nil {
 		tx.Rollback()
-		return logger.Error("failed to get inviter details", err)
+		return log.Error("failed to get inviter details", err)
 	}
 
 	var template *models.Template
@@ -57,13 +106,13 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		template = &models.Template{}
 		if err := tx.Where("name = ? AND team_id = ?", "PLATFORM INVITE", invite.TeamID).First(template).Error; err != nil {
 			tx.Rollback()
-			return logger.Error("failed to get invite template", err)
+			return log.Error("failed to get invite template", err)
 		}
 	} else {
 		template = &models.Template{}
 		if err := tx.Where("id = ? AND team_id = ?", team.Settings[0].InviteTemplateID, invite.TeamID).First(template).Error; err != nil {
 			tx.Rollback()
-			return logger.Error("failed to get invite template", err)
+			return log.Error("failed to get invite template", err)
 		}
 	}
 
@@ -71,7 +120,7 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 	mailingList := &models.MailingList{}
 	if err := tx.Where("name = ? AND team_id = ?", "Invited Users", invite.TeamID).First(mailingList).Error; err != nil {
 		tx.Rollback()
-		return logger.Error("failed to get invite mailing list", err)
+		return log.Error("failed to get invite mailing list", err)
 	}
 
 	// Prepare email data
@@ -93,7 +142,7 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		}
 		if err := tx.Create(contact).Error; err != nil {
 			tx.Rollback()
-			return logger.Error("failed to create contact", err)
+			return log.Error("failed to create contact", err)
 		}
 	}
 
@@ -101,13 +150,13 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 	smtpConfig := &models.SMTPConfig{}
 	if err := tx.Where("team_id = ?", invite.TeamID).First(smtpConfig).Error; err != nil {
 		tx.Rollback()
-		return logger.Error("failed to get default smtp config", err)
+		return log.Error("failed to get default smtp config", err)
 	}
 
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
-		return logger.Error("failed to commit transaction", err)
+		return log.Error("failed to commit transaction", err)
 	}
 
 	// Send email outside transaction since it's an external operation
@@ -134,21 +183,21 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 	// Start transaction
 	tx := db.DB.Begin()
 	if tx.Error != nil {
-		return logger.Error("failed to begin transaction", tx.Error)
+		return log.Error("failed to begin transaction", tx.Error)
 	}
 
 	// Get SMTP config
-	smtpConfig := &models.SMTPConfig{}
-	if err := tx.Where("team_id = ? AND provider = ?", teamId, SMTPProvider).First(smtpConfig).Error; err != nil {
+	smtpConfig, err := models.GetSMTPConfig(teamId, "", SMTPProvider, tx)
+	if err != nil {
 		tx.Rollback()
-		return logger.Error("failed to get team smtp config ❌", err)
+		return log.Error("failed to get team smtp config ❌", err)
 	}
 
 	// Get template
 	template := &models.Template{}
-	if err := tx.Where("id = ? AND team_id = ?", templateId, teamId).First(template).Error; err != nil {
+	if err := tx.Where("id = ? AND team_id = ?", templateId, teamId).Preload("HtmlFile").First(template).Error; err != nil {
 		tx.Rollback()
-		return logger.Error("failed to get template ❌", err)
+		return log.Error("failed to get template ❌", err)
 	}
 
 	// Get or use default mailing list
@@ -156,7 +205,7 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 		mailingList := &models.MailingList{}
 		if err := tx.Where("team_id = ? AND name = ?", teamId, "All Users").First(mailingList).Error; err != nil {
 			tx.Rollback()
-			return logger.Error("failed to get default mailing list ❌", err)
+			return log.Error("failed to get default mailing list ❌", err)
 		}
 		listId = mailingList.ID
 	}
@@ -172,7 +221,7 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 		}
 		if err := tx.Create(contact).Error; err != nil {
 			tx.Rollback()
-			return logger.Error("failed to create contact ❌", err)
+			return log.Error("failed to create contact ❌", err)
 		}
 	}
 
@@ -180,14 +229,14 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 	category := &models.EmailCategory{}
 	if err := tx.Where("id = ? AND team_id = ?", categoryId, teamId).First(category).Error; err != nil {
 		tx.Rollback()
-		return logger.Error("failed to get category ❌", err)
+		return log.Error("failed to get category ❌", err)
 	}
 
 	// Get HTML content outside transaction since it's an external operation
-	htmlFromTemplate, err := utils.GetHTMLFromURL(template.HtmlFile)
+	htmlFromTemplate, err := utils.GetHTMLFromURL(template.HtmlFile.SignedURL)
 	if err != nil {
 		tx.Rollback()
-		return logger.Error("failed to get html from template ❌", err)
+		return log.Error("failed to get html from template ❌", err)
 	}
 
 	parsedBody := utils.ReplaceVariables(htmlFromTemplate, variables)
@@ -214,13 +263,13 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 
 	if err := tx.Create(email).Error; err != nil {
 		tx.Rollback()
-		return logger.Error("failed to create email ❌", err)
+		return log.Error("failed to create email ❌", err)
 	}
 
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
-		return logger.Error("failed to commit transaction", err)
+		return log.Error("failed to commit transaction", err)
 	}
 
 	return nil // ✅
