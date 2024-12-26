@@ -4,90 +4,185 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"kori/internal/api/controllers"
-	"kori/internal/db"
+	"kori/internal/api/middleware"
 	"kori/internal/models"
 	"kori/internal/services"
+
+	"gorm.io/gorm"
 )
 
 // RegisterCRUDRoutes registers CRUD routes for all models
-func RegisterCRUDRoutes(g *echo.Group) {
+func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	// Teams
-	teamService := services.NewBaseService(db.DB, models.Team{})
+	teamService := services.NewBaseService(db, models.Team{})
 	teamController := controllers.NewBaseController(teamService)
-	teamController.RegisterRoutes(g, "/teams", "GET", "PUT")
+	teamGroup := g.Group("/teams")
+	teamGroup.Use(middleware.RequirePermissions(db, "teams:read"))
+	teamGroup.GET("", teamController.List)
+	teamGroup.GET("/:id", teamController.Get)
 
-	// Contacts
-	contactService := services.NewBaseService(db.DB, models.Contact{})
+	// Protected team routes
+	teamWriteGroup := teamGroup.Group("")
+	teamWriteGroup.Use(middleware.RequirePermissions(db, "teams:write"))
+	teamWriteGroup.POST("", teamController.Create)
+	teamWriteGroup.PUT("/:id", teamController.Update)
+	teamWriteGroup.DELETE("/:id", teamController.Delete)
+
+	// file routes
+	fileService := services.NewBaseService(db, models.File{})
+	fileController := controllers.NewBaseController(fileService)
+	fileGroup := g.Group("/files")
+	fileGroup.Use(middleware.RequirePermissions(db, "files:read"))
+	fileGroup.GET("", fileController.List)
+	fileGroup.GET("/:id", fileController.Get)
+
+	// Contacts with team-specific permissions
+	contactService := services.NewBaseService(db, models.Contact{})
 	contactController := controllers.NewBaseController(contactService)
-	contactController.RegisterRoutes(g, "/contacts")
+	contactGroup := g.Group("/contacts")
+	contactGroup.Use(middleware.RequirePermissions(db, "contacts:read"))
+	contactGroup.GET("", contactController.List)
+	contactGroup.GET("/:id", contactController.Get)
 
-	// Mailing Lists
-	mailingListService := services.NewBaseService(db.DB, models.MailingList{})
+	// Protected contact routes
+	contactWriteGroup := contactGroup.Group("")
+	contactWriteGroup.Use(middleware.RequirePermissions(db, "contacts:write"))
+	contactWriteGroup.POST("", contactController.Create)
+	contactWriteGroup.PUT("/:id", contactController.Update)
+	contactWriteGroup.DELETE("/:id", contactController.Delete)
+
+	// Mailing Lists with team-specific permissions
+	mailingListService := services.NewBaseService(db, models.MailingList{})
 	mailingListController := controllers.NewBaseController(mailingListService)
-	mailingListController.RegisterRoutes(g, "/mailing-lists")
+	listGroup := g.Group("/mailing-lists")
+	listGroup.Use(middleware.RequirePermissions(db, "lists:read"))
+	listGroup.GET("", mailingListController.List)
+	listGroup.GET("/:id", mailingListController.Get)
 
-	// SMTP Configs
-	smtpConfigService := services.NewBaseService(db.DB, models.SMTPConfig{})
+	// Protected mailing list routes
+	listWriteGroup := listGroup.Group("")
+	listWriteGroup.Use(middleware.RequirePermissions(db, "lists:write"))
+	listWriteGroup.POST("", mailingListController.Create)
+	listWriteGroup.PUT("/:id", mailingListController.Update)
+	listWriteGroup.DELETE("/:id", mailingListController.Delete)
+
+	// SMTP Configs with team-specific permissions
+	smtpConfigService := services.NewBaseService(db, models.SMTPConfig{})
 	smtpConfigController := controllers.NewBaseController(smtpConfigService)
-	smtpConfigController.RegisterRoutes(g, "/smtp-configs")
+	smtpGroup := g.Group("/smtp-configs")
+	smtpGroup.Use(middleware.RequirePermissions(db, "smtp:read"))
+	smtpGroup.GET("", smtpConfigController.List)
+	smtpGroup.GET("/:id", smtpConfigController.Get)
 
-	// Domains
-	domainService := services.NewBaseService(db.DB, models.Domain{})
+	// Protected SMTP config routes
+	smtpWriteGroup := smtpGroup.Group("")
+	smtpWriteGroup.Use(middleware.RequirePermissions(db, "smtp:write"))
+	smtpWriteGroup.POST("", smtpConfigController.Create)
+	smtpWriteGroup.PUT("/:id", smtpConfigController.Update)
+	smtpWriteGroup.DELETE("/:id", smtpConfigController.Delete)
+
+	// Domains with team-specific permissions
+	domainService := services.NewBaseService(db, models.Domain{})
 	domainController := controllers.NewBaseController(domainService)
-	domainController.RegisterRoutes(g, "/domains")
+	domainGroup := g.Group("/domains")
+	domainGroup.Use(middleware.RequirePermissions(db, "domains:read"))
+	domainGroup.GET("", domainController.List)
+	domainGroup.GET("/:id", domainController.Get)
 
-	// Webhooks
-	webhookService := services.NewBaseService(db.DB, models.Webhook{})
+	// Protected domain routes
+	domainWriteGroup := domainGroup.Group("")
+	domainWriteGroup.Use(middleware.RequirePermissions(db, "domains:write"))
+	domainWriteGroup.POST("", domainController.Create)
+	domainWriteGroup.PUT("/:id", domainController.Update)
+	domainWriteGroup.DELETE("/:id", domainController.Delete)
+
+	// Webhooks with team-specific permissions
+	webhookService := services.NewBaseService(db, models.Webhook{})
 	webhookController := controllers.NewBaseController(webhookService)
-	webhookController.RegisterRoutes(g, "/webhooks")
+	webhookGroup := g.Group("/webhooks")
+	webhookGroup.Use(middleware.RequirePermissions(db, "webhooks:read"))
+	webhookGroup.GET("", webhookController.List)
+	webhookGroup.GET("/:id", webhookController.Get)
 
-	// Templates
-	templateService := services.NewBaseService(db.DB, models.Template{})
+	// Protected webhook routes
+	webhookWriteGroup := webhookGroup.Group("")
+	webhookWriteGroup.Use(middleware.RequirePermissions(db, "webhooks:write"))
+	webhookWriteGroup.POST("", webhookController.Create)
+	webhookWriteGroup.PUT("/:id", webhookController.Update)
+	webhookWriteGroup.DELETE("/:id", webhookController.Delete)
+
+	// Templates with team-specific permissions
+	templateService := services.NewBaseService(db, models.Template{})
 	templateController := controllers.NewBaseController(templateService)
-	templateController.RegisterRoutes(g, "/templates")
+	templateGroup := g.Group("/templates")
+	templateGroup.Use(middleware.RequirePermissions(db, "templates:read"))
+	templateGroup.GET("", templateController.List)
+	templateGroup.GET("/:id", templateController.Get)
 
-	// Emails
-	emailService := services.NewBaseService(db.DB, models.Email{})
-	emailController := controllers.NewBaseController(emailService)
-	emailController.RegisterRoutes(g, "/emails")
+	// Protected template routes
+	templateWriteGroup := templateGroup.Group("")
+	templateWriteGroup.Use(middleware.RequirePermissions(db, "templates:write"))
+	templateWriteGroup.POST("", templateController.Create)
+	templateWriteGroup.PUT("/:id", templateController.Update)
+	templateWriteGroup.DELETE("/:id", templateController.Delete)
 
-	// API Keys
-	apiKeyService := services.NewBaseService(db.DB, models.APIKey{})
+	// API Keys with team-specific permissions
+	apiKeyService := services.NewBaseService(db, models.APIKey{})
 	apiKeyController := controllers.NewBaseController(apiKeyService)
-	apiKeyController.RegisterRoutes(g, "/api-keys")
+	apiKeyGroup := g.Group("/api-keys")
+	apiKeyGroup.Use(middleware.RequirePermissions(db, "api-keys:read"))
+	apiKeyGroup.GET("", apiKeyController.List)
+	apiKeyGroup.GET("/:id", apiKeyController.Get)
 
-	// API Key Permissions
-	apiKeyPermissionService := services.NewBaseService(db.DB, models.APIKeyPermission{})
-	apiKeyPermissionController := controllers.NewBaseController(apiKeyPermissionService)
-	apiKeyPermissionController.RegisterRoutes(g, "/api-key-permissions")
+	// Protected API key routes
+	apiKeyWriteGroup := apiKeyGroup.Group("")
+	apiKeyWriteGroup.Use(middleware.RequirePermissions(db, "api-keys:write"))
+	apiKeyWriteGroup.POST("", apiKeyController.Create)
+	apiKeyWriteGroup.PUT("/:id", apiKeyController.Update)
+	apiKeyWriteGroup.DELETE("/:id", apiKeyController.Delete)
 
-	// Team Invites
-	teamInviteService := services.NewBaseService(db.DB, models.TeamInvite{})
-	teamInviteController := controllers.NewBaseController(teamInviteService)
-	teamInviteController.RegisterRoutes(g, "/team-invites")
-
-	// Automations
-	automationService := services.NewBaseService(db.DB, models.Automation{})
-	automationController := controllers.NewBaseController(automationService)
-	automationController.RegisterRoutes(g, "/automations")
-
-	// Automation Nodes
-	automationNodeService := services.NewBaseService(db.DB, models.AutomationNode{})
-	automationNodeController := controllers.NewBaseController(automationNodeService)
-	automationNodeController.RegisterRoutes(g, "/automation-nodes")
-
-	// Automation Node Connections
-	automationNodeConnectionService := services.NewBaseService(db.DB, models.AutomationNodeEdge{})
-	automationNodeConnectionController := controllers.NewBaseController(automationNodeConnectionService)
-	automationNodeConnectionController.RegisterRoutes(g, "/automation-node-edges")
-
-	// Models
-	modelService := services.NewBaseService(db.DB, models.Model{})
-	modelController := controllers.NewBaseController(modelService)
-	modelController.RegisterRoutes(g, "/models")
-
-	// Campaigns
-	campaignService := services.NewBaseService(db.DB, models.Campaign{})
+	// Campaigns with team-specific permissions
+	campaignService := services.NewBaseService(db, models.Campaign{})
 	campaignController := controllers.NewBaseController(campaignService)
-	campaignController.RegisterRoutes(g, "/campaigns")
+	campaignGroup := g.Group("/campaigns")
+	campaignGroup.Use(middleware.RequirePermissions(db, "campaigns:read"))
+	campaignGroup.GET("", campaignController.List)
+	campaignGroup.GET("/:id", campaignController.Get)
+
+	// Protected campaign routes
+	campaignWriteGroup := campaignGroup.Group("")
+	campaignWriteGroup.Use(middleware.RequirePermissions(db, "campaigns:write"))
+	campaignWriteGroup.POST("", campaignController.Create)
+	campaignWriteGroup.PUT("/:id", campaignController.Update)
+	campaignWriteGroup.DELETE("/:id", campaignController.Delete)
+
+	// Automation routes with team-specific permissions
+	automationService := services.NewBaseService(db, models.Automation{})
+	automationController := controllers.NewBaseController(automationService)
+	automationGroup := g.Group("/automations")
+	automationGroup.Use(middleware.RequirePermissions(db, "automations:read"))
+	automationGroup.GET("", automationController.List)
+	automationGroup.GET("/:id", automationController.Get)
+
+	// Protected automation routes
+	automationWriteGroup := automationGroup.Group("")
+	automationWriteGroup.Use(middleware.RequirePermissions(db, "automations:write"))
+	automationWriteGroup.POST("", automationController.Create)
+	automationWriteGroup.PUT("/:id", automationController.Update)
+	automationWriteGroup.DELETE("/:id", automationController.Delete)
+
+	// Model routes with team-specific permissions
+	modelService := services.NewBaseService(db, models.Model{})
+	modelController := controllers.NewBaseController(modelService)
+	modelGroup := g.Group("/models")
+	modelGroup.Use(middleware.RequirePermissions(db, "models:read"))
+	modelGroup.GET("", modelController.List)
+	modelGroup.GET("/:id", modelController.Get)
+
+	// Protected model routes
+	modelWriteGroup := modelGroup.Group("")
+	modelWriteGroup.Use(middleware.RequirePermissions(db, "models:write"))
+	modelWriteGroup.POST("", modelController.Create)
+	modelWriteGroup.PUT("/:id", modelController.Update)
+	modelWriteGroup.DELETE("/:id", modelController.Delete)
 }

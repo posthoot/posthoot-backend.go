@@ -3,11 +3,13 @@ package api
 import (
 	"kori/internal/api/middleware"
 	"kori/internal/api/registry"
+	"kori/internal/routes"
 	"net/http"
+
+	_ "kori/docs"
 
 	"github.com/labstack/echo/v4"
 	echoSwagger "github.com/swaggo/echo-swagger"
-	_ "kori/docs"
 )
 
 func (s *Server) registerRoutes() {
@@ -23,5 +25,7 @@ func (s *Server) registerRoutes() {
 	api.Use(auth.Middleware())
 
 	// Register CRUD routes for all models
-	registry.RegisterCRUDRoutes(api)
+	registry.RegisterCRUDRoutes(api, s.db)
+
+	routes.SetupUploadRoutes(api, s.config)
 }

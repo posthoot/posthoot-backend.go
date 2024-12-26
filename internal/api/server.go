@@ -31,7 +31,7 @@ type Server struct {
 
 var log = console.New("API-Server")
 
-// @title Kori API
+// NewServer @title Kori API
 // @version 1.0
 // @description This is the API documentation for the Kori project.
 // @host localhost:8080
@@ -47,8 +47,8 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
-		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderContentLength},
 	}))
 	e.Use(middleware.RequestID())
 	e.Use(middleware.Secure())
@@ -103,23 +103,29 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		gormIntegrator, echoIntegrator, permissionChecker, nil,
 	)
 	if err != nil {
-		log.Error("Failed to create admin panel", err)
+		err := log.Error("Failed to create admin panel", err)
+		if err != nil {
+			return nil
+		}
 	}
 
 	// Register the admin panel
 	_, err = adminPanel.RegisterApp(
-		"Kori Admin",
+		"Kori",
 		"Kori Admin Panel",
 		nil,
 	)
 	if err != nil {
-		log.Error("Failed to create admin panel", err)
+		err := log.Error("Failed to create admin panel", err)
+		if err != nil {
+			return nil
+		}
 	}
 
 	// Register routes
 	s.registerRoutes()
-	routes.SetupAuthRoutes(s.echo, s.db)
-	routes.SetupSMTPRoutes(s.echo, s.config)
+	routes.SetupAuthRoutes(s.echo, s.db, s.config)
+	routes.SetupSMTPRoutes(s.echo, s.config, s.db)
 	return s
 }
 

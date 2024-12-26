@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -32,10 +33,22 @@ func NewValidator() echo.Validator {
 	})
 
 	// Register custom validations
-	v.RegisterValidation("user_role", validateUserRole)
-	v.RegisterValidation("invite_status", validateInviteStatus)
-	v.RegisterValidation("email_tracking_event", validateEmailTrackingEvent)
-	v.RegisterValidation("campaign_status", validateCampaignStatus)
+	err := v.RegisterValidation("user_role", validateUserRole)
+	if err != nil {
+		return nil
+	}
+	err = v.RegisterValidation("invite_status", validateInviteStatus)
+	if err != nil {
+		return nil
+	}
+	err = v.RegisterValidation("email_tracking_event", validateEmailTrackingEvent)
+	if err != nil {
+		return nil
+	}
+	err = v.RegisterValidation("campaign_status", validateCampaignStatus)
+	if err != nil {
+		return nil
+	}
 
 	return &CustomValidator{validator: v}
 }
@@ -71,7 +84,8 @@ func validateCampaignStatus(fl playgroundvalidator.FieldLevel) bool {
 // Validate implements echo.Validator interface
 func (cv *CustomValidator) Validate(i interface{}) error {
 	if err := cv.validator.Struct(i); err != nil {
-		if validationErrors, ok := err.(playgroundvalidator.ValidationErrors); ok {
+		var validationErrors playgroundvalidator.ValidationErrors
+		if errors.As(err, &validationErrors) {
 			return ValidationErrors(validationErrors)
 		}
 		return err
@@ -91,7 +105,7 @@ func (ve ValidationErrors) Error() string {
 	return fmt.Sprintf("validation failed on fields: %s", strings.Join(fields, ", "))
 }
 
-// Request validation structs based on models
+// UserRequest Request validation structs based on models
 type UserRequest struct {
 	Email     string `json:"email" validate:"required,email"`
 	Password  string `json:"password" validate:"required,min=8"`
