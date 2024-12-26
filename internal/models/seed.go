@@ -143,7 +143,7 @@ func SeedPermissions(db *gorm.DB) error {
 
 	// Create resource permissions for each role
 	for role, permissions := range rolePermissions {
-		log.Info(fmt.Sprintf("Creating permissions for role: %s", role))
+		log.Info("Creating permissions for role: %s", role)
 
 		for _, permScope := range permissions {
 			// Handle wildcard permissions
@@ -273,7 +273,7 @@ func CreateSuperAdminFromEnv(db *gorm.DB) error {
 	// check if super admin already exists
 	var count int64
 	db.Model(&User{}).Where("role = ?", UserRoleSuperAdmin).Count(&count)
-	log.Info(fmt.Sprintf("Super admin count: %d", count))
+	log.Info("Super admin count: %d", count)
 	if count > 0 {
 		return nil
 	}

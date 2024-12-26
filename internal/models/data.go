@@ -3,11 +3,8 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-
-	"github.com/lib/pq"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"os"
 )
 
 type JSONTemplate struct {
@@ -30,7 +27,7 @@ type InitialLists struct {
 
 // LoadInitialData loads all initial data from JSON files
 func LoadInitialData(db *gorm.DB, teamId string) error {
-	log.Info(fmt.Sprintf("Loading initial data for team %s", teamId))
+	log.Info("Loading initial data for team %s", teamId)
 
 	// Load categories
 	if err := loadCategories(db, teamId); err != nil {
@@ -122,14 +119,32 @@ func loadTemplates(db *gorm.DB, teamId string) error {
 		if err := db.Where("name = ? AND team_id = ?", tmpl.CategoryName, teamId).First(&category).Error; err != nil {
 			return log.Error("Failed to find category", err)
 		}
+
+		// get team admin
+		var user User
+		if err := db.Where("team_id = ? AND role = ?", teamId, UserRoleAdmin).First(&user).Error; err != nil {
+			return log.Error("Failed to find team admin", err)
+		}
+
+		file := File{
+			TeamID: teamId,
+			UserID: user.ID,
+			Path:   tmpl.HtmlFileID,
+			Name:   fmt.Sprintf("%s", tmpl.HtmlFileID),
+		}
+
+		if err := db.Create(&file).Error; err != nil {
+			return log.Error("Failed to create file", err)
+		}
+
 		template := Template{
 			Name:       tmpl.Name,
 			Subject:    tmpl.Subject,
-			HtmlFile:   tmpl.HtmlFile,
-			DesignJSON: datatypes.JSON(tmpl.DesignJSON),
+			HtmlFileID: file.ID,
+			DesignJSON: tmpl.DesignJSON,
 			TeamID:     teamId,
 			CategoryID: category.ID,
-			Variables:  pq.StringArray(tmpl.Variables),
+			Variables:  tmpl.Variables,
 		}
 		if err := db.Create(&template).Error; err != nil {
 			return log.Error("Failed to create template", err)
