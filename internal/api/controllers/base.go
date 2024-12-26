@@ -2,13 +2,17 @@ package controllers
 
 import (
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
 	"kori/internal/services"
+	"kori/internal/utils/logger"
 
 	"github.com/labstack/echo/v4"
 )
+
+var log = logger.New("base_controller")
 
 // BaseController provides generic CRUD operations for any model
 type BaseController[T any] struct {
@@ -57,6 +61,9 @@ func (c *BaseController[T]) Get(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id parameter")
 	}
 
+	filters := make(map[string]interface{})
+	filters["id"] = id
+	filters = c.applyFilters(ctx, filters)
 	includes := parseIncludes(ctx)
 	entity, err := c.service.Get(ctx.Request().Context(), id, includes...)
 	if err != nil {
@@ -64,6 +71,28 @@ func (c *BaseController[T]) Get(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, entity)
+}
+
+func (c *BaseController[T]) applyFilters(ctx echo.Context, filters map[string]interface{}) map[string]interface{} {
+	// add a teamID filter
+	teamID := ctx.Get("teamID")
+	if teamID != nil {
+		var entity T
+		entityType := reflect.TypeOf(entity)
+		if _, found := entityType.FieldByName("TeamID"); found {
+			filters["team_id"] = teamID
+		}
+	}
+	if userID := ctx.Get("userID"); userID != nil {
+		// Check if entity supports user_id field using reflection
+		var entity T
+		entityType := reflect.TypeOf(entity)
+		if _, found := entityType.FieldByName("UserID"); found {
+			filters["user_id"] = userID
+		}
+	}
+
+	return filters
 }
 
 // List handles retrieval of multiple entities with pagination and filtering
@@ -85,6 +114,8 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 			filters[key] = values[0]
 		}
 	}
+
+	filters = c.applyFilters(ctx, filters)
 
 	includes := parseIncludes(ctx)
 	entities, total, err := c.service.List(ctx.Request().Context(), page, limit, filters, includes...)
@@ -114,6 +145,11 @@ func (c *BaseController[T]) Update(ctx echo.Context) error {
 
 	if err := ctx.Validate(&entity); err != nil {
 		return err
+	}
+
+	entityType := reflect.TypeOf(entity)
+	if _, found := entityType.FieldByName("ID"); found {
+		return echo.NewHTTPError(http.StatusBadRequest, "Changing the ID is not allowed")
 	}
 
 	includes := parseIncludes(ctx)
