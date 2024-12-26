@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 
 	"kori/internal/models"
@@ -246,4 +247,201 @@ func (h *AuthHandler) VerifyResetCode(c echo.Context) error {
 func generateResetCode() string {
 	code := rand.Intn(900000) + 100000 // Generates a number between 100000 and 999999
 	return fmt.Sprintf("%06d", code)
+}
+
+// ListUsers returns a list of all users (admin only)
+// @Summary List all users
+// @Description Get a list of all users (requires admin permissions)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {array} models.User
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/users [get]
+func (h *AuthHandler) ListUsers(c echo.Context) error {
+	var users []models.User
+	if err := h.db.Find(&users).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch users"})
+	}
+	return c.JSON(http.StatusOK, users)
+}
+
+// GetUser returns details of a specific user (admin only)
+// @Summary Get user details
+// @Description Get details of a specific user (requires admin permissions)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} models.User
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "User not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/users/{id} [get]
+func (h *AuthHandler) GetUser(c echo.Context) error {
+	id := c.Param("id")
+	var user models.User
+	if err := h.db.First(&user, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch user"})
+	}
+	return c.JSON(http.StatusOK, user)
+}
+
+// UpdateUser updates a user's details (admin only)
+// @Summary Update user details
+// @Description Update details of a specific user (requires admin permissions)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param user body models.User true "Updated user details"
+// @Success 200 {object} models.User
+// @Failure 400 {object} map[string]string "Invalid input"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "User not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/users/{id} [put]
+func (h *AuthHandler) UpdateUser(c echo.Context) error {
+	id := c.Param("id")
+	var user models.User
+	if err := h.db.First(&user, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch user"})
+	}
+
+	// Only update allowed fields
+	var updateData struct {
+		FirstName string          `json:"first_name"`
+		LastName  string          `json:"last_name"`
+		Role      models.UserRole `json:"role"`
+	}
+
+	if err := c.Bind(&updateData); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid input"})
+	}
+
+	// Validate role
+	if !models.IsValidUserRole(updateData.Role) {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid role"})
+	}
+
+	user.FirstName = updateData.FirstName
+	user.LastName = updateData.LastName
+	user.Role = updateData.Role
+
+	if err := h.db.Save(&user).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
+	}
+
+	return c.JSON(http.StatusOK, user)
+}
+
+// DeleteUser deletes a user (admin only)
+// @Summary Delete user
+// @Description Delete a specific user (requires admin permissions)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]string "User deleted successfully"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "User not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/users/{id} [delete]
+func (h *AuthHandler) DeleteUser(c echo.Context) error {
+	id := c.Param("id")
+	var user models.User
+	if err := h.db.First(&user, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch user"})
+	}
+
+	if err := h.db.Delete(&user).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete user"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "User deleted successfully"})
+}
+
+// RefreshToken refreshes a user's access token using their refresh token
+// @Summary Refresh access token
+// @Description Get a new access token using a valid refresh token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param refresh_token body string true "Refresh token"
+// @Success 200 {object} map[string]string "New access token"
+// @Failure 400 {object} map[string]string "Invalid input"
+// @Failure 401 {object} map[string]string "Invalid refresh token"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/refresh [post]
+func (h *AuthHandler) RefreshToken(c echo.Context) error {
+	var input struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid input"})
+	}
+
+	// get refresh token from request
+	refreshToken := input.RefreshToken
+
+	// validate refresh token
+	_, err := utils.ValidateRefreshToken(refreshToken, os.Getenv("JWT_SECRET"))
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid refresh token"})
+	}
+
+	// check in db if refresh token is valid
+	var authTransaction models.AuthTransaction
+	if err := h.db.Where("token = ? AND expires_at > ?", refreshToken, time.Now()).First(&authTransaction).Error; err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid refresh token"})
+	}
+
+	// get user from claims
+	var user models.User
+	if err := h.db.First(&user, authTransaction.UserID).Error; err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
+	}
+
+	// generate new access token
+	accessToken, err := utils.GenerateJWT(user)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate access token"})
+	}
+
+	// save new access token to db
+	authTransaction.Token = accessToken
+	if err := h.db.Save(&authTransaction).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save access token"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"token": accessToken})
+}
+
+// GetMe returns the current user
+// @Summary Get current user
+// @Description Get details of the current authenticated user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.User
+// @Router /auth/me [get]
+func (h *AuthHandler) GetMe(c echo.Context) error {
+	userId := c.Get("userID").(string)
+
+	var user models.User
+	if err := h.db.Where("id = ?", userId).First(&user).Error; err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+	}
+	return c.JSON(http.StatusOK, user)
 }
