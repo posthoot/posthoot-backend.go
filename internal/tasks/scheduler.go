@@ -1,0 +1,134 @@
+package tasks
+
+import (
+	"fmt"
+
+	"github.com/hibiken/asynq"
+	"go.uber.org/zap"
+)
+
+// Scheduler handles periodic task scheduling
+type Scheduler struct {
+	scheduler *asynq.Scheduler
+	logger    *zap.Logger
+}
+
+// NewScheduler creates a new task scheduler
+func NewScheduler(redisAddr, username, password string, db int, logger *zap.Logger) *Scheduler {
+	scheduler := asynq.NewScheduler(
+		asynq.RedisClientOpt{
+			Addr:     redisAddr,
+			Username: username,
+			Password: password,
+			DB:       db,
+		},
+		&asynq.SchedulerOpts{},
+	)
+
+	return &Scheduler{
+		scheduler: scheduler,
+		logger:    logger,
+	}
+}
+
+// Start starts the scheduler
+func (s *Scheduler) Start() error {
+	if err := s.registerTasks(); err != nil {
+		return fmt.Errorf("failed to register tasks: %w", err)
+	}
+
+	s.logger.Info("starting task scheduler")
+	return s.scheduler.Run()
+}
+
+// Stop stops the scheduler
+func (s *Scheduler) Stop() {
+	s.scheduler.Shutdown()
+	s.logger.Info("task scheduler stopped")
+}
+
+// registerTasks registers all periodic tasks
+func (s *Scheduler) registerTasks() error {
+	// Campaign scheduling (every minute)
+	entryID, err := s.scheduler.Register("*/1 * * * *", asynq.NewTask(
+		TaskTypeCampaignSchedule,
+		nil,
+		asynq.Queue(QueueDefault),
+		asynq.MaxRetry(RetryDefault),
+		asynq.Timeout(TimeoutMedium),
+	))
+	if err != nil {
+		return fmt.Errorf("failed to register campaign scheduler: %w", err)
+	}
+	s.logger.Debug("registered campaign scheduler", zap.String("entry_id", entryID))
+
+	// Email retry (every 5 minutes)
+	entryID, err = s.scheduler.Register("*/5 * * * *", asynq.NewTask(
+		TaskTypeEmailRetry,
+		nil,
+		asynq.Queue(QueueDefault),
+		asynq.MaxRetry(RetryDefault),
+		asynq.Timeout(TimeoutMedium),
+	))
+	if err != nil {
+		return fmt.Errorf("failed to register email retry scheduler: %w", err)
+	}
+	s.logger.Debug("registered email retry scheduler", zap.String("entry_id", entryID))
+
+	// Webhook retry (every 5 minutes)
+	entryID, err = s.scheduler.Register("*/5 * * * *", asynq.NewTask(
+		TaskTypeWebhookRetry,
+		nil,
+		asynq.Queue(QueueDefault),
+		asynq.MaxRetry(RetryDefault),
+		asynq.Timeout(TimeoutMedium),
+	))
+	if err != nil {
+		return fmt.Errorf("failed to register webhook retry scheduler: %w", err)
+	}
+	s.logger.Debug("registered webhook retry scheduler", zap.String("entry_id", entryID))
+
+	// Domain verification (daily at midnight)
+	entryID, err = s.scheduler.Register("0 0 * * *", asynq.NewTask(
+		TaskTypeDomainCheck,
+		nil,
+		asynq.Queue(QueueLow),
+		asynq.MaxRetry(RetryMin),
+		asynq.Timeout(TimeoutLong),
+	))
+	if err != nil {
+		return fmt.Errorf("failed to register domain verification scheduler: %w", err)
+	}
+	s.logger.Debug("registered domain verification scheduler", zap.String("entry_id", entryID))
+
+	// Contact sync (every 15 minutes)
+	entryID, err = s.scheduler.Register("*/15 * * * *", asynq.NewTask(
+		TaskTypeContactSync,
+		nil,
+		asynq.Queue(QueueDefault),
+		asynq.MaxRetry(RetryDefault),
+		asynq.Timeout(TimeoutMedium),
+	))
+	if err != nil {
+		return fmt.Errorf("failed to register contact sync scheduler: %w", err)
+	}
+	s.logger.Debug("registered contact sync scheduler", zap.String("entry_id", entryID))
+
+	s.logger.Info("registered all periodic tasks")
+	return nil
+}
+
+// RegisterCustomTask registers a custom periodic task
+func (s *Scheduler) RegisterCustomTask(spec string, taskType string, payload []byte, opts ...asynq.Option) error {
+	entryID, err := s.scheduler.Register(spec, asynq.NewTask(taskType, payload, opts...))
+	if err != nil {
+		return fmt.Errorf("failed to register custom task: %w", err)
+	}
+
+	s.logger.Info("registered custom task",
+		zap.String("type", taskType),
+		zap.String("spec", spec),
+		zap.String("entry_id", entryID),
+	)
+	return nil
+}
