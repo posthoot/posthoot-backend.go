@@ -2,13 +2,14 @@ package utils
 
 import (
 	"encoding/json"
+	"kori/internal/utils/base64"
 	"regexp"
 	"strings"
 
 	"gorm.io/datatypes"
 )
 
-// input is html text with variables in the form of {{variable}}
+// ParseVariables input is html text with variables in the form of {{variable}}
 // output is a map of variables and their values
 func ParseVariables(html string) (map[string]string, error) {
 	variables := make(map[string]string)
@@ -23,16 +24,16 @@ func ParseVariables(html string) (map[string]string, error) {
 	return variables, nil
 }
 
-// input is a string with variables in the form of {{variable}}
+// ReplaceVariables input is a string with variables in the form of {{variable}}
 // output is a string with the variables replaced by their values
 func ReplaceVariables(input string, variables map[string]string) string {
 	for variable, value := range variables {
 		input = strings.Replace(input, "{{"+variable+"}}", value, -1)
 	}
-	return input
+	return base64.EncodeToBase64(input)
 }
 
-// convert datatypes.JSON to map[string]string
+// JSONToMap convert datatypes.JSON to map[string]string
 func JSONToMap(jsonData datatypes.JSON) (map[string]string, error) {
 	var result map[string]string
 	err := json.Unmarshal(jsonData, &result)
@@ -42,7 +43,16 @@ func JSONToMap(jsonData datatypes.JSON) (map[string]string, error) {
 	return result, nil
 }
 
-// usecase is to replace all the images in the html with our redirect url
+// MapToJSON convert map[string]string to datatypes.JSON
+func MapToJSON(data map[string]string) (datatypes.JSON, error) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return jsonData, nil
+}
+
+// ReplaceImagesWithRedirect usecase is to replace all the images in the html with our redirect url
 // so we can track the number of opens
 func ReplaceImagesWithRedirect(html string) string {
 	re := regexp.MustCompile(`<img src="([^"]+)"`)

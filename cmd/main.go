@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"kori/internal/handlers"
+	"kori/internal/utils/crypto"
 	"log"
 	"os"
 	"os/signal"
@@ -32,6 +33,12 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
+	// Initialize keys
+	if err := crypto.InitializeKeys(
+		cfg.Crypto.PrivateKey); err != nil {
+		log.Fatalf("Failed to initialize keys: %v", err)
+	}
+
 	// Connect to database
 	if err := db.Connect(cfg); err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -56,7 +63,7 @@ func main() {
 	}(logger)
 
 	// Initialize task handlers
-	taskHandler := tasks.NewTaskHandler(db.GetDB(), logger)
+	taskHandler := tasks.NewTaskHandler(db.GetDB())
 
 	// Initialize task server
 	taskServer := tasks.NewServer(

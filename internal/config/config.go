@@ -14,6 +14,11 @@ type Config struct {
 	Worker   WorkerConfig
 	Redis    RedisConfig
 	S3       S3Config
+	Crypto   CryptoConfig
+}
+
+type CryptoConfig struct {
+	PrivateKey string
 }
 
 type ServerConfig struct {
@@ -97,6 +102,9 @@ func Load() (*Config, error) {
 			Password: getEnv("REDIS_PASSWORD", ""),
 			Username: getEnv("REDIS_USERNAME", ""),
 			DB:       getEnvAsInt("REDIS_DB", 0),
+		},
+		Crypto: CryptoConfig{
+			PrivateKey: getEnv("PRIVATE_KEY", ""),
 		},
 	}
 
