@@ -1,8 +1,9 @@
 package models
 
 import (
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -16,6 +17,7 @@ type User struct {
 	Team        *Team            `json:"team,omitempty"`
 	Permissions []UserPermission `gorm:"foreignKey:UserID" json:"permissions,omitempty"`
 	Invites     []TeamInvite     `gorm:"foreignKey:InviterID" json:"invites,omitempty"`
+	Files       []File           `gorm:"foreignKey:UserID" json:"files,omitempty"`
 }
 
 // AfterCreate after admin create - create a team

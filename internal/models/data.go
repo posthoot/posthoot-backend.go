@@ -3,8 +3,9 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"gorm.io/gorm"
 	"os"
+
+	"gorm.io/gorm"
 )
 
 type JSONTemplate struct {
@@ -112,6 +113,11 @@ func loadTemplates(db *gorm.DB, teamId string) error {
 		}
 	}
 
+	templateIds := make(map[string]string)
+
+	templateIds["WELCOME"] = ""
+	templateIds["INVITE"] = ""
+
 	// Create templates
 	for _, tmpl := range templates.Templates {
 		tmpl.TeamID = teamId
@@ -120,15 +126,8 @@ func loadTemplates(db *gorm.DB, teamId string) error {
 			return log.Error("Failed to find category", err)
 		}
 
-		// get team admin
-		var user User
-		if err := db.Where("team_id = ? AND role = ?", teamId, UserRoleAdmin).First(&user).Error; err != nil {
-			return log.Error("Failed to find team admin", err)
-		}
-
 		file := File{
 			TeamID: teamId,
-			UserID: user.ID,
 			Path:   tmpl.HtmlFileID,
 			Name:   fmt.Sprintf("%s", tmpl.HtmlFileID),
 		}
@@ -149,6 +148,21 @@ func loadTemplates(db *gorm.DB, teamId string) error {
 		if err := db.Create(&template).Error; err != nil {
 			return log.Error("Failed to create template", err)
 		}
+
+		if tmpl.Name == "PLATFORM WELCOME" {
+			templateIds["WELCOME"] = template.ID
+		} else if tmpl.Name == "PLATFORM INVITE" {
+			templateIds["INVITE"] = template.ID
+		}
+	}
+
+	teamSettings := TeamSettings{
+		TeamID:            teamId,
+		WelcomeTemplateID: templateIds["WELCOME"],
+		InviteTemplateID:  templateIds["INVITE"],
+	}
+	if err := db.Create(&teamSettings).Error; err != nil {
+		return log.Error("Failed to create team settings", err)
 	}
 
 	return nil
