@@ -6,23 +6,27 @@ import (
 	"fmt"
 	"kori/internal/models"
 	"kori/internal/utils"
+	"kori/internal/utils/logger"
+
+	"gorm.io/gorm"
 
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 // TaskHandler handles task processing with improved error handling and logging
 type TaskHandler struct {
-	db     *gorm.DB
-	logger *zap.Logger
+	db          *gorm.DB
+	logger      *logger.Logger
+	mailHandler *utils.EmailHandler
 }
 
 // NewTaskHandler creates a new TaskHandler
-func NewTaskHandler(db *gorm.DB, logger *zap.Logger) *TaskHandler {
+func NewTaskHandler(db *gorm.DB) *TaskHandler {
 	return &TaskHandler{
-		db:     db,
-		logger: logger,
+		db:          db,
+		logger:      logger.New("task_handler"),
+		mailHandler: utils.NewEmailHandler(5), // Rate limit of 5 emails per second
 	}
 }
 
@@ -33,28 +37,22 @@ func (h *TaskHandler) HandleEmailSend(ctx context.Context, t *asynq.Task) error 
 		return fmt.Errorf("failed to unmarshal email task: %w", asynq.SkipRetry)
 	}
 
-	h.logger.Info("processing email task",
-		zap.String("email_id", task.EmailID),
-		zap.Int("attempt", task.AttemptNum),
-	)
+	h.logger.Info("📧 Processing email task ID: %s (Attempt: %d)", task.EmailID, task.AttemptNum)
 
 	// Get email from db
 	email, err := models.GetEmailByID(task.EmailID, h.db)
 	if err != nil {
-		return fmt.Errorf("failed to get email: %w", err)
+		return h.logger.Error("❌ failed to get email: %w", err)
 	}
 
 	// Send email using SMTP handler
-	if err := utils.MailHandler.SendEmail(email); err != nil {
+	if err := h.mailHandler.SendEmail(email); err != nil {
 		task.Error = err.Error()
 		task.AttemptNum++
-		return fmt.Errorf("failed to send email: %w", err)
+		return h.logger.Error("❌ failed to send email: %w", err)
 	}
 
-	h.logger.Info("email sent successfully",
-		zap.String("email_id", task.EmailID),
-		zap.String("to", email.To),
-	)
+	h.logger.Success("✅ Email sent successfully")
 	return nil
 }
 

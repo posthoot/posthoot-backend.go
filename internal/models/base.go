@@ -12,8 +12,8 @@ type Base struct {
 	ID        string    `gorm:"type:uuid;primary_key" json:"id"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
-	DeletedAt time.Time `gorm:"index" json:"-"`
-	IsDeleted bool      `json:"isDeleted"`
+	DeletedAt time.Time `gorm:"index;default:null" json:"-" validate:"omitempty"`
+	IsDeleted bool      `json:"isDeleted" default:"false"`
 }
 
 // BeforeCreate will set a UUID rather than numeric ID
@@ -21,10 +21,13 @@ func (base *Base) BeforeCreate(tx *gorm.DB) error {
 	if base.ID == "" {
 		base.ID = uuid.New().String()
 	}
+	if base.DeletedAt.IsZero() || base.DeletedAt.Before(time.Now()) {
+		base.DeletedAt = time.Now()
+	}
 	return nil
 }
 
-// Status enums
+// CampaignStatus Status enums
 type CampaignStatus string
 type CampaignSchedule string
 type CampaignRecurringSchedule string

@@ -270,9 +270,11 @@ func AssignDefaultPermissions(db *gorm.DB, user *User) error {
 }
 
 func CreateSuperAdminFromEnv(db *gorm.DB) error {
+	role := UserRoleSuperAdmin
+
 	// check if super admin already exists
 	var count int64
-	db.Model(&User{}).Where("role = ?", UserRoleSuperAdmin).Count(&count)
+	db.Model(&User{}).Where("role = ?", role).Count(&count)
 	log.Info("Super admin count: %d", count)
 	if count > 0 {
 		return nil
@@ -300,8 +302,6 @@ func CreateSuperAdminFromEnv(db *gorm.DB) error {
 	if !ok {
 		return fmt.Errorf("SUPERADMIN_NAME not set")
 	}
-
-	role := UserRoleSuperAdmin
 
 	team := Team{
 		Name: name + "'s Team",

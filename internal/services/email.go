@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"kori/internal/config"
 	"kori/internal/db"
@@ -11,8 +10,6 @@ import (
 	"kori/internal/tasks"
 	"kori/internal/utils"
 	"kori/internal/utils/logger"
-
-	"gorm.io/datatypes"
 )
 
 var log = logger.New("EMAIL")
@@ -43,6 +40,8 @@ func init() {
 			AttemptNum: 1,
 		}
 
+		log.Info("Enqueueing email task for %s", task.EmailID)
+
 		if err := taskClient.EnqueueEmailTask(context.Background(), task); err != nil {
 			log.Error("Failed to enqueue email task: %v", err)
 		}
@@ -51,29 +50,38 @@ func init() {
 	events.On("users.created", func(data interface{}) {
 		user := data.(*models.User)
 		log.Info("Sending welcome email to %s", user.Email)
+		if err := sendWelcomeEmail(user); err != nil {
+			log.Error("Failed to send welcome email: %v", err)
+		}
 	})
 
 	events.On("email.send", func(data interface{}) {
 		email := data.(*models.Email)
 		log.Info("Sending email to %s", email.To)
+		log.Info("Email data: %s", email.Data)
 		data, err := utils.JSONToMap(email.Data)
 		if err != nil {
-			log.Error("Failed to convert data to map: %v", err)
+			err := log.Error("Failed to convert data to map: %v", err)
+			if err != nil {
+				return
+			}
 			return
 		}
 		if err := sendEmail(
 			email.TeamID,
 			email.TemplateID,
 			email.To,
-			data.(map[string]string),
-			email.SMTPConfig.Provider,
+			email.SMTPConfigID,
 			email.CategoryID,
-			email.Data,
+			data.(map[string]string),
 			email.Subject,
-			email.SMTPConfig.ID,
+			"",
 			email.CampaignID,
 		); err != nil {
-			log.Error("Failed to send email: %v", err)
+			err := log.Error("Failed to send email: %v", err)
+			if err != nil {
+				return
+			}
 		}
 	})
 }
@@ -123,14 +131,6 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		return log.Error("failed to get invite mailing list", err)
 	}
 
-	// Prepare email data
-	emailData := json.RawMessage(fmt.Sprintf(`{
-        "inviterName": "%s %s",
-        "teamName": "%s",
-        "inviteLink": "%s",
-        "name": "%s"
-    }`, inviter.FirstName, inviter.LastName, team.Name, fmt.Sprintf("/accept-invite/%s", invite.ID), invite.Name))
-
 	// Get or create contact
 	contact := &models.Contact{}
 	if err := tx.Where("email = ? AND team_id = ? AND list_id = ?", invite.Email, invite.TeamID, mailingList.ID).First(contact).Error; err != nil {
@@ -164,22 +164,51 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		invite.TeamID,
 		template.ID,
 		invite.Email,
+		smtpConfig.ID,
+		template.CategoryID,
 		map[string]string{
 			"inviterName": fmt.Sprintf("%s %s", inviter.FirstName, inviter.LastName),
 			"name":        invite.Name,
 			"teamName":    team.Name,
 			"inviteLink":  fmt.Sprintf("/accept-invite/%s", invite.ID),
 		},
-		smtpConfig.Provider,
-		template.CategoryID,
-		datatypes.JSON(emailData),
-		"",
+		"Hey there! You've been invited to join Kori",
 		mailingList.ID,
 		"",
 	)
 }
 
-func sendEmail(teamId string, templateId string, to string, variables map[string]string, SMTPProvider string, categoryId string, data datatypes.JSON, subject string, listId string, campaignId string) error {
+func sendWelcomeEmail(user *models.User) error {
+	tx := db.DB.Begin()
+	team := &models.Team{}
+	if err := db.DB.First(team, user.TeamID).Preload("Settings").Preload("Settings.BrandingSettings").Error; err != nil {
+		tx.Rollback()
+		return log.Error("failed to get team details", err)
+	}
+
+	// Get default SMTP config
+	smtpConfig := &models.SMTPConfig{}
+	if err := tx.Where("team_id = ?", user.TeamID).First(smtpConfig).Error; err != nil {
+		tx.Rollback()
+		return log.Error("failed to get default smtp config", err)
+	}
+
+	// mailing list
+
+	mailingList := &models.MailingList{}
+	if err := tx.Where("team_id = ? AND name = ?", user.TeamID, "PLATFORM WELCOME").First(mailingList).Error; err != nil {
+		tx.Rollback()
+		return log.Error("failed to get mailing list", err)
+	}
+
+	err := sendEmail(user.TeamID, team.Settings[0].WelcomeTemplateID, user.Email, smtpConfig.ID, "", map[string]string{"name": user.FirstName, "team": team.Name, "logo": team.Settings[0].BrandingSettings.LogoURL}, "Welcome to Kori", mailingList.ID, "")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendEmail(teamId string, templateId string, to string, SMTPProvider string, categoryId string, variables map[string]string, subject string, listId string, campaignId string) error {
 	// Start transaction
 	tx := db.DB.Begin()
 	if tx.Error != nil {
@@ -187,7 +216,7 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 	}
 
 	// Get SMTP config
-	smtpConfig, err := models.GetSMTPConfig(teamId, "", SMTPProvider, tx)
+	smtpConfig, err := models.GetSMTPConfig(teamId, SMTPProvider, "", tx)
 	if err != nil {
 		tx.Rollback()
 		return log.Error("failed to get team smtp config ❌", err)
@@ -213,10 +242,19 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 	// Get or create contact
 	contact := &models.Contact{}
 	if err := tx.Where("email = ? AND team_id = ? AND list_id = ?", to, teamId, listId).First(contact).Error; err != nil {
+		contactImport := &models.ContactImport{}
+		contactImport.TeamID = teamId
+		contactImport.ListID = listId
+		contactImport.Status = models.ContactImportStatusCompleted
+		if err := tx.Create(contactImport).Error; err != nil {
+			tx.Rollback()
+			return log.Error("failed to create contact import ❌", err)
+		}
 		contact = &models.Contact{
 			Email:     to,
 			TeamID:    teamId,
 			ListID:    listId,
+			ImportID:  contactImport.ID,
 			FirstName: variables["name"],
 		}
 		if err := tx.Create(contact).Error; err != nil {
@@ -225,6 +263,14 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 		}
 	}
 
+	if categoryId == "" {
+		category := &models.EmailCategory{}
+		if err := tx.Where("name = ? AND team_id = ?", "Transactional", teamId).First(category).Error; err != nil {
+			tx.Rollback()
+			return log.Error("failed to get category ❌", err)
+		}
+		categoryId = category.ID
+	}
 	// Get category
 	category := &models.EmailCategory{}
 	if err := tx.Where("id = ? AND team_id = ?", categoryId, teamId).First(category).Error; err != nil {
@@ -245,6 +291,13 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 		parsedSubject = utils.ReplaceVariables(template.Subject, variables)
 	}
 
+	jsonData, err := utils.MapToJSON(variables)
+
+	if err != nil {
+		tx.Rollback()
+		return log.Error("failed to convert variables to json ❌", err)
+	}
+
 	// Create email
 	email := &models.Email{
 		From:         smtpConfig.Username,
@@ -254,7 +307,7 @@ func sendEmail(teamId string, templateId string, to string, variables map[string
 		Subject:      parsedSubject,
 		Body:         parsedBody,
 		Status:       models.EmailStatusPending,
-		Data:         datatypes.JSON(data),
+		Data:         jsonData,
 		ContactID:    contact.ID,
 		CategoryID:   category.ID,
 		SMTPConfigID: smtpConfig.ID,

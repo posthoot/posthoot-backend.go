@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"kori/internal/db"
 	"kori/internal/models"
+	"kori/internal/utils/base64"
 	"strings"
 	"sync"
 	"time"
+
+	"kori/internal/utils/logger"
 
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
@@ -31,30 +34,32 @@ type BatchEmailResult struct {
 
 // EmailHandler handles sending emails via SMTP
 type EmailHandler struct {
-	config      EmailConfig
 	rateLimiter chan struct{}
+	logger      *logger.Logger
 }
 
-var MailHandler *EmailHandler
-
-// NewEmailHandler creates a new EmailHandler
-func NewEmailHandler(config EmailConfig) *EmailHandler {
+// NewEmailHandler creates a new EmailHandler with rate limiting
+func NewEmailHandler(maxSendRate int) *EmailHandler {
 	// Initialize rate limiter channel based on max send rate
-	rateLimiter := make(chan struct{}, config.MaxSendRate)
+	rateLimiter := make(chan struct{}, maxSendRate)
 
 	// Fill the rate limiter initially
-	for i := 0; i < config.MaxSendRate; i++ {
+	for i := 0; i < maxSendRate; i++ {
 		rateLimiter <- struct{}{}
 	}
 
 	return &EmailHandler{
-		config:      config,
 		rateLimiter: rateLimiter,
+		logger:      logger.New("email_handler"),
 	}
 }
 
 // SendEmail sends a single email using the configured SMTP server
 func (h *EmailHandler) SendEmail(email *models.Email) error {
+	if email == nil {
+		return fmt.Errorf("email is nil")
+	}
+
 	// Acquire rate limit token
 	<-h.rateLimiter
 	defer func() {
@@ -63,24 +68,38 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 		h.rateLimiter <- struct{}{}
 	}()
 
-	smtpConfig := email.SMTPConfig
+	if email.Status != models.EmailStatusPending {
+		return fmt.Errorf("email is not pending")
+	}
 
-	auth := sasl.NewPlainClient("", smtpConfig.Username, smtpConfig.Password)
+	if email.SMTPConfig == nil {
+		return fmt.Errorf("SMTP config is nil")
+	}
+
+	h.logger.Info("📧 Sending email to: %s using SMTP server: %s", email.To, email.SMTPConfig.Host)
+
+	auth := sasl.NewPlainClient("", email.SMTPConfig.Username, email.SMTPConfig.Password)
 
 	// Compose the email
 	subject := fmt.Sprintf("Subject: %s\n", email.Subject)
+	decodedBody, err := base64.DecodeFromBase64(email.Body)
+	if err != nil {
+		return fmt.Errorf("❌ failed to decode email body: %w", err)
+	}
 	toFormatted := fmt.Sprintf("To: %s\nContent-Type: text/html; charset=UTF-8\n", email.To)
-	msg := strings.NewReader(toFormatted + subject + email.Body)
+	msg := strings.NewReader(toFormatted + subject + "\n" + decodedBody)
 
 	// Send the email
-	addr := fmt.Sprintf("%s:%d", smtpConfig.Host, smtpConfig.Port)
-	err := smtp.SendMail(addr, auth, email.From, []string{email.To}, msg)
+	addr := fmt.Sprintf("%s:%d", email.SMTPConfig.Host, email.SMTPConfig.Port)
+	err = smtp.SendMail(addr, auth, email.From, []string{email.To}, msg)
 
 	if err != nil {
 		email.Error = err.Error()
 		email.Status = models.EmailStatusFailed
-		h.UpdateEmail(email)
-		return fmt.Errorf("failed to send email: %w", err)
+		if dbErr := h.UpdateEmail(email); dbErr != nil {
+			return h.logger.Error("❌ Failed to update email status", dbErr)
+		}
+		return h.logger.Error("❌ failed to send email: %w", err)
 	}
 
 	email.SentAt = time.Now()
@@ -88,9 +107,10 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 	email.Error = ""
 
 	if err := h.UpdateEmail(email); err != nil {
-		return fmt.Errorf("failed to update email: %w", err)
+		return fmt.Errorf("❌ failed to update email: %w", err)
 	}
 
+	h.logger.Success("✅ Email sent successfully to: %s", email.To)
 	return nil
 }
 
@@ -143,6 +163,9 @@ func (h *EmailHandler) SendCampaignEmails(campaign *models.Campaign, emails []*m
 }
 
 func (h *EmailHandler) UpdateEmail(email *models.Email) error {
-	db := db.GetDB()
-	return db.Save(email).Error
+	if email == nil {
+		return fmt.Errorf("email is nil")
+	}
+
+	return db.GetDB().Updates(email).Error
 }
