@@ -14,7 +14,7 @@ type Logger struct {
 }
 
 var (
-	// Emoji constants
+	// INFO_EMOJI Emoji constants
 	INFO_EMOJI    = "ℹ️ "
 	SUCCESS_EMOJI = "✅ "
 	WARN_EMOJI    = "⚠️ "
