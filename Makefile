@@ -27,7 +27,7 @@ clean:
 	rm -f $(BINARY_UNIX)
 
 run:
-	~/.air -c .air.toml
+	nodemon -w . -e go,yaml,toml --exec "make build"
 
 deps:
 	$(GOMOD) download
