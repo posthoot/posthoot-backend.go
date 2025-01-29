@@ -99,6 +99,13 @@ var defaultResources = []Resource{
 	{Name: "models", Action: "read"},
 	{Name: "models", Action: "update"},
 	{Name: "models", Action: "delete"},
+
+	// Email resources
+	{Name: "emails", Action: "create"},
+	{Name: "emails", Action: "read"},
+
+	// Analytics resources
+	{Name: "analytics", Action: "read"},
 }
 
 // Role-based permission mappings
@@ -112,6 +119,8 @@ var rolePermissions = map[UserRole][]string{
 		"roles:*",
 		"webhooks:*",
 		"models:*",
+		"emails:*",
+		"analytics:*",
 	},
 	UserRoleMember: {
 		// Member has limited permissions
@@ -122,10 +131,18 @@ var rolePermissions = map[UserRole][]string{
 		"teams:read",
 		"users:read",
 		"automations:read",
-		"smtp_configs:read",
+		"automations:create",
+		"automations:update",
 		"domains:read",
 		"webhooks:read",
 		"models:read",
+		"emails:read",
+		"emails:create",
+		"analytics:read",
+	},
+	UserRoleSuperAdmin: {
+		// SuperAdmin has all permissions
+		"*:*",
 	},
 }
 
@@ -303,8 +320,14 @@ func CreateSuperAdminFromEnv(db *gorm.DB) error {
 		return fmt.Errorf("SUPERADMIN_NAME not set")
 	}
 
+	teamName, ok := os.LookupEnv("SUPERADMIN_TEAM_NAME")
+
+	if !ok {
+		return fmt.Errorf("SUPERADMIN_TEAM_NAME not set")
+	}
+
 	team := Team{
-		Name: name + "'s Team",
+		Name: teamName,
 	}
 
 	if err := db.Create(&team).Error; err != nil {

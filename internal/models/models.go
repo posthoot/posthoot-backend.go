@@ -78,6 +78,8 @@ type TeamInvite struct {
 	Team      *Team        `json:"team,omitempty"`
 	InviterID string       `gorm:"type:uuid;not null" json:"inviterId" validate:"required,uuid"`
 	Inviter   *User        `json:"inviter,omitempty"`
+	Role      UserRole     `gorm:"not null;default:'MEMBER'" json:"role" validate:"required,oneof=MEMBER ADMIN"`
+	Code      string       `gorm:"not null" json:"code" validate:"required=min=4"`
 	Status    InviteStatus `gorm:"not null;default:'PENDING'" json:"status" validate:"required,oneof=PENDING ACCEPTED REJECTED"`
 	ExpiresAt time.Time    `gorm:"not null" json:"expiresAt" validate:"required,gt=now"`
 }
@@ -114,7 +116,7 @@ type File struct {
 	TeamID    string `gorm:"type:uuid" json:"teamId" validate:"omitempty,uuid"`
 	Team      *Team  `json:"team,omitempty"`
 	Path      string `gorm:"not null" json:"path" validate:"required"`
-	UserID    string `gorm:"type:uuid" json:"userId" validate:"omitempty,uuid"`
+	UserID    string `gorm:"type:uuid;default:NULL" json:"userId" validate:"omitempty,uuid"`
 	User      *User  `json:"user,omitempty"`
 	Name      string `gorm:"not null" json:"name" validate:"required"`
 	Size      int64  `gorm:"not null" json:"size" validate:"required,min=1"`
@@ -167,6 +169,7 @@ type SMTPConfig struct {
 	Host         string `gorm:"not null" json:"host" validate:"required,hostname"`
 	Port         int    `gorm:"not null" json:"port" validate:"required,min=1,max=65535"`
 	Username     string `json:"username" validate:"required,email"`
+	FromEmail    string `json:"fromEmail" validate:"required,email"`
 	Password     string `json:"password" validate:"required,min=8"`
 	IsDefault    bool   `gorm:"not null;default:false" json:"isDefault"`
 	IsActive     bool   `gorm:"not null;default:true" json:"isActive"`
@@ -252,7 +255,7 @@ type Template struct {
 	Subject    string         `gorm:"not null" json:"subject" validate:"required"`
 	HtmlFileID string         `gorm:"type:uuid" json:"htmlFileId" validate:"omitempty,uuid"`
 	HtmlFile   *File          `json:"htmlFile,omitempty"`
-	DesignJSON datatypes.JSON `gorm:"not null" json:"designJson" validate:"required,json"`
+	DesignJSON string         `gorm:"not null;default:''" json:"designJson" validate:"omitempty"`
 	TeamID     string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team       *Team          `json:"team,omitempty"`
 	Emails     []Email        `gorm:"foreignKey:TemplateID" json:"emails,omitempty"`
@@ -270,7 +273,7 @@ type Email struct {
 	Status       EmailStatus    `gorm:"not null" json:"status" validate:"required,oneof=DRAFT QUEUED SENDING SENT FAILED"`
 	Error        string         `json:"error" validate:"omitempty"`
 	Data         datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"data" validate:"omitempty,json"`
-	TemplateID   string         `gorm:"type:uuid;not null" json:"templateId" validate:"required,uuid"`
+	TemplateID   string         `gorm:"type:uuid;default:NULL" json:"templateId" validate:"omitempty,uuid"`
 	Template     *Template      `json:"template,omitempty"`
 	TeamID       string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team         *Team          `json:"team,omitempty"`
@@ -283,6 +286,9 @@ type Email struct {
 	Category     *EmailCategory `json:"category,omitempty"`
 	CampaignID   string         `gorm:"type:uuid;default:NULL" json:"campaignId" validate:"omitempty,uuid"`
 	Campaign     *Campaign      `json:"campaign,omitempty"`
+	CC           string         `json:"cc" validate:"omitempty,email"`
+	BCC          string         `json:"bcc" validate:"omitempty,email"`
+	ReplyTo      string         `json:"replyTo" validate:"omitempty,email"`
 }
 
 func (e *Email) BeforeUpdate(tx *gorm.DB) error {
@@ -297,6 +303,11 @@ func (e *Email) AfterUpdate(tx *gorm.DB) error {
 
 func (e *Email) AfterCreate(tx *gorm.DB) error {
 	log.Info("Email created")
+	smtp, err := GetSMTPConfig(e.TeamID, e.SMTPConfigID, "", tx)
+	if err != nil {
+		return err
+	}
+	e.SMTPConfig = smtp
 	events.Emit("email.created", e)
 	return nil
 }
@@ -357,6 +368,7 @@ type EmailComplaint struct {
 
 type APIKey struct {
 	Base
+	Name        string             `gorm:"not null" json:"name"`
 	Key         string             `gorm:"not null" json:"key"`
 	TeamID      string             `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team        *Team              `json:"team,omitempty"`

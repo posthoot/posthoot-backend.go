@@ -3,14 +3,18 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"kori/internal/utils/base64"
 	"os"
 
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
 type JSONTemplate struct {
 	*Template
-	CategoryName string `json:"categoryName"`
+	ID           int            `json:"id"`
+	CategoryName string         `json:"categoryName"`
+	DesignJSON   datatypes.JSON `json:"designJson"`
 }
 
 type InitialTemplates struct {
@@ -49,7 +53,7 @@ func LoadInitialData(db *gorm.DB, teamId string) error {
 	return nil
 }
 
-func loadJSON[T any](filename string) (*T, error) {
+func LoadJSON[T any](filename string) (*T, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filename, err)
@@ -65,7 +69,7 @@ func loadJSON[T any](filename string) (*T, error) {
 
 func loadCategories(db *gorm.DB, teamId string) error {
 	log.Info("Loading categories")
-	categories, err := loadJSON[InitialCategories]("internal/models/seeder/initial-setup/initial-categories.json")
+	categories, err := LoadJSON[InitialCategories]("internal/models/seeder/initial-setup/initial-categories.json")
 	if err != nil {
 		return err
 	}
@@ -84,7 +88,7 @@ func loadCategories(db *gorm.DB, teamId string) error {
 
 func loadLists(db *gorm.DB, teamId string) error {
 	log.Info("Loading lists")
-	lists, err := loadJSON[InitialLists]("internal/models/seeder/initial-setup/initial-lists.json")
+	lists, err := LoadJSON[InitialLists]("internal/models/seeder/initial-setup/initial-lists.json")
 	if err != nil {
 		return err
 	}
@@ -100,7 +104,7 @@ func loadLists(db *gorm.DB, teamId string) error {
 }
 
 func loadTemplates(db *gorm.DB, teamId string) error {
-	templates, err := loadJSON[InitialTemplates]("internal/models/seeder/initial-setup/initial-templates.json")
+	templates, err := LoadJSON[InitialTemplates]("internal/models/seeder/initial-setup/initial-templates.json")
 	if err != nil {
 		return err
 	}
@@ -140,7 +144,7 @@ func loadTemplates(db *gorm.DB, teamId string) error {
 			Name:       tmpl.Name,
 			Subject:    tmpl.Subject,
 			HtmlFileID: file.ID,
-			DesignJSON: tmpl.DesignJSON,
+			DesignJSON: base64.EncodeToBase64(string(tmpl.DesignJSON)),
 			TeamID:     teamId,
 			CategoryID: category.ID,
 			Variables:  tmpl.Variables,
@@ -156,12 +160,17 @@ func loadTemplates(db *gorm.DB, teamId string) error {
 		}
 	}
 
-	teamSettings := TeamSettings{
-		TeamID:            teamId,
-		WelcomeTemplateID: templateIds["WELCOME"],
-		InviteTemplateID:  templateIds["INVITE"],
+	// fetch team
+	var teamSettings TeamSettings
+	if err := db.Where("team_id = ?", teamId).First(&teamSettings).Error; err != nil {
+		return log.Error("Failed to fetch team settings", err)
 	}
-	if err := db.Create(&teamSettings).Error; err != nil {
+
+	if err := db.Model(&teamSettings).Update("welcome_template_id", templateIds["WELCOME"]).Error; err != nil {
+		return log.Error("Failed to create team settings", err)
+	}
+
+	if err := db.Model(&teamSettings).Update("invite_template_id", templateIds["INVITE"]).Error; err != nil {
 		return log.Error("Failed to create team settings", err)
 	}
 
