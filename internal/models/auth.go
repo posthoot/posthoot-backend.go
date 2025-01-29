@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type User struct {
@@ -18,30 +16,6 @@ type User struct {
 	Permissions []UserPermission `gorm:"foreignKey:UserID" json:"permissions,omitempty"`
 	Invites     []TeamInvite     `gorm:"foreignKey:InviterID" json:"invites,omitempty"`
 	Files       []File           `gorm:"foreignKey:UserID" json:"files,omitempty"`
-}
-
-// AfterCreate after admin create - create a team
-func (u *User) AfterCreate(tx *gorm.DB) (err error) {
-	if u.Role != UserRoleAdmin {
-		return nil
-	}
-
-	// check if team already exists
-	var count int64
-	tx.Model(&Team{}).Where("name = ?", u.Email+"'s Team").Count(&count)
-	if count > 0 {
-		return nil
-	}
-
-	team := Team{
-		Name: u.Email + "'s Team",
-	}
-	if err := tx.Create(&team).Error; err != nil {
-		return err
-	}
-
-	u.TeamID = team.ID
-	return tx.Save(u).Error
 }
 
 type PasswordReset struct {
