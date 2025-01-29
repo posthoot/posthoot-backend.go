@@ -3,8 +3,6 @@
 # 🔄 Copy environment variables to .env file
 printenv > .env
 
-cat .env
-
 # ⏳ Wait for dependencies to be ready
 echo "🔍 Waiting for Redis..."
 while ! nc -z redis 6379; do
