@@ -30,7 +30,7 @@ jobs:
         uses: theboringhumane/cori-ai@1.2.12
         with:
           provider: "openai"
-          model: CodeLlama-34b-Instruct-hf
+          model: 'codellama/CodeLlama-34b-Instruct-hf'
           github_token: ${{ steps.generate-token.outputs.token }}
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
