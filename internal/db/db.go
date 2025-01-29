@@ -17,12 +17,12 @@ var DB *gorm.DB
 var log = console.New("DB")
 
 func Connect(cfg *config.Config) error {
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
 		cfg.Database.Host,
-		cfg.Database.Port,
 		cfg.Database.User,
 		cfg.Database.Password,
 		cfg.Database.Name,
+		cfg.Database.Port,
 		cfg.Database.SSLMode,
 	)
 
