@@ -28,10 +28,14 @@ WORKDIR /app
 # Copy the binary from builder
 COPY --from=builder /app/build/posthoot .
 COPY --from=builder /app/build/helper .
+COPY --from=builder /app/docker-entrypoint.sh .
+RUN chmod +x docker-entrypoint.sh
+
+# Install required packages
+RUN apk add --no-cache curl netcat-openbsd
 
 # Expose ports
 EXPOSE 8080
 
 # Set the entry point
-ENTRYPOINT ["./posthoot"]
-
+ENTRYPOINT ["./docker-entrypoint.sh"]
