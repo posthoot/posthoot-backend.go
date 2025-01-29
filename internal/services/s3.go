@@ -1,9 +1,10 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"mime/multipart"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -82,33 +83,29 @@ func NewS3Service(bucketName, endpoint, region, accessKey, secretKey string) (*S
 }
 
 // UploadFile uploads a file to S3 or S3-compatible storage and returns the URL
-func (s *S3Service) UploadFile(ctx context.Context, file *multipart.FileHeader, acl types.ObjectCannedACL) (string, error) {
-	s.logger.Info("📤 Starting file upload: %s", file.Filename)
-
-	// Open the file
-	src, err := file.Open()
-	if err != nil {
-		return "", s.logger.Error("Failed to open file ❌", err)
-	}
-	defer func(src multipart.File) {
-		if err := src.Close(); err != nil {
-			s.logger.Error("Failed to close file ❌", err)
-		}
-	}(src)
+func (s *S3Service) UploadFile(ctx context.Context, file []byte, filename string, acl types.ObjectCannedACL) (string, error) {
+	s.logger.Info("📤 Starting file upload: %s", filename)
 
 	// Generate unique filename
-	ext := filepath.Ext(file.Filename)
-	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	ext := filepath.Ext(filename)
+	filename = fmt.Sprintf("%s%s", uuid.New().String(), ext)
 
 	s.logger.Info("🔄 Processing upload for file: %s", filename)
 
+	is_r2 := os.Getenv("STORAGE_PROVIDER") == "r2"
+
+	ACL := acl
+	if is_r2 {
+		ACL = types.ObjectCannedACLPublicRead
+	}
+
 	// Upload to storage
-	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(s.bucketName),
 		Key:         aws.String(filename),
-		Body:        src,
-		ACL:         acl,
-		ContentType: aws.String(file.Header.Get("Content-Type")),
+		Body:        bytes.NewReader(file),
+		ACL:         ACL,
+		ContentType: aws.String("text/html"),
 	})
 	if err != nil {
 		return "", s.logger.Error("Failed to upload file to storage ❌", err)

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"kori/internal/handlers"
+	"kori/internal/models/seeder/airley"
 	"kori/internal/utils/crypto"
 	"log"
 	"os"
@@ -16,9 +17,9 @@ import (
 	"kori/internal/models"
 	"kori/internal/services"
 	"kori/internal/tasks"
+	"kori/internal/utils/logger"
 
 	"github.com/joho/godotenv"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -50,20 +51,10 @@ func main() {
 		}
 	}()
 
-	// Initialize logger
-	logger, err := zap.NewProduction()
-	if err != nil {
-		log.Fatalf("Failed to create logger: %v", err)
-	}
-	defer func(logger *zap.Logger) {
-		err := logger.Sync()
-		if err != nil {
-			log.Fatalf("Failed to flush logger", zap.Error(err))
-		}
-	}(logger)
-
 	// Initialize task handlers
 	taskHandler := tasks.NewTaskHandler(db.GetDB())
+
+	logger := logger.New("kori")
 
 	// Initialize task server
 	taskServer := tasks.NewServer(
@@ -82,7 +73,7 @@ func main() {
 	// Start task server
 	go func() {
 		if err := taskServer.Start(serverCtx); err != nil {
-			logger.Error("Task server error", zap.Error(err))
+			logger.Error("Task server error", err)
 		}
 	}()
 
@@ -98,7 +89,7 @@ func main() {
 	// Start task scheduler
 	go func() {
 		if err := taskScheduler.Start(); err != nil {
-			logger.Error("Task scheduler error", zap.Error(err))
+			logger.Error("Task scheduler error", err)
 		}
 	}()
 
@@ -122,8 +113,17 @@ func main() {
 		models.RegisterFileURLGenerator(s3Service)
 		handlers.RegisterStorageHandler(s3Service)
 
+		// Seed Airley templates
+		if err := airley.LoadAirleyTemplates(db.GetDB()); err != nil {
+			logger.Error("Warning: Failed to seed Airley templates: %v", err)
+		} else {
+			logger.Success("Successfully seeded Airley templates")
+		}
+
+		logger.Success("API server started")
+
 		if err := apiServer.Start(); err != nil {
-			logger.Error("API server error", zap.Error(err))
+			logger.Error("API server error", err)
 		}
 	}()
 
@@ -144,7 +144,7 @@ func main() {
 
 	// Shutdown API server
 	if err := apiServer.Shutdown(ctx); err != nil {
-		logger.Error("Failed to shutdown API server", zap.Error(err))
+		logger.Error("Failed to shutdown API server", err)
 	}
 
 	logger.Info("Servers shutdown gracefully")
