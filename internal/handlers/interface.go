@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"mime/multipart"
 	"sync"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 
 // StorageHandler interface for file operations
 type StorageHandler interface {
-	UploadFile(ctx context.Context, file *multipart.FileHeader, acl types.ObjectCannedACL) (string, error)
+	UploadFile(ctx context.Context, file []byte, filename string, acl types.ObjectCannedACL) (string, error)
 	GetSignedURL(ctx context.Context, path string, duration time.Duration) (string, error)
 }
 

@@ -11,13 +11,13 @@ import (
 
 func SetupEMAILRoutes(e *echo.Echo, config *config.Config, db *gorm.DB) {
 	// Create EMAIL routes group
-	email := e.Group("/api/v1/email")
+	email := e.Group("/api/v1/emails")
 
 	// Add authentication middleware
 	auth := middleware.NewAuthMiddleware(config.JWT.Secret)
 	email.Use(auth.Middleware())
 
-	email.Use(middleware.RequirePermissions(db, "email:write"))
+	email.Use(middleware.RequirePermissions(db, "emails:create"))
 
 	email.POST("", handlers.SendEmail)
 }

@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"kori/internal/models"
 	"net/http"
 	"strings"
 
@@ -12,28 +13,24 @@ import (
 
 // Permission scopes
 const (
-	ScopeAdmin = "ADMIN"
-	ScopeRead  = "READ"
-	ScopeWrite = "WRITE"
+	ScopeAdmin = "admin"
+	ScopeRead  = "read"
+	ScopeWrite = "create"
 )
 
 // ValidateAPIKeyPermissions validates if an API key has the required permissions
 func ValidateAPIKeyPermissions(ctx context.Context, db *gorm.DB, apiKeyID string, requiredPermissions []string) error {
-	var permissions []string
-	err := db.Raw(`
-		SELECT CONCAT(resource, ':', scope) as permission
-		FROM api_key_permissions
-		WHERE key_id = ?
-	`, apiKeyID).Scan(&permissions).Error
+	var permissions []models.APIKeyPermission
+
+	log.Info("Validating API key permissions for %s", apiKeyID)
+	log.Info("Required permissions %v", requiredPermissions)
+
+	// Get API key permissions with resource permission details
+	err := db.Where("key_id = ?", apiKeyID).
+		Preload("ResourcePermission.Resource").
+		Find(&permissions).Error
 	if err != nil {
 		return fmt.Errorf("failed to get permissions: %w", err)
-	}
-
-	// Check if the API key has admin scope
-	for _, perm := range permissions {
-		if strings.HasSuffix(perm, ":"+ScopeAdmin) {
-			return nil // Admin has all permissions
-		}
 	}
 
 	// Check each required permission
@@ -48,17 +45,15 @@ func ValidateAPIKeyPermissions(ctx context.Context, db *gorm.DB, apiKeyID string
 		requiredScope := requiredParts[1]
 
 		for _, perm := range permissions {
-			permParts := strings.Split(perm, ":")
-			if len(permParts) != 2 {
+			if perm.ResourcePermission == nil || perm.ResourcePermission.Resource == nil {
 				continue
 			}
 
-			permResource := permParts[0]
-			permScope := permParts[1]
+			resource := perm.ResourcePermission.Resource
 
 			// Check if the permission matches
-			if permResource == requiredResource {
-				switch permScope {
+			if resource.Name == requiredResource {
+				switch resource.Action {
 				case ScopeAdmin:
 					hasPermission = true
 				case ScopeWrite:

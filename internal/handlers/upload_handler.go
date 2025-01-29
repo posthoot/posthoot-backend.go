@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"io"
 	"kori/internal/db"
 	"kori/internal/models"
 	"net/http"
@@ -15,11 +16,16 @@ import (
 
 type UploadHandler struct {
 	log *logger.Logger
+	acl types.ObjectCannedACL
 }
 
-func NewUploadHandler() *UploadHandler {
+func NewUploadHandler(acl types.ObjectCannedACL) *UploadHandler {
+	if acl == "" {
+		acl = types.ObjectCannedACLPublicRead
+	}
 	return &UploadHandler{
 		log: logger.New("upload_handler"),
+		acl: acl,
 	}
 }
 
@@ -39,8 +45,23 @@ func (h *UploadHandler) UploadFile(c echo.Context) error {
 		})
 	}
 
+	// Open file
+	src, err := file.Open()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": "Failed to open file",
+		})
+	}
+
+	content, err := io.ReadAll(src)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": "Failed to read file",
+		})
+	}
+
 	// Upload file to S3
-	url, err := storage.UploadFile(c.Request().Context(), file, types.ObjectCannedACLPublicRead)
+	url, err := storage.UploadFile(c.Request().Context(), content, file.Filename, h.acl)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to upload file",
