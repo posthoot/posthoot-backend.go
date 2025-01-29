@@ -27,10 +27,10 @@ jobs:
           private-key: ${{ secrets.CORI_APP_PRIVATE_KEY }}
       
       - name: CoriAI ✨ Code Review
-        uses: theboringhumane/cori-ai@1.2.9
+        uses: theboringhumane/cori-ai@1.2.12
         with:
           provider: "openai"
-          model: gpt-4o-mini
+          model: CodeLlama-34b-Instruct-hf
           github_token: ${{ steps.generate-token.outputs.token }}
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
