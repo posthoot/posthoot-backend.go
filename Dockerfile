@@ -26,7 +26,7 @@ WORKDIR /app
 COPY --from=builder /app/build/kori .
 
 # Expose ports
-EXPOSE 8080 9090
+EXPOSE 8080
 
 # Set the entry point
 ENTRYPOINT ["./kori"]
