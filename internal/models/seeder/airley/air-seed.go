@@ -3,13 +3,12 @@ package airley
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	"kori/internal/models"
@@ -24,7 +23,40 @@ var log = console.New("SEEDER")
 func LoadAirleyTemplates(db *gorm.DB) error {
 	team, err := models.GetTeamByName("Team Airley", db)
 	if err != nil {
-		return log.Error("Failed to get team", err)
+		team = &models.Team{
+			Name: "Team Airley",
+		}
+		if err := db.Create(team).Error; err != nil {
+			return log.Error("Failed to create team", err)
+		}
+
+		log.Success("Created airley team %s", team.ID)
+
+		password := "change_this_password"
+
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return log.Error("Failed to hash password", err)
+		}
+
+		user := &models.User{
+			Email:     "admin@airley.io",
+			Password:  string(hashedPassword),
+			TeamID:    team.ID,
+			FirstName: "SuperHuman",
+			LastName:  "At Airley",
+			Role:      models.UserRoleAdmin,
+		}
+
+		if err := db.Create(user).Error; err != nil {
+			return log.Error("Failed to create user", err)
+		}
+
+		if err := models.AssignDefaultPermissions(db, user); err != nil {
+			return log.Error("Failed to assign default permissions", err)
+		}
+
+		log.Success("Created airley admin user %s", user.ID)
 	}
 
 	templates, err := models.LoadJSON[models.InitialTemplates]("internal/models/seeder/airley/templates.json")
@@ -92,30 +124,6 @@ func LoadAirleyTemplates(db *gorm.DB) error {
 		if err := db.Create(&template).Error; err != nil {
 			return log.Error("Failed to create template", err)
 		}
-	}
-
-	port, err := strconv.Atoi(os.Getenv("SMTP_PORT"))
-	if err != nil {
-		return log.Error("Failed to convert smtp port to int", err)
-	}
-
-	// create smtp config
-	smtpConfig := models.SMTPConfig{
-		TeamID:       team.ID,
-		Host:         os.Getenv("SMTP_HOST"),
-		Port:         port,
-		Username:     os.Getenv("SMTP_USERNAME"),
-		Password:     os.Getenv("SMTP_PASSWORD"),
-		FromEmail:    os.Getenv("SMTP_FROM_EMAIL"),
-		Provider:     os.Getenv("SMTP_PROVIDER"),
-		IsDefault:    true,
-		IsActive:     true,
-		RequiresAuth: true,
-		SupportsTLS:  true,
-	}
-
-	if err := db.Create(&smtpConfig).Error; err != nil {
-		return log.Error("Failed to create smtp config", err)
 	}
 
 	log.Success("Successfully loaded all templates")
