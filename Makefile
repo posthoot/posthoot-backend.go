@@ -42,3 +42,6 @@ build-linux:
 
 dev:
 	nodemon
+
+helper:
+	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_UNIX) -v cmd/helper/main.go

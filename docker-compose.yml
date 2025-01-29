@@ -3,8 +3,6 @@ version: '3.8'
 services:
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
 
     volumes:
       - redis-data:/data
@@ -26,17 +24,8 @@ services:
     networks:
       - app-network
 
-  worker:
-    build: .
-    depends_on:
-      - redis
-    networks:
-      - app-network
-
   kori-server:
     build: .
-    ports:
-      - "8080:8080"
     depends_on:
       - redis
       - postgres
