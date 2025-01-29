@@ -3,20 +3,20 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"kori/internal/utils/logger"
 
 	"github.com/hibiken/asynq"
-	"go.uber.org/zap"
 )
 
 // Server handles task processing
 type Server struct {
 	server  *asynq.Server
 	handler *TaskHandler
-	logger  *zap.Logger
+	logger  *logger.Logger
 }
 
 // NewServer creates a new task processing server
-func NewServer(redisAddr, username, password string, db int, handler *TaskHandler, logger *zap.Logger) *Server {
+func NewServer(redisAddr, username, password string, db int, handler *TaskHandler, logger *logger.Logger) *Server {
 	server := asynq.NewServer(
 		asynq.RedisClientOpt{
 			Addr:     redisAddr,
@@ -62,14 +62,11 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc(TaskTypeContactSync, s.handler.HandleContactImport)
 	mux.HandleFunc(TaskTypeLLMEmailWriter, s.handler.HandleLLMEmailWriter)
 
-	s.logger.Info("starting task processing server",
-		zap.Int("concurrency", 10),
-		zap.Any("queues", map[string]int{
-			QueueCritical: 6,
-			QueueDefault:  3,
-			QueueLow:      1,
-		}),
-	)
+	s.logger.Info("starting task processing server concurrency %d queues %v", 10, map[string]int{
+		QueueCritical: 6,
+		QueueDefault:  3,
+		QueueLow:      1,
+	})
 
 	if err := s.server.Start(mux); err != nil {
 		return fmt.Errorf("failed to start task server: %w", err)

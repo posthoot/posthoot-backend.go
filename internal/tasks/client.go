@@ -9,24 +9,57 @@ import (
 	"kori/internal/utils/logger"
 
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
+
+	limiter "kori/internal/tasks/rate"
 )
 
 // TaskClient handles task enqueuing with improved error handling and context support
 type TaskClient struct {
-	client *asynq.Client
-	logger *logger.Logger
+	client       *asynq.Client
+	logger       *logger.Logger
+	redisOptions *redis.Options
+	redisClient  *redis.Client
+}
+
+type RateLimiter struct {
+	Rate   int
+	Burst  int
+	Period time.Duration
+}
+
+func (c *TaskClient) GetClient() *asynq.Client {
+	return c.client
 }
 
 // NewTaskClient creates a new TaskClient with the given Redis configuration
 func NewTaskClient(redisAddr, username, password string, db int) *TaskClient {
-	return &TaskClient{
-		client: asynq.NewClient(asynq.RedisClientOpt{
+	redisOpt := asynq.RedisClientOpt{
+		Addr:     redisAddr,
+		Username: username,
+		Password: password,
+		DB:       db,
+	}
+
+	redisClient := redis.NewClient(
+		&redis.Options{
 			Addr:     redisAddr,
 			Username: username,
 			Password: password,
 			DB:       db,
-		}),
-		logger: logger.New("TASKS"),
+		},
+	)
+
+	return &TaskClient{
+		client: asynq.NewClient(redisOpt),
+		redisOptions: &redis.Options{
+			Addr:     redisAddr,
+			Username: username,
+			Password: password,
+			DB:       db,
+		},
+		redisClient: redisClient,
+		logger:      logger.New("TASKS"),
 	}
 }
 
@@ -35,11 +68,42 @@ func (c *TaskClient) Close() error {
 	return c.client.Close()
 }
 
+func GetEmailQueueName(smtpSettingsID string) string {
+	return fmt.Sprintf("email:smtp:%s", smtpSettingsID)
+}
+
 // EnqueueEmailTask enqueues an email sending task
 func (c *TaskClient) EnqueueEmailTask(ctx context.Context, task EmailTask) error {
 	payload, err := json.Marshal(task)
 	if err != nil {
 		return fmt.Errorf("failed to marshal email task: %w", err)
+	}
+
+	redisClient := c.redisClient
+
+	defer redisClient.Close()
+
+	limiterKey := GetEmailQueueName(task.SMTPConfigID)
+
+	// Use sliding window rate limiter with Redis
+	rateLimiter := limiter.NewQueueRateLimiter(redisClient, limiter.QueueConfig{
+		Name: limiterKey,
+		RateLimit: limiter.RateLimit{
+			Window:  time.Second,
+			MaxJobs: task.MaxSendRate,
+		},
+	})
+
+	// Use provider as identifier for rate limiting
+	allowed, err := rateLimiter.Allow(ctx, limiterKey)
+	if err != nil {
+		return fmt.Errorf("rate limiter error: %w", err)
+	}
+
+	if !allowed {
+		err := fmt.Errorf("rate limit exceeded for provider %s", limiterKey)
+		// Return error to trigger asynq retry with configured backoff
+		return c.logger.Error("❌ Rate limit exceeded %s", err)
 	}
 
 	info, err := c.client.EnqueueContext(ctx,

@@ -26,6 +26,9 @@ const (
 
 	// LLM related tasks
 	TaskTypeLLMEmailWriter = "llm:email_writer"
+
+	// Queue related tasks
+	TaskTypeQueueConfig = "queue:config"
 )
 
 // Task Queues
@@ -60,10 +63,12 @@ const (
 
 // Task Payloads
 type EmailTask struct {
-	EmailID     string    `json:"email_id"`
-	AttemptNum  int       `json:"attempt_num"`
-	LastAttempt time.Time `json:"last_attempt,omitempty"`
-	Error       string    `json:"error,omitempty"`
+	EmailID      string    `json:"email_id"`
+	AttemptNum   int       `json:"attempt_num"`
+	LastAttempt  time.Time `json:"last_attempt,omitempty"`
+	Error        string    `json:"error,omitempty"`
+	SMTPConfigID string    `json:"smtp_config_id"`
+	MaxSendRate  int       `json:"max_send_rate"`
 }
 
 type CampaignTask struct {
