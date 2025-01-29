@@ -23,6 +23,8 @@ services:
 
   posthoot-server:
     build: .
+    env_file:
+      - .env
     depends_on:
       - redis
       - postgres
