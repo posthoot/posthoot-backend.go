@@ -14,7 +14,7 @@ import (
 // 5. they can also pass the provider name, and we get that provider's config
 
 func GetSMTPConfig(teamID string, smtpConfigID string, providerName string, db *gorm.DB) (*SMTPConfig, error) {
-	log.Info("Getting default smtp config for team: " + teamID + smtpConfigID + providerName)
+	log.Info("Getting default smtp config for team: %s, %s, %s", teamID, smtpConfigID, providerName)
 
 	if smtpConfigID != "" {
 		smtpConfig := &SMTPConfig{}
@@ -33,4 +33,13 @@ func GetSMTPConfig(teamID string, smtpConfigID string, providerName string, db *
 	}
 
 	return nil, errors.New("no smtp config found")
+}
+
+// GetTeamByName retrieves a team from the database by its name
+func GetTeamByName(name string, db *gorm.DB) (*Team, error) {
+	team := &Team{}
+	if err := db.Where("name = ?", name).First(team).Error; err != nil {
+		return nil, err
+	}
+	return team, nil
 }
