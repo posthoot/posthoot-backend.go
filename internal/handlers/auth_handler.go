@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"kori/internal/events"
 	"kori/internal/models"
 	"kori/internal/utils"
 
@@ -82,12 +83,21 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		Password:  string(hashedPassword),
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
-		Role:      models.UserRoleMember, // Default role for new users
+		Role:      models.UserRoleAdmin, // Default role for new users
 	}
 
 	if err := tx.Create(&user).Error; err != nil {
 		tx.Rollback()
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Email already exists"})
+	}
+
+	// create a team
+	team := models.Team{
+		Name: req.FirstName + "'s Team", // Example team name based on the user's first name
+	}
+	if err = tx.Create(&team).Error; err != nil {
+		tx.Rollback()
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create team"})
 	}
 
 	// Assign default permissions based on role
@@ -425,7 +435,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save access token"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"token": accessToken})
+	return c.JSON(http.StatusOK, map[string]string{"token": accessToken, "exp": "15m"})
 }
 
 // GetMe returns the current user
@@ -444,4 +454,168 @@ func (h *AuthHandler) GetMe(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
 	}
 	return c.JSON(http.StatusOK, user)
+}
+
+// InviteUser handles sending invitations to new team members
+// @Summary Invite a user to join a team
+// @Description Send an invitation email to a user to join a team
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body models.TeamInvite true "Invitation details"
+// @Success 201 {object} map[string]string "Invitation sent successfully"
+// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/invite [post]
+func (h *AuthHandler) InviteUser(c echo.Context) error {
+	// 🔒 Get current user ID from context
+	userID := c.Get("userID").(string)
+
+	var invite models.TeamInvite
+	if err := c.Bind(&invite); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	// 🔍 Validate invite data
+	if err := c.Validate(invite); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	// 👥 Get inviter's team
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get user"})
+	}
+
+	// Generate invite code
+	code, err := utils.GenerateRandomString(32)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate invite code"})
+	}
+
+	invite.Code = code
+	invite.ExpiresAt = time.Now().Add(24 * time.Hour)
+	invite.InviterID = userID
+	invite.TeamID = user.TeamID
+	invite.Status = "pending"
+
+	// 💾 Save invitation
+	if err := h.db.Create(&invite).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create invitation"})
+	}
+
+	// 📧 Trigger invite email event
+	events.Emit("invite.created", &invite)
+
+	return c.JSON(http.StatusCreated, map[string]string{"message": "Invitation sent successfully"})
+}
+
+// AcceptInvite handles accepting team invitations
+// @Summary Accept a team invitation
+// @Description Accept an invitation to join a team
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param code path string true "Invitation code"
+// @Success 200 {object} map[string]string "Invitation accepted successfully"
+// @Failure 400 {object} map[string]string "Invalid invitation"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/invite/accept/{code} [post]
+type AcceptInviteRequest struct {
+	Password string `json:"password" validate:"required,min=8"`
+}
+
+func (h *AuthHandler) AcceptInvite(c echo.Context) error {
+	code := c.Param("code")
+
+	// 🔒 Get password from request body
+	var req AcceptInviteRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+	}
+
+	// 🔍 Validate request
+	if err := c.Validate(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	// 🔐 Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to hash password"})
+	}
+
+	// 🔍 Find invitation
+	var invite models.TeamInvite
+	if err := h.db.Where("code = ? AND status = ? AND expires_at > ?",
+		code, "pending", time.Now()).First(&invite).Error; err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid or expired invitation"})
+	}
+
+	// Start transaction
+	tx := h.db.Begin()
+
+	// 👤 Create new user
+	newUser := models.User{
+		Email:     invite.Email,
+		FirstName: invite.Name,
+		LastName:  "",
+		Password:  string(hashedPassword),
+		TeamID:    invite.TeamID,
+		Role:      invite.Role, // Default role for invited users
+	}
+
+	if err := h.db.Create(&newUser).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
+	}
+
+	// ✅ Update invitation status
+	invite.Status = "accepted"
+	if err := tx.Save(&invite).Error; err != nil {
+		tx.Rollback()
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update invitation"})
+	}
+
+	// Assign default permissions based on role
+	if err := models.AssignDefaultPermissions(tx, &newUser); err != nil {
+		tx.Rollback()
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to assign permissions"})
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to commit transaction"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Invitation accepted successfully"})
+}
+
+// DeleteInvite handles deleting team invitations
+// @Summary Delete a team invitation
+// @Description Delete a pending team invitation
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param id path string true "Invitation ID"
+// @Success 200 {object} map[string]string "Invitation deleted successfully"
+// @Failure 400 {object} map[string]string "Invalid invitation"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/invite/{id} [delete]
+func (h *AuthHandler) DeleteInvite(c echo.Context) error {
+	// 🔒 Get current user ID from context
+	userID := c.Get("userID").(string)
+	inviteID := c.Param("id")
+
+	// 🔍 Find and validate invitation
+	var invite models.TeamInvite
+	if err := h.db.Where("id = ? AND (inviter_id = ? OR email = ?)",
+		inviteID, userID, userID).First(&invite).Error; err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invitation not found"})
+	}
+
+	// ❌ Delete invitation
+	if err := h.db.Delete(&invite).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete invitation"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Invitation deleted successfully"})
 }

@@ -11,11 +11,15 @@ import (
 )
 
 type SendEmailRequest struct {
-	TemplateID         string         `json:"templateId" validate:"required"`
+	TemplateID         string         `json:"templateId"`
 	To                 string         `json:"to" validate:"required,email"`
 	Variables          datatypes.JSON `json:"data" validate:"required"`
 	SMTPConfigProvider string         `json:"provider" validate:"required,oneof=CUSTOM GMAIL OUTLOOK AMAZON"`
 	Subject            string         `json:"subject" validate:"required"`
+	Body               string         `json:"html"`
+	CC                 string         `json:"cc"`
+	BCC                string         `json:"bcc"`
+	ReplyTo            string         `json:"replyTo"`
 }
 
 // SendEmail sends an email using the provided template and variables
@@ -53,6 +57,10 @@ func SendEmail(c echo.Context) error {
 		SMTPConfigID: smtpConfig.ID,
 		Subject:      req.Subject,
 		Data:         req.Variables,
+		Body:         req.Body,
+		CC:           req.CC,
+		BCC:          req.BCC,
+		ReplyTo:      req.ReplyTo,
 	}
 
 	events.Emit("email.send", &email)
