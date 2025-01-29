@@ -3,18 +3,19 @@ package tasks
 import (
 	"fmt"
 
+	"kori/internal/utils/logger"
+
 	"github.com/hibiken/asynq"
-	"go.uber.org/zap"
 )
 
 // Scheduler handles periodic task scheduling
 type Scheduler struct {
 	scheduler *asynq.Scheduler
-	logger    *zap.Logger
+	logger    *logger.Logger
 }
 
 // NewScheduler creates a new task scheduler
-func NewScheduler(redisAddr, username, password string, db int, logger *zap.Logger) *Scheduler {
+func NewScheduler(redisAddr, username, password string, db int, logger *logger.Logger) *Scheduler {
 	scheduler := asynq.NewScheduler(
 		asynq.RedisClientOpt{
 			Addr:     redisAddr,
@@ -60,7 +61,7 @@ func (s *Scheduler) registerTasks() error {
 	if err != nil {
 		return fmt.Errorf("failed to register campaign scheduler: %w", err)
 	}
-	s.logger.Debug("registered campaign scheduler", zap.String("entry_id", entryID))
+	s.logger.Debug("registered campaign scheduler %s", entryID)
 
 	// Email retry (every 5 minutes)
 	entryID, err = s.scheduler.Register("*/5 * * * *", asynq.NewTask(
@@ -73,7 +74,7 @@ func (s *Scheduler) registerTasks() error {
 	if err != nil {
 		return fmt.Errorf("failed to register email retry scheduler: %w", err)
 	}
-	s.logger.Debug("registered email retry scheduler", zap.String("entry_id", entryID))
+	s.logger.Debug("registered email retry scheduler %s", entryID)
 
 	// Webhook retry (every 5 minutes)
 	entryID, err = s.scheduler.Register("*/5 * * * *", asynq.NewTask(
@@ -86,7 +87,7 @@ func (s *Scheduler) registerTasks() error {
 	if err != nil {
 		return fmt.Errorf("failed to register webhook retry scheduler: %w", err)
 	}
-	s.logger.Debug("registered webhook retry scheduler", zap.String("entry_id", entryID))
+	s.logger.Debug("registered webhook retry scheduler %s", entryID)
 
 	// Domain verification (daily at midnight)
 	entryID, err = s.scheduler.Register("0 0 * * *", asynq.NewTask(
@@ -99,7 +100,7 @@ func (s *Scheduler) registerTasks() error {
 	if err != nil {
 		return fmt.Errorf("failed to register domain verification scheduler: %w", err)
 	}
-	s.logger.Debug("registered domain verification scheduler", zap.String("entry_id", entryID))
+	s.logger.Debug("registered domain verification scheduler %s", entryID)
 
 	// Contact sync (every 15 minutes)
 	entryID, err = s.scheduler.Register("*/15 * * * *", asynq.NewTask(
@@ -112,7 +113,7 @@ func (s *Scheduler) registerTasks() error {
 	if err != nil {
 		return fmt.Errorf("failed to register contact sync scheduler: %w", err)
 	}
-	s.logger.Debug("registered contact sync scheduler", zap.String("entry_id", entryID))
+	s.logger.Debug("registered contact sync scheduler %s", entryID)
 
 	s.logger.Info("registered all periodic tasks")
 	return nil
@@ -125,10 +126,6 @@ func (s *Scheduler) RegisterCustomTask(spec string, taskType string, payload []b
 		return fmt.Errorf("failed to register custom task: %w", err)
 	}
 
-	s.logger.Info("registered custom task",
-		zap.String("type", taskType),
-		zap.String("spec", spec),
-		zap.String("entry_id", entryID),
-	)
+	s.logger.Info("registered custom task %s %s %s", taskType, spec, entryID)
 	return nil
 }

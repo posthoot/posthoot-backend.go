@@ -11,7 +11,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/hibiken/asynq"
-	"go.uber.org/zap"
 )
 
 // TaskHandler handles task processing with improved error handling and logging
@@ -37,13 +36,13 @@ func (h *TaskHandler) HandleEmailSend(ctx context.Context, t *asynq.Task) error 
 		return fmt.Errorf("failed to unmarshal email task: %w", asynq.SkipRetry)
 	}
 
-	h.logger.Info("📧 Processing email task ID: %s (Attempt: %d)", task.EmailID, task.AttemptNum)
-
 	// Get email from db
 	email, err := models.GetEmailByID(task.EmailID, h.db)
 	if err != nil {
 		return h.logger.Error("❌ failed to get email: %w", err)
 	}
+
+	h.logger.Info("📧 Processing email task ID: %s (Attempt: %d)", task.EmailID, task.AttemptNum)
 
 	// Send email using SMTP handler
 	if err := h.mailHandler.SendEmail(email); err != nil {
@@ -63,11 +62,7 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		return fmt.Errorf("failed to unmarshal campaign task: %w", asynq.SkipRetry)
 	}
 
-	h.logger.Info("processing campaign task",
-		zap.String("campaign_id", task.CampaignID),
-		zap.Int("batch_size", task.BatchSize),
-		zap.Int("offset", task.Offset),
-	)
+	h.logger.Info("processing campaign task %s with batch size %d and offset %d", task.CampaignID, task.BatchSize, task.Offset)
 
 	// TODO: Implement campaign processing logic
 	return nil
@@ -80,11 +75,7 @@ func (h *TaskHandler) HandleWebhookDelivery(ctx context.Context, t *asynq.Task) 
 		return fmt.Errorf("failed to unmarshal webhook task: %w", asynq.SkipRetry)
 	}
 
-	h.logger.Info("processing webhook task",
-		zap.String("webhook_id", task.WebhookID),
-		zap.String("event", task.Event),
-		zap.Int("attempt", task.AttemptNum),
-	)
+	h.logger.Info("processing webhook task %s with event %s and attempt %d", task.WebhookID, task.Event, task.AttemptNum)
 
 	// TODO: Implement webhook delivery logic
 	return nil
@@ -97,9 +88,7 @@ func (h *TaskHandler) HandleDomainVerification(ctx context.Context, t *asynq.Tas
 		return fmt.Errorf("failed to unmarshal domain verification task: %w", asynq.SkipRetry)
 	}
 
-	h.logger.Info("processing domain verification task",
-		zap.String("domain_id", task.DomainID),
-	)
+	h.logger.Info("processing domain verification task %s", task.DomainID)
 
 	// TODO: Implement domain verification logic
 	return nil
@@ -112,12 +101,7 @@ func (h *TaskHandler) HandleContactImport(ctx context.Context, t *asynq.Task) er
 		return fmt.Errorf("failed to unmarshal contact import task: %w", asynq.SkipRetry)
 	}
 
-	h.logger.Info("processing contact import task",
-		zap.String("import_id", task.ImportID),
-		zap.String("team_id", task.TeamID),
-		zap.Int("batch_size", task.BatchSize),
-		zap.Int("offset", task.Offset),
-	)
+	h.logger.Info("processing contact import task %s with team %s and batch size %d and offset %d", task.ImportID, task.TeamID, task.BatchSize, task.Offset)
 
 	// TODO: Implement contact import logic
 	return nil
@@ -130,12 +114,7 @@ func (h *TaskHandler) HandleLLMEmailWriter(ctx context.Context, t *asynq.Task) e
 		return fmt.Errorf("failed to unmarshal LLM email writer task: %w", asynq.SkipRetry)
 	}
 
-	h.logger.Info("processing LLM email writer task",
-		zap.String("email_id", task.EmailID),
-		zap.String("template_id", task.TemplateID),
-		zap.String("model_id", task.ModelID),
-		zap.Int("attempt", task.AttemptNum),
-	)
+	h.logger.Info("processing LLM email writer task %s with template %s and model %s and attempt %d", task.EmailID, task.TemplateID, task.ModelID, task.AttemptNum)
 
 	// TODO: Implement LLM email generation logic
 	return nil

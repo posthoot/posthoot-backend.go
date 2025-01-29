@@ -30,7 +30,7 @@ func (bus *EventBus) On(event string, handler EventHandler) {
 	defer bus.mu.Unlock()
 
 	bus.handlers[event] = append(bus.handlers[event], handler)
-	log.Info("Registered handler for event: " + event)
+	log.Info("Registered handler for event: %s", event)
 }
 
 // Emit triggers an event with the given data
@@ -43,12 +43,13 @@ func (bus *EventBus) Emit(event string, data interface{}) {
 		return
 	}
 
-	log.Info("Emitting event: " + event)
+	log.Info("Emitting event: %s", event)
+
 	for _, handler := range handlers {
 		go func(h EventHandler) {
 			defer func() {
 				if r := recover(); r != nil {
-					err := log.Error("Panic in event handler", fmt.Errorf("panic: %v", r))
+					err := log.Error("Panic in event handler: %v", fmt.Errorf("panic: %v", r))
 					if err != nil {
 						return
 					}
