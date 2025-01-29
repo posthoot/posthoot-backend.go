@@ -34,23 +34,18 @@ type BatchEmailResult struct {
 
 // EmailHandler handles sending emails via SMTP
 type EmailHandler struct {
-	rateLimiter chan struct{}
-	logger      *logger.Logger
+	rateLimiter    chan struct{}            // Global concurrency limiter
+	smtpRateLimits map[string]chan struct{} // Per-SMTP server rate limiters
+	smtpLimitMutex sync.RWMutex             // Mutex for safe map access
+	logger         *logger.Logger
 }
 
 // NewEmailHandler creates a new EmailHandler with rate limiting
 func NewEmailHandler(maxSendRate int) *EmailHandler {
-	// Initialize rate limiter channel based on max send rate
-	rateLimiter := make(chan struct{}, maxSendRate)
-
-	// Fill the rate limiter initially
-	for i := 0; i < maxSendRate; i++ {
-		rateLimiter <- struct{}{}
-	}
-
 	return &EmailHandler{
-		rateLimiter: rateLimiter,
-		logger:      logger.New("email_handler"),
+		rateLimiter:    make(chan struct{}, maxSendRate),
+		smtpRateLimits: make(map[string]chan struct{}),
+		logger:         logger.New("EMAIL_HANDLER"),
 	}
 }
 
@@ -60,16 +55,8 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 		return fmt.Errorf("email is nil")
 	}
 
-	// Acquire rate limit token
-	<-h.rateLimiter
-	defer func() {
-		// Release token after 1 second to maintain rate limit
-		time.Sleep(time.Second)
-		h.rateLimiter <- struct{}{}
-	}()
-
-	if email.Status != models.EmailStatusPending {
-		return fmt.Errorf("email is not pending")
+	if email.Status != models.EmailStatusPending && email.Status != models.EmailStatusFailed {
+		return fmt.Errorf("email is not pending or failed")
 	}
 
 	if email.SMTPConfig == nil {
@@ -86,12 +73,27 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 	if err != nil {
 		return fmt.Errorf("❌ failed to decode email body: %w", err)
 	}
-	toFormatted := fmt.Sprintf("To: %s\nContent-Type: text/html; charset=UTF-8\n", email.To)
-	msg := strings.NewReader(toFormatted + subject + "\n" + decodedBody)
+	replyToFormatted := fmt.Sprintf("Reply-To: %s\n", email.ReplyTo)
 
+	to := []string{email.To}
+	toFormatted := fmt.Sprintf("To: %s\nContent-Type: text/html; charset=UTF-8\n", strings.Join(to, ","))
+
+	cc := []string{}
+	if email.CC != "" {
+		cc = strings.Split(email.CC, ",")
+		to = append(to, cc...)
+	}
+
+	ccFormatted := fmt.Sprintf("Cc: %s\n", strings.Join(cc, ","))
+
+	msg := strings.NewReader(toFormatted + ccFormatted + replyToFormatted + subject + "\n" + decodedBody)
+
+	if email.BCC != "" {
+		to = append(to, strings.Split(email.BCC, ",")...)
+	}
 	// Send the email
 	addr := fmt.Sprintf("%s:%d", email.SMTPConfig.Host, email.SMTPConfig.Port)
-	err = smtp.SendMail(addr, auth, email.From, []string{email.To}, msg)
+	err = smtp.SendMail(addr, auth, email.From, to, msg)
 
 	if err != nil {
 		email.Error = err.Error()
@@ -111,6 +113,7 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 	}
 
 	h.logger.Success("✅ Email sent successfully to: %s", email.To)
+
 	return nil
 }
 

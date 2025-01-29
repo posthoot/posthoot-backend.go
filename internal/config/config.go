@@ -22,8 +22,9 @@ type CryptoConfig struct {
 }
 
 type ServerConfig struct {
-	Host string
-	Port int
+	Host      string
+	Port      int
+	PublicURL string
 }
 
 type DatabaseConfig struct {
@@ -68,8 +69,9 @@ type RedisConfig struct {
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
-			Host: getEnv("SERVER_HOST", "localhost"),
-			Port: getEnvAsInt("SERVER_PORT", 8080),
+			Host:      getEnv("SERVER_HOST", "localhost"),
+			Port:      getEnvAsInt("SERVER_PORT", 8080),
+			PublicURL: getEnv("PUBLIC_URL", "http://localhost:8080"),
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("POSTGRES_HOST", "localhost"),
