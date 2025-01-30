@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -100,7 +101,7 @@ func Load() (*Config, error) {
 			QueueSize:   getEnvAsInt("WORKER_QUEUE_SIZE", 100),
 		},
 		Redis: RedisConfig{
-			Addr:     getEnv("REDIS_ADDR", "localhost:6379"),
+			Addr:     fmt.Sprintf("%s:%d", getEnv("REDIS_HOST", "localhost"), getEnvAsInt("REDIS_PORT", 6379)),
 			Password: getEnv("REDIS_PASSWORD", ""),
 			Username: getEnv("REDIS_USERNAME", ""),
 			DB:       getEnvAsInt("REDIS_DB", 0),
