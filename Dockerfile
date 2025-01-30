@@ -29,6 +29,15 @@ WORKDIR /app
 COPY --from=builder /app/build/posthoot .
 COPY --from=builder /app/build/helper .
 COPY --from=builder /app/docker-entrypoint.sh .
+# Copy template seeder data for Airley templates
+# Source: /app/internal/models/seeder/airley/templates.json
+# Destination: /app/internal/models/seeder/airley/templates.json
+COPY --from=builder /app/internal/models/seeder/airley/templates.json /app/internal/models/seeder/airley/
+
+# Copy all initial setup seeder files for database initialization 
+# Source: /app/internal/models/seeder/initial-setup/*
+# Destination: /app/internal/models/seeder/initial-setup/
+COPY --from=builder /app/internal/models/seeder/initial-setup/* /app/internal/models/seeder/initial-setup/
 RUN chmod +x docker-entrypoint.sh
 
 # Install required packages
