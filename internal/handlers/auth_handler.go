@@ -111,6 +111,8 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to commit transaction"})
 	}
 
+	events.Emit("users.created", &user)
+
 	return c.JSON(http.StatusCreated, map[string]string{"message": "User registered successfully"})
 }
 

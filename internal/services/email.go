@@ -11,6 +11,7 @@ import (
 	"kori/internal/utils"
 	"kori/internal/utils/base64"
 	"kori/internal/utils/logger"
+	"os"
 
 	"github.com/google/uuid"
 )
@@ -51,7 +52,10 @@ func init() {
 		invite := data.(*models.TeamInvite)
 		log.Info("Sending invite email to %s", invite.Email)
 		if err := sendTeamInviteEmail(invite); err != nil {
-			log.Error("Failed to send invite email: %v", err)
+			err := log.Error("Failed to send invite email: %v", err)
+			if err != nil {
+				return
+			}
 		}
 	})
 
@@ -69,7 +73,10 @@ func init() {
 		log.Info("Enqueueing email task for %s", task.EmailID)
 
 		if err := taskClient.EnqueueEmailTask(context.Background(), task); err != nil {
-			log.Error("Failed to enqueue email task: %v", err)
+			err := log.Error("Failed to enqueue email task: %v", err)
+			if err != nil {
+				return
+			}
 		}
 	})
 
@@ -77,7 +84,10 @@ func init() {
 		user := data.(*models.User)
 		log.Info("Sending welcome email to %s", user.Email)
 		if err := sendWelcomeEmail(user); err != nil {
-			log.Error("Failed to send welcome email: %v", err)
+			err := log.Error("Failed to send welcome email: %v", err)
+			if err != nil {
+				return
+			}
 		}
 	})
 
@@ -199,8 +209,8 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		to:           invite.Email,
 		SMTPProvider: smtpConfig.Provider,
 		categoryId:   template.CategoryID,
-		variables:    map[string]string{"inviterName": fmt.Sprintf("%s %s", inviter.FirstName, inviter.LastName), "name": invite.Name, "teamName": team.Name, "inviteLink": fmt.Sprintf("/accept-invite/%s", invite.Code)},
-		subject:      "Hey there! You've been invited to join MailCrunch",
+		variables:    map[string]string{"inviter": fmt.Sprintf("%s %s", inviter.FirstName, inviter.LastName), "name": invite.Name, "role": string(invite.Role), "url": fmt.Sprintf("%s/team/accept-invite/%s", os.Getenv("OFFICE_URL"), invite.Code)},
+		subject:      "Hey {{ name }} 👋🏻! You've been invited to join a team on Posthoot",
 		listId:       mailingList.ID,
 		campaignId:   "",
 		body:         "",
@@ -216,7 +226,7 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 func sendWelcomeEmail(user *models.User) error {
 	tx := db.DB.Begin()
 	team := &models.Team{}
-	if err := db.DB.First(team, user.TeamID).Preload("Settings").Preload("Settings.BrandingSettings").Error; err != nil {
+	if err := tx.Where("name =?", os.Getenv("SUPERADMIN_TEAM_NAME")).First(team).Preload("Settings").Preload("Settings.BrandingSettings").Error; err != nil {
 		tx.Rollback()
 		return log.Error("failed to get team details", err)
 	}
@@ -242,8 +252,8 @@ func sendWelcomeEmail(user *models.User) error {
 		to:           user.Email,
 		SMTPProvider: smtpConfig.Provider,
 		categoryId:   "",
-		variables:    map[string]string{"name": user.FirstName, "team": team.Name, "logo": team.Settings[0].BrandingSettings.LogoURL},
-		subject:      "Welcome to Kori",
+		variables:    map[string]string{"name": user.FirstName},
+		subject:      "Hey {{ name }} 👋🏻! We're glad to have you onboard 🎉",
 		listId:       mailingList.ID,
 		campaignId:   "",
 		body:         "",
