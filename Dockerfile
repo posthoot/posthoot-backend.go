@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o build/posthoot cmd/main.go
 RUN CGO_ENABLED=0 GOOS=linux go build -o build/helper cmd/helper/main.go
 
 # Use a minimal alpine image for the final stage
-FROM alpine:latest
+FROM gcr.io/distroless/static-debian12
 
 # Set working directory
 WORKDIR /app
