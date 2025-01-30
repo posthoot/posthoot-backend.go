@@ -77,7 +77,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		log.Success("Successfully seeded permissions")
 	}
 
-	if err := models.CreateSuperAdminFromEnv(db); err != nil {
+	if err := models.CreateSuperAdminFromEnv(db, cfg); err != nil {
 		log.Warn("Warning: Failed to create super admin: %v", err)
 	} else {
 		log.Success("Successfully created super admin")

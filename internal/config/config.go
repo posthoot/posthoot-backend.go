@@ -16,6 +16,7 @@ type Config struct {
 	Redis    RedisConfig
 	S3       S3Config
 	Crypto   CryptoConfig
+	SMTP     SMTPConfig
 }
 
 type CryptoConfig struct {
@@ -53,6 +54,15 @@ type S3Config struct {
 	Region     string `env:"S3_REGION" required:"true"`
 	AccessKey  string `env:"S3_ACCESS_KEY" required:"true"`
 	SecretKey  string `env:"S3_SECRET_KEY" required:"true"`
+}
+
+type SMTPConfig struct {
+	Host      string `env:"SMTP_HOST" required:"true"`
+	Port      int    `env:"SMTP_PORT" required:"true"`
+	User      string `env:"SMTP_USER" required:"true"`
+	Password  string `env:"SMTP_PASSWORD" required:"true"`
+	FromEmail string `env:"SMTP_FROM_EMAIL" required:"true"`
+	Provider  string `env:"SMTP_PROVIDER" required:"true"`
 }
 
 type WorkerConfig struct {
@@ -108,6 +118,14 @@ func Load() (*Config, error) {
 		},
 		Crypto: CryptoConfig{
 			PrivateKey: getEnv("PRIVATE_KEY", ""),
+		},
+		SMTP: SMTPConfig{
+			Host:      getEnv("SMTP_HOST", ""),
+			Port:      getEnvAsInt("SMTP_PORT", 587),
+			User:      getEnv("SMTP_USER", ""),
+			Password:  getEnv("SMTP_PASSWORD", ""),
+			FromEmail: getEnv("SMTP_FROM_EMAIL", ""),
+			Provider:  getEnv("SMTP_PROVIDER", "CUSTOM"),
 		},
 	}
 

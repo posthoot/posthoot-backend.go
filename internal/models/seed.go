@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"kori/internal/config"
 	"os"
 	"strings"
 
@@ -286,7 +287,7 @@ func AssignDefaultPermissions(db *gorm.DB, user *User) error {
 	return nil
 }
 
-func CreateSuperAdminFromEnv(db *gorm.DB) error {
+func CreateSuperAdminFromEnv(db *gorm.DB, cfg *config.Config) error {
 	role := UserRoleSuperAdmin
 
 	// check if super admin already exists
@@ -344,6 +345,20 @@ func CreateSuperAdminFromEnv(db *gorm.DB) error {
 
 	if err := db.Create(&user).Error; err != nil {
 		return fmt.Errorf("failed to create superadmin user: %v", err)
+	}
+
+	smtpConfig := SMTPConfig{
+		TeamID:      team.ID,
+		Host:        cfg.SMTP.Host,
+		Port:        cfg.SMTP.Port,
+		Username:    cfg.SMTP.User,
+		Password:    cfg.SMTP.Password,
+		SupportsTLS: true,
+		FromEmail:   cfg.SMTP.FromEmail,
+	}
+
+	if err := db.Create(&smtpConfig).Error; err != nil {
+		return fmt.Errorf("failed to create smtp config: %v", err)
 	}
 
 	return nil
