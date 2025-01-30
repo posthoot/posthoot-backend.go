@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -27,29 +28,32 @@ func Connect(cfg *config.Config) error {
 	)
 
 	log.Info("Connecting to database...")
-
+	maxRetries := 5
 	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger:                                   logger.Default.LogMode(logger.Info),
-		DisableForeignKeyConstraintWhenMigrating: true,
-		PrepareStmt:                              true,
-		AllowGlobalUpdate:                        false,
-	})
-	if err != nil {
-		return log.Error("Failed to connect to database", err)
+	for i := 0; i < maxRetries; i++ {
+		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger:                                   logger.Default.LogMode(logger.Info),
+			DisableForeignKeyConstraintWhenMigrating: true,
+			PrepareStmt:                              true,
+			AllowGlobalUpdate:                        false,
+		})
+		if err == nil {
+			log.Info("DSN: %s", dsn)
+			log.Success("Connected to database")
+
+			// Run migrations
+			if err := runMigrations(); err != nil {
+				return log.Error("Failed to run migrations", err)
+			}
+
+			log.Success("Migrations completed")
+
+			return nil
+		}
+		log.Warn("Failed to connect to database (attempt %d/%d): %v", i+1, maxRetries, err)
+		time.Sleep(time.Second * 5)
 	}
-
-	log.Info(fmt.Sprintf("DSN: %s", dsn))
-	log.Success("Connected to database")
-
-	// Run migrations
-	if err := runMigrations(); err != nil {
-		return log.Error("Failed to run migrations", err)
-	}
-
-	log.Success("Migrations completed")
-
-	return nil
+	return log.Error("failed to connect to database after %d attempts", fmt.Errorf("failed to connect to database after %d attempts", maxRetries))
 }
 
 func runMigrations() error {
