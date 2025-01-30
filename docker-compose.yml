@@ -1,20 +1,20 @@
 version: '3.8'
 
 services:
-  redis:
+  posthoot_redis:
     image: redis:7-alpine
     volumes:
-      - redis-data:/data
+      - posthoot_redis_data:/data
     command: redis-server --appendonly yes
     networks:
-      - app-network
+      - posthoot_network
     healthcheck:
       test: ["CMD-SHELL", "redis-server --daemonize yes && redis-cli ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  postgres:
+  posthoot_postgres:
     image: postgres:16-alpine
     env_file:
       - .env
@@ -24,7 +24,7 @@ services:
       - PGPASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - posthoot_postgres_data:/var/lib/postgresql/data
     command: ["postgres", "-c", "log_statement=all"]
     networks:
       - app-network
@@ -34,22 +34,22 @@ services:
       timeout: 5s
       retries: 5
 
-  posthoot-server:
+  posthoot_server:
     build: .
     env_file:
       - .env
     depends_on:
-      redis:
+      posthoot_redis:
         condition: service_healthy
-      postgres:
+      posthoot_postgres:
         condition: service_healthy
     networks:
-      - app-network
+      - posthoot_network
 
 volumes:
-  redis-data:
-  postgres-data:
+  posthoot_redis_data:
+  posthoot_postgres_data:
 
 networks:
-  app-network:
+  posthoot_network:
     driver: bridge

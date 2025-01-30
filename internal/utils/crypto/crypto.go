@@ -9,11 +9,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"golang.org/x/crypto/ssh"
 	base64_ "kori/internal/utils/base64"
 	"kori/internal/utils/logger"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/ssh"
 )
 
 var log = logger.New("crypto")
@@ -23,13 +24,17 @@ var PublicKey *rsa.PublicKey
 
 func InitializeKeys(privateKeyEnv string) error {
 
-	log.Info("Initializing keys", "privateKeyEnv", privateKeyEnv)
+	log.Info("Initializing keys")
 
 	if privateKeyEnv == "" {
 		return errors.New("private key not found")
 	}
 
 	privateKeyEnv, err := base64_.DecodeFromBase64(privateKeyEnv)
+
+	if err != nil {
+		return fmt.Errorf("failed to decode private key: %w", err)
+	}
 
 	key, err := ssh.ParseRawPrivateKey([]byte(privateKeyEnv))
 
