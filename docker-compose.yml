@@ -36,6 +36,8 @@ services:
 
   posthoot_server:
     build: .
+    ports:
+      - 9001:9001
     env_file:
       - .env
     depends_on:
