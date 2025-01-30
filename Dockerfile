@@ -40,7 +40,7 @@ COPY --chmod=755 --from=builder /app/internal/models/seeder/airley/templates.jso
 COPY --chmod=755 --from=builder /app/internal/models/seeder/initial-setup/* /app/internal/models/seeder/initial-setup/
 
 # Expose ports
-EXPOSE 8080
+EXPOSE 9001
 
 # Set the entry point
 CMD ["/app/posthoot"]
