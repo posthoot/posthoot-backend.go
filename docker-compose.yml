@@ -7,9 +7,9 @@ services:
       - posthoot_redis_data:/data
     command: redis-server --appendonly yes
     networks:
-      - dokploy-network
+      - posthoot_network
     healthcheck:
-      test: ["CMD-SHELL", "redis-server --daemonize yes && redis-cli ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,9 +25,12 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - posthoot_postgres_data:/var/lib/postgresql/data
-    command: ["postgres", "-c", "log_statement=all"]
+    command:
+      - postgres
+      - '-c'
+      - log_statement=all
     networks:
-      - dokploy-network
+      - posthoot_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -36,8 +39,6 @@ services:
 
   posthoot_server:
     build: .
-    ports:
-      - 9001:9001
     env_file:
       - .env
     depends_on:
@@ -46,12 +47,23 @@ services:
       posthoot_postgres:
         condition: service_healthy
     networks:
+      - posthoot_network
       - dokploy-network
+    environment:
+      - SERVER_HOST=0.0.0.0  # Ensure the service is reachable within Docker
+      - SERVER_PORT=9001
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   posthoot_redis_data:
   posthoot_postgres_data:
 
 networks:
+  posthoot_network:
+    driver: bridge
   dokploy-network:
     external: true
