@@ -23,9 +23,17 @@ import (
 )
 
 func main() {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Failed to load environment variables: %v", err)
+
+	logger := logger.New("kori")
+
+	// check if .env file exists
+	if _, err := os.Stat(".env"); os.IsNotExist(err) {
+		logger.Info("No .env file found, skipping environment variable loading")
+	} else {
+		logger.Info("Loading environment variables from .env file")
+		if err := godotenv.Load(); err != nil {
+			log.Fatalf("Failed to load environment variables: %v", err)
+		}
 	}
 
 	// Load configuration
@@ -53,8 +61,6 @@ func main() {
 
 	// Initialize task handlers
 	taskHandler := tasks.NewTaskHandler(db.GetDB())
-
-	logger := logger.New("kori")
 
 	// Initialize task server
 	taskServer := tasks.NewServer(
