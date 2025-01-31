@@ -51,6 +51,21 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	contactWriteGroup.PUT("/:id", contactController.Update)
 	contactWriteGroup.DELETE("/:id", contactController.Delete)
 
+	// Email Categories with team-specific permissions
+	categoryService := services.NewBaseService(db, models.EmailCategory{})
+	categoryController := controllers.NewBaseController(categoryService)
+	categoryGroup := g.Group("/categories")
+	categoryGroup.Use(middleware.RequirePermissions(db, "categories:read"))
+	categoryGroup.GET("", categoryController.List)
+	categoryGroup.GET("/:id", categoryController.Get)
+
+	// Protected category routes
+	categoryWriteGroup := categoryGroup.Group("")
+	categoryWriteGroup.Use(middleware.RequirePermissions(db, "categories:write"))
+	categoryWriteGroup.POST("", categoryController.Create)
+	categoryWriteGroup.PUT("/:id", categoryController.Update)
+	categoryWriteGroup.DELETE("/:id", categoryController.Delete)
+
 	// Mailing Lists with team-specific permissions
 	mailingListService := services.NewBaseService(db, models.MailingList{})
 	mailingListController := controllers.NewBaseController(mailingListService)
