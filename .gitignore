@@ -24,3 +24,5 @@ build/
 .idea/
 .cursorrules
 tmp/
+pkg/
+*/.DS_Store
