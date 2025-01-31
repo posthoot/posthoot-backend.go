@@ -81,8 +81,6 @@ func (c *TaskClient) EnqueueEmailTask(ctx context.Context, task EmailTask) error
 
 	redisClient := c.redisClient
 
-	defer redisClient.Close()
-
 	limiterKey := GetEmailQueueName(task.SMTPConfigID)
 
 	// Use sliding window rate limiter with Redis
