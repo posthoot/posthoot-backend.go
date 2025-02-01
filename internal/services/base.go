@@ -132,7 +132,7 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 }
 
 func (s *BaseServiceImpl[T]) Update(ctx context.Context, id string, entity *T, includes ...string) error {
-	if err := s.db.WithContext(ctx).Model(entity).Where("id = ?", id).Updates(entity).Error; err != nil {
+	if err := s.db.WithContext(ctx).Model(entity).Where("id = ?", id).Omit("id").Omit("teamId").Updates(entity).Error; err != nil {
 		return err
 	}
 

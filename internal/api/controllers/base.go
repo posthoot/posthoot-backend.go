@@ -33,6 +33,15 @@ func parseIncludes(ctx echo.Context) []string {
 	return strings.Split(include, ",")
 }
 
+// parseExcludes parses the exclude query parameter and returns a slice of fields to exclude
+func parseExcludes(ctx echo.Context) []string {
+	exclude := ctx.QueryParam("exclude")
+	if exclude == "" {
+		return nil
+	}
+	return strings.Split(exclude, ",")
+}
+
 // Create handles creation of new entities
 func (c *BaseController[T]) Create(ctx echo.Context) error {
 	var entity T
@@ -94,7 +103,7 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(ctx.QueryParam("page"))
 	limit, _ := strconv.Atoi(ctx.QueryParam("limit"))
-	exclude := ctx.QueryParam("exclude")
+	exclude := parseExcludes(ctx)
 	if page < 1 {
 		page = 1
 	}
@@ -105,7 +114,7 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 	// Parse filters from query parameters
 	filters := make(map[string]interface{})
 	for key, values := range ctx.QueryParams() {
-		if key != "page" && key != "limit" && key != "include" && len(values) > 0 {
+		if key != "page" && key != "limit" && key != "include" && key != "exclude" && len(values) > 0 {
 			filters[key] = values[0]
 		}
 	}
@@ -115,7 +124,8 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 	includes := parseIncludes(ctx)
 
 	excludeFields := make(map[string]bool)
-	for _, field := range strings.Split(exclude, ",") {
+
+	for _, field := range exclude {
 		excludeFields[field] = true
 	}
 
