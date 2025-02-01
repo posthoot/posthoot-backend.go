@@ -150,19 +150,10 @@ func (c *BaseController[T]) Update(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id parameter")
 	}
 
-	var entity T
-	if err := ctx.Bind(&entity); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
-	}
-
-	if err := ctx.Validate(&entity); err != nil {
-		return err
-	}
-
 	// 🔒 Check if request body contains forbidden fields
 	requestMap := make(map[string]interface{})
 	if err := ctx.Bind(&requestMap); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	// 🚫 Check for forbidden fields in request body
@@ -172,6 +163,15 @@ func (c *BaseController[T]) Update(ctx echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest,
 				fmt.Sprintf("Field '%s' cannot be modified", field))
 		}
+	}
+
+	var entity T
+	if err := ctx.Bind(&entity); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := ctx.Validate(&entity); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	includes := parseIncludes(ctx)
