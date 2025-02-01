@@ -20,6 +20,7 @@ type SendEmailRequest struct {
 	CC                 string         `json:"cc"`
 	BCC                string         `json:"bcc"`
 	ReplyTo            string         `json:"replyTo"`
+	Test               bool           `json:"test" default:"false"`
 }
 
 // SendEmail sends an email using the provided template and variables
@@ -61,6 +62,7 @@ func SendEmail(c echo.Context) error {
 		CC:           req.CC,
 		BCC:          req.BCC,
 		ReplyTo:      req.ReplyTo,
+		Test:         req.Test,
 	}
 
 	events.Emit("email.send", &email)

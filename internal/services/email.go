@@ -36,6 +36,7 @@ type sendEmailHandlerBody struct {
 	cc           string
 	bcc          string
 	replyTo      string
+	testMail     bool
 }
 
 func init() {
@@ -93,8 +94,6 @@ func init() {
 
 	events.On("email.send", func(data interface{}) {
 		email := data.(*models.Email)
-		log.Info("Sending email to %s", email.To)
-		log.Info("Email data: %s", email.Data)
 		var emailData map[string]string
 		var err error
 		if email.Data != nil {
@@ -119,6 +118,7 @@ func init() {
 			cc:           email.CC,
 			bcc:          email.BCC,
 			replyTo:      email.ReplyTo,
+			testMail:     email.Test,
 		}
 
 		if err := sendEmail(handler); err != nil {
@@ -297,7 +297,7 @@ func sendEmail(
 	}
 
 	// Get or use default mailing list
-	if handler.listId == "" {
+	if handler.listId == "" && !handler.testMail {
 		mailingList := &models.MailingList{}
 		if err := tx.Where("team_id = ? AND name = ?", handler.teamId, "All Users").First(mailingList).Error; err != nil {
 			tx.Rollback()
@@ -306,27 +306,30 @@ func sendEmail(
 		handler.listId = mailingList.ID
 	}
 
-	// Get or create contact
 	contact := &models.Contact{}
-	if err := tx.Where("email = ? AND team_id = ? AND list_id = ?", handler.to, handler.teamId, handler.listId).First(contact).Error; err != nil {
-		contactImport := &models.ContactImport{}
-		contactImport.TeamID = handler.teamId
-		contactImport.ListID = handler.listId
-		contactImport.Status = models.ContactImportStatusCompleted
-		if err := tx.Create(contactImport).Error; err != nil {
-			tx.Rollback()
-			return log.Error("failed to create contact import ❌", err)
-		}
-		contact = &models.Contact{
-			Email:     handler.to,
-			TeamID:    handler.teamId,
-			ListID:    handler.listId,
-			ImportID:  contactImport.ID,
-			FirstName: handler.variables["name"],
-		}
-		if err := tx.Create(contact).Error; err != nil {
-			tx.Rollback()
-			return log.Error("failed to create contact ❌", err)
+
+	if !handler.testMail {
+		// Get or create contact
+		if err := tx.Where("email = ? AND team_id = ? AND list_id = ?", handler.to, handler.teamId, handler.listId).First(contact).Error; err != nil {
+			contactImport := &models.ContactImport{}
+			contactImport.TeamID = handler.teamId
+			contactImport.ListID = handler.listId
+			contactImport.Status = models.ContactImportStatusCompleted
+			if err := tx.Create(contactImport).Error; err != nil {
+				tx.Rollback()
+				return log.Error("failed to create contact import ❌", err)
+			}
+			contact = &models.Contact{
+				Email:     handler.to,
+				TeamID:    handler.teamId,
+				ListID:    handler.listId,
+				ImportID:  contactImport.ID,
+				FirstName: handler.variables["name"],
+			}
+			if err := tx.Create(contact).Error; err != nil {
+				tx.Rollback()
+				return log.Error("failed to create contact ❌", err)
+			}
 		}
 	}
 

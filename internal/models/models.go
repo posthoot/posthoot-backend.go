@@ -277,7 +277,7 @@ type Email struct {
 	Template     *Template      `json:"template,omitempty"`
 	TeamID       string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team         *Team          `json:"team,omitempty"`
-	ContactID    string         `gorm:"type:uuid;not null" json:"contactId" validate:"required,uuid"`
+	ContactID    string         `gorm:"type:uuid;default:NULL" json:"contactId" validate:"omitempty,uuid"`
 	Contact      *Contact       `json:"contact,omitempty"`
 	SMTPConfigID string         `gorm:"type:uuid;not null" json:"smtpConfigId" validate:"required,uuid"`
 	SMTPConfig   *SMTPConfig    `json:"smtpConfig,omitempty"`
@@ -289,6 +289,7 @@ type Email struct {
 	CC           string         `json:"cc" validate:"omitempty,email"`
 	BCC          string         `json:"bcc" validate:"omitempty,email"`
 	ReplyTo      string         `json:"replyTo" validate:"omitempty,email"`
+	Test         bool           `gorm:"not null;default:false" json:"test"`
 }
 
 func (e *Email) BeforeUpdate(tx *gorm.DB) error {

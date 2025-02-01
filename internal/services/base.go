@@ -14,7 +14,7 @@ import (
 type BaseService[T any] interface {
 	Create(ctx context.Context, entity *T, includes ...string) error
 	Get(ctx context.Context, id string, includes ...string) (*T, error)
-	List(ctx context.Context, page, limit int, filters map[string]interface{}, includes ...string) ([]T, int64, error)
+	List(ctx context.Context, page, limit int, filters map[string]interface{}, excludeFields map[string]bool, includes ...string) ([]T, int64, error)
 	Update(ctx context.Context, id string, entity *T, includes ...string) error
 	Delete(ctx context.Context, id string) error
 }
@@ -42,6 +42,26 @@ func NewBaseService[T any](db *gorm.DB, modelType T) BaseService[T] {
 func (s *BaseServiceImpl[T]) applyIncludes(query *gorm.DB, includes ...string) *gorm.DB {
 	for _, include := range includes {
 		query = query.Preload(include)
+		// Handle nested includes with field selection
+		//parts := strings.Split(include, ".")
+		//if len(parts) > 1 {
+		//	log.Info(
+		//		"parts[0]: %s, parts[1:]: %s", parts[0], parts[1:])
+		//	// For nested preloads like "HtmlFile.name", use closure to specify fields
+		//	query = query.Preload(parts[0], func(db *gorm.DB) *gorm.DB {
+		//		return db.Select(parts[1:])
+		//	})
+		//} else {
+		//	// Regular preload for single relationships
+		//	query = query.Preload(include)
+		//}
+	}
+	return query
+}
+
+func (s *BaseServiceImpl[T]) applyExcludes(query *gorm.DB, excludes map[string]bool) *gorm.DB {
+	for field := range excludes {
+		query = query.Omit(field)
 	}
 	return query
 }
@@ -75,7 +95,7 @@ func (s *BaseServiceImpl[T]) Get(ctx context.Context, id string, includes ...str
 	return &entity, nil
 }
 
-func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters map[string]interface{}, includes ...string) ([]T, int64, error) {
+func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters map[string]interface{}, excludes map[string]bool, includes ...string) ([]T, int64, error) {
 	var entities []T
 	var total int64
 
@@ -85,6 +105,9 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 	for key, value := range filters {
 		query = query.Where(key+" = ?", value)
 	}
+
+	// Apply excludes
+	query = s.applyExcludes(query, excludes)
 
 	// Get total count
 	if err := query.Count(&total).Error; err != nil {

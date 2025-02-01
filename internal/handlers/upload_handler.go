@@ -31,15 +31,25 @@ func NewUploadHandler(acl types.ObjectCannedACL) *UploadHandler {
 
 // UploadFile handles file uploads to S3
 func (h *UploadHandler) UploadFile(c echo.Context) error {
+
+	contentType := c.Request().Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "multipart/form-data") {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Content-Type must be multipart/form-data",
+		})
+	}
+
 	storage := GetStorageHandler()
 	if storage == nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Storage handler not configured",
 		})
 	}
+
 	// Get file from request
 	file, err := c.FormFile("file")
 	if err != nil {
+		log.Error("Failed to get file from request", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "No file provided",
 		})

@@ -1,18 +1,16 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
 
 	"kori/internal/services"
-	"kori/internal/utils/logger"
 
 	"github.com/labstack/echo/v4"
 )
-
-var log = logger.New("base_controller")
 
 // BaseController provides generic CRUD operations for any model
 type BaseController[T any] struct {
@@ -60,10 +58,6 @@ func (c *BaseController[T]) Get(ctx echo.Context) error {
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id parameter")
 	}
-
-	filters := make(map[string]interface{})
-	filters["id"] = id
-	filters = c.applyFilters(ctx, filters)
 	includes := parseIncludes(ctx)
 	entity, err := c.service.Get(ctx.Request().Context(), id, includes...)
 	if err != nil {
@@ -100,6 +94,7 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(ctx.QueryParam("page"))
 	limit, _ := strconv.Atoi(ctx.QueryParam("limit"))
+	exclude := ctx.QueryParam("exclude")
 	if page < 1 {
 		page = 1
 	}
@@ -118,7 +113,14 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 	filters = c.applyFilters(ctx, filters)
 
 	includes := parseIncludes(ctx)
-	entities, total, err := c.service.List(ctx.Request().Context(), page, limit, filters, includes...)
+
+	excludeFields := make(map[string]bool)
+	for _, field := range strings.Split(exclude, ",") {
+		excludeFields[field] = true
+	}
+
+	entities, total, err := c.service.List(ctx.Request().Context(), page, limit, filters, excludeFields, includes...)
+
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -147,9 +149,19 @@ func (c *BaseController[T]) Update(ctx echo.Context) error {
 		return err
 	}
 
-	entityType := reflect.TypeOf(entity)
-	if _, found := entityType.FieldByName("ID"); found {
-		return echo.NewHTTPError(http.StatusBadRequest, "Changing the ID is not allowed")
+	// 🔒 Check if request body contains forbidden fields
+	requestMap := make(map[string]interface{})
+	if err := ctx.Bind(&requestMap); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	// 🚫 Check for forbidden fields in request body
+	forbiddenFields := []string{"id", "ID", "team_id", "teamId", "TeamID"}
+	for _, field := range forbiddenFields {
+		if _, exists := requestMap[field]; exists {
+			return echo.NewHTTPError(http.StatusBadRequest,
+				fmt.Sprintf("Field '%s' cannot be modified", field))
+		}
 	}
 
 	includes := parseIncludes(ctx)
