@@ -14,7 +14,16 @@ import (
 // 5. they can also pass the provider name, and we get that provider's config
 
 func GetSMTPConfig(teamID string, smtpConfigID string, providerName string, db *gorm.DB) (*SMTPConfig, error) {
-	log.Info("Getting default smtp config for team: %s, %s, %s", teamID, smtpConfigID, providerName)
+
+	if smtpConfigID == "" && providerName == "" {
+
+		// get the default smtp config for the team
+		smtpConfig := &SMTPConfig{}
+		if err := db.Where("team_id = ? AND is_default = true", teamID).First(smtpConfig).Error; err != nil {
+			return nil, err
+		}
+		return smtpConfig, nil
+	}
 
 	if smtpConfigID != "" {
 		smtpConfig := &SMTPConfig{}

@@ -36,7 +36,6 @@ type BatchEmailResult struct {
 type EmailHandler struct {
 	rateLimiter    chan struct{}            // Global concurrency limiter
 	smtpRateLimits map[string]chan struct{} // Per-SMTP server rate limiters
-	smtpLimitMutex sync.RWMutex             // Mutex for safe map access
 	logger         *logger.Logger
 }
 

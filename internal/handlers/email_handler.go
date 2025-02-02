@@ -14,7 +14,7 @@ type SendEmailRequest struct {
 	TemplateID         string         `json:"templateId"`
 	To                 string         `json:"to" validate:"required,email"`
 	Variables          datatypes.JSON `json:"data" validate:"required"`
-	SMTPConfigProvider string         `json:"provider" validate:"required,oneof=CUSTOM GMAIL OUTLOOK AMAZON"`
+	SMTPConfigProvider string         `json:"provider" default:"" validate:"omitempty,oneof=CUSTOM GMAIL OUTLOOK AMAZON"`
 	Subject            string         `json:"subject" validate:"required"`
 	Body               string         `json:"html"`
 	CC                 string         `json:"cc"`

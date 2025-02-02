@@ -79,10 +79,10 @@ func ReplaceLinksWithRedirect(html string, mailId string, cfg *config.Config) st
 		return html
 	}
 
-	html = hrefRe.ReplaceAllString(html, fmt.Sprintf(`<a href="https://%s/track/click/$1?token=%s"`, cfg.Server.PublicURL, tokenString))
+	html = hrefRe.ReplaceAllString(html, fmt.Sprintf(`<a href="%s/track/click/$1?token=%s"`, cfg.Server.PublicURL, tokenString))
 
 	// Add tracking pixel at bottom of email to track opens
-	html = html + fmt.Sprintf(`<img src="https://%s/track/open?token=%s" style="display:none" width="1" height="1">`, cfg.Server.PublicURL, tokenString)
+	html = html + fmt.Sprintf(`<img src="%s/track/open?token=%s" style="display:none" width="1" height="1">`, cfg.Server.PublicURL, tokenString)
 
 	return html
 }

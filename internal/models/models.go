@@ -303,7 +303,6 @@ func (e *Email) AfterUpdate(tx *gorm.DB) error {
 }
 
 func (e *Email) AfterCreate(tx *gorm.DB) error {
-	log.Info("Email created")
 	smtp, err := GetSMTPConfig(e.TeamID, e.SMTPConfigID, "", tx)
 	if err != nil {
 		return err
