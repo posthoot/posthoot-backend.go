@@ -321,9 +321,9 @@ type EmailTracking struct {
 	Base
 	EmailID    string             `gorm:"type:uuid;not null" json:"emailId" validate:"required,uuid"`
 	Email      *Email             `json:"email,omitempty"`
-	CampaignID string             `gorm:"type:uuid;not null" json:"campaignId" validate:"required,uuid"`
+	CampaignID string             `gorm:"type:uuid;default:NULL" json:"campaignId" validate:"omitempty,uuid"`
 	Campaign   *Campaign          `json:"campaign,omitempty"`
-	ContactID  string             `gorm:"type:uuid;not null" json:"contactId" validate:"required,uuid"`
+	ContactID  string             `gorm:"type:uuid;default:NULL" json:"contactId" validate:"omitempty,uuid"`
 	Contact    *Contact           `json:"contact,omitempty"`
 	Event      EmailTrackingEvent `gorm:"not null" json:"event" validate:"required,oneof=click open reply bounce complaint"`
 	Timestamp  time.Time          `json:"timestamp" validate:"required"`
