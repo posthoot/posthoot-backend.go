@@ -89,6 +89,9 @@ func (s *BaseServiceImpl[T]) Get(ctx context.Context, id string, includes ...str
 	query := s.db.WithContext(ctx)
 	query = s.applyIncludes(query, includes...)
 
+	// filter deleted entities
+	query = query.Where("is_deleted = ?", false)
+
 	if err := query.First(&entity, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
@@ -135,7 +138,7 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 }
 
 func (s *BaseServiceImpl[T]) Update(ctx context.Context, id string, entity *T, includes ...string) error {
-	if err := s.db.WithContext(ctx).Model(entity).Where("id = ?", id).Omit("id").Omit("teamId").Updates(entity).Error; err != nil {
+	if err := s.db.WithContext(ctx).Model(entity).Where("id = ? AND is_deleted = ?", id, false).Omit("id").Omit("teamId").Updates(entity).Error; err != nil {
 		return err
 	}
 
@@ -152,7 +155,7 @@ func (s *BaseServiceImpl[T]) Update(ctx context.Context, id string, entity *T, i
 }
 
 func (s *BaseServiceImpl[T]) Delete(ctx context.Context, id string) error {
-	if err := s.db.WithContext(ctx).Model(s.modelType).Where("id = ?", id).Update("deleted_at", time.Now()).Update("is_deleted", true).Error; err != nil {
+	if err := s.db.WithContext(ctx).Model(s.modelType).Where("id = ? AND is_deleted = ?", id, false).Update("deleted_at", time.Now()).Update("is_deleted", true).Error; err != nil {
 		return err
 	}
 
