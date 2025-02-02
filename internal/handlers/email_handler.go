@@ -14,13 +14,13 @@ type SendEmailRequest struct {
 	TemplateID         string         `json:"templateId"`
 	To                 string         `json:"to" validate:"required,email"`
 	Variables          datatypes.JSON `json:"data" validate:"required"`
-	SMTPConfigProvider string         `json:"provider" default:"" validate:"omitempty,oneof=CUSTOM GMAIL OUTLOOK AMAZON"`
-	Subject            string         `json:"subject" validate:"required"`
+	SMTPConfigProvider string         `json:"provider" validate:"omitempty,oneof=CUSTOM GMAIL OUTLOOK AMAZON"`
+	Subject            string         `json:"subject"`
 	Body               string         `json:"html"`
 	CC                 string         `json:"cc"`
 	BCC                string         `json:"bcc"`
 	ReplyTo            string         `json:"replyTo"`
-	Test               bool           `json:"test" default:"false"`
+	Test               bool           `json:"test"`
 }
 
 // SendEmail sends an email using the provided template and variables
