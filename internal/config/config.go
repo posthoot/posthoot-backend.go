@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 )
 
+// Config holds all configuration for the application
 type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
@@ -75,6 +77,21 @@ type RedisConfig struct {
 	Password string
 	Username string
 	DB       int
+}
+
+var (
+	config *Config
+	once   sync.Once
+)
+
+// GetConfig returns the singleton config instance
+func GetConfig() *Config {
+	once.Do(func() {
+		config = &Config{}
+		config.JWT.Secret = os.Getenv("JWT_SECRET")
+		config.Server.PublicURL = os.Getenv("PUBLIC_URL")
+	})
+	return config
 }
 
 func Load() (*Config, error) {

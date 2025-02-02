@@ -327,43 +327,20 @@ type EmailTracking struct {
 	Contact    *Contact           `json:"contact,omitempty"`
 	Event      EmailTrackingEvent `gorm:"not null" json:"event" validate:"required,oneof=click open reply bounce complaint"`
 	Timestamp  time.Time          `json:"timestamp" validate:"required"`
-}
-
-type EmailClick struct {
-	Base
-	EmailID   string    `gorm:"type:uuid;not null" json:"emailId" validate:"required,uuid"`
-	Email     *Email    `json:"email,omitempty"`
-	URL       string    `gorm:"not null" json:"url" validate:"required,url"`
-	Timestamp time.Time `json:"timestamp" validate:"required"`
-}
-
-type EmailOpen struct {
-	Base
-	EmailID   string    `gorm:"type:uuid;not null" json:"emailId" validate:"required,uuid"`
-	Email     *Email    `json:"email,omitempty"`
-	Timestamp time.Time `json:"timestamp" validate:"required"`
-}
-
-type EmailReply struct {
-	Base
-	EmailID   string    `gorm:"type:uuid;not null" json:"emailId" validate:"required,uuid"`
-	Email     *Email    `json:"email,omitempty"`
-	Content   string    `gorm:"not null" json:"content" validate:"required"`
-	Timestamp time.Time `json:"timestamp" validate:"required"`
-}
-
-type EmailBounce struct {
-	Base
-	EmailID   string    `gorm:"type:uuid;not null" json:"emailId"`
-	Email     *Email    `json:"email,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-type EmailComplaint struct {
-	Base
-	EmailID   string    `gorm:"type:uuid;not null" json:"emailId"`
-	Email     *Email    `json:"email,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	// 🌍 Geographic Data
+	IPAddress string `json:"ipAddress" validate:"omitempty,ip"`
+	Country   string `json:"country" validate:"omitempty"`
+	City      string `json:"city" validate:"omitempty"`
+	Region    string `json:"region" validate:"omitempty"`
+	// 📱 Device Information
+	UserAgent  string `json:"userAgent" validate:"omitempty"`
+	DeviceType string `json:"deviceType" validate:"omitempty,oneof=desktop mobile tablet other"`
+	Browser    string `json:"browser" validate:"omitempty"`
+	OS         string `json:"os" validate:"omitempty"`
+	// 🔗 Click Specific Data (for click events)
+	URL string `json:"url" validate:"omitempty,url"`
+	// 📊 Additional Metadata
+	Metadata datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"metadata" validate:"omitempty,json"`
 }
 
 type APIKey struct {

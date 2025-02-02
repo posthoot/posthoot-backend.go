@@ -13,6 +13,7 @@ import (
 
 	"kori/internal/api/validator"
 	"kori/internal/config"
+	"kori/internal/handlers"
 	"kori/internal/models"
 	"kori/internal/routes"
 
@@ -122,11 +123,14 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		}
 	}
 
+	trackingHandler := handlers.NewTrackingHandler(s.db)
+
 	// Register routes
 	s.registerRoutes()
 	routes.SetupAuthRoutes(s.echo, s.db, s.config)
 	routes.SetupSMTPRoutes(s.echo, s.config, s.db)
 	routes.SetupEMAILRoutes(s.echo, s.config, s.db)
+	routes.RegisterTrackingRoutes(s.echo, trackingHandler, s.config, s.db)
 	return s
 }
 

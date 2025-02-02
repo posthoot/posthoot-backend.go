@@ -97,9 +97,6 @@ func runMigrations() error {
 		// Email-related models
 		&models.Email{},
 		&models.EmailTracking{},
-		&models.EmailReply{},
-		&models.EmailBounce{},
-		&models.EmailComplaint{},
 		&models.Delivery{},
 
 		// Permission models
