@@ -124,7 +124,7 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 	}
 
 	// filter deleted entities
-	query = query.Where("IsDeleted = ?", false)
+	query = query.Where("is_deleted = ?", false)
 
 	// Execute query
 	if err := query.Find(&entities).Error; err != nil {
