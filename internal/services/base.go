@@ -118,13 +118,13 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 	// Apply excludes
 	query = s.applyExcludes(query, excludes)
 
+	// filter deleted entities
+	query = query.Where("is_deleted = ?", false)
+
 	// Get total count
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-
-	// filter deleted entities
-	query = query.Where("is_deleted = ?", false)
 
 	// Execute query
 	if err := query.Find(&entities).Error; err != nil {
