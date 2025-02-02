@@ -16,6 +16,11 @@ services:
 
   posthoot_postgres:
     image: postgres:16-alpine
+    ports:
+      # 🗄️ Port 5432 maps the container's PostgreSQL port to host port 5432
+      # This allows connecting to the database from the host machine using localhost:5432
+      # The format is HOST_PORT:CONTAINER_PORT
+      - 5433:5432
     env_file:
       - .env
     environment:
