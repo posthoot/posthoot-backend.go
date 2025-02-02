@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -148,21 +147,6 @@ func (c *BaseController[T]) Update(ctx echo.Context) error {
 	id := ctx.Param("id")
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id parameter")
-	}
-
-	// 🔒 Check if request body contains forbidden fields
-	requestMap := make(map[string]interface{})
-	if err := ctx.Bind(&requestMap); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	// 🚫 Check for forbidden fields in request body
-	forbiddenFields := []string{"id", "ID", "team_id", "teamId", "TeamID"}
-	for _, field := range forbiddenFields {
-		if _, exists := requestMap[field]; exists {
-			return echo.NewHTTPError(http.StatusBadRequest,
-				fmt.Sprintf("Field '%s' cannot be modified", field))
-		}
 	}
 
 	var entity T

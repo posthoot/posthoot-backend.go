@@ -106,14 +106,6 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 		query = query.Where(key+" = ?", value)
 	}
 
-	// Apply excludes
-	query = s.applyExcludes(query, excludes)
-
-	// Get total count
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
 	// Apply includes
 	query = s.applyIncludes(query, includes...)
 
@@ -121,6 +113,14 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 	if page > 0 && limit > 0 {
 		offset := (page - 1) * limit
 		query = query.Offset(offset).Limit(limit)
+	}
+
+	// Apply excludes
+	query = s.applyExcludes(query, excludes)
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
 	}
 
 	// Execute query
