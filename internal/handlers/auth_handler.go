@@ -489,11 +489,6 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get user"})
 	}
 
-	// check if user is already in a team
-	if user.TeamID != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "User is already in a team"})
-	}
-
 	// Generate invite code
 	code, err := utils.GenerateRandomString(32)
 	if err != nil {
