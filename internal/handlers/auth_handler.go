@@ -78,26 +78,28 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to start transaction"})
 	}
 
+	// create a team
+	team := models.Team{
+		Name: req.FirstName + "'s Team", // Example team name based on the user's first name
+	}
+
+	if err = tx.Create(&team).Error; err != nil {
+		tx.Rollback()
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create team"})
+	}
+
 	user := models.User{
 		Email:     req.Email,
 		Password:  string(hashedPassword),
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Role:      models.UserRoleAdmin, // Default role for new users
+		TeamID:    team.ID,
 	}
 
 	if err := tx.Create(&user).Error; err != nil {
 		tx.Rollback()
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Email already exists"})
-	}
-
-	// create a team
-	team := models.Team{
-		Name: req.FirstName + "'s Team", // Example team name based on the user's first name
-	}
-	if err = tx.Create(&team).Error; err != nil {
-		tx.Rollback()
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create team"})
 	}
 
 	// Assign default permissions based on role
