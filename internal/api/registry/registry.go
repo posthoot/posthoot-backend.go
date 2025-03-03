@@ -85,13 +85,13 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	smtpConfigService := services.NewBaseService(db, models.SMTPConfig{})
 	smtpConfigController := controllers.NewBaseController(smtpConfigService)
 	smtpGroup := g.Group("/smtp-configs")
-	smtpGroup.Use(middleware.RequirePermissions(db, "smtp:read"))
+	smtpGroup.Use(middleware.RequirePermissions(db, "smtp_configs:read"))
 	smtpGroup.GET("", smtpConfigController.List)
 	smtpGroup.GET("/:id", smtpConfigController.Get)
 
 	// Protected SMTP config routes
 	smtpWriteGroup := smtpGroup.Group("")
-	smtpWriteGroup.Use(middleware.RequirePermissions(db, "smtp:write"))
+	smtpWriteGroup.Use(middleware.RequirePermissions(db, "smtp_configs:write"))
 	smtpWriteGroup.POST("", smtpConfigController.Create)
 	smtpWriteGroup.PUT("/:id", smtpConfigController.Update)
 	smtpWriteGroup.DELETE("/:id", smtpConfigController.Delete)
@@ -145,13 +145,13 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	apiKeyService := services.NewBaseService(db, models.APIKey{})
 	apiKeyController := controllers.NewBaseController(apiKeyService)
 	apiKeyGroup := g.Group("/api-keys")
-	apiKeyGroup.Use(middleware.RequirePermissions(db, "api-keys:read"))
+	apiKeyGroup.Use(middleware.RequirePermissions(db, "api_keys:read"))
 	apiKeyGroup.GET("", apiKeyController.List)
 	apiKeyGroup.GET("/:id", apiKeyController.Get)
 
 	// Protected API key routes
 	apiKeyWriteGroup := apiKeyGroup.Group("")
-	apiKeyWriteGroup.Use(middleware.RequirePermissions(db, "api-keys:write"))
+	apiKeyWriteGroup.Use(middleware.RequirePermissions(db, "api_keys:write"))
 	apiKeyWriteGroup.POST("", apiKeyController.Create)
 	apiKeyWriteGroup.PUT("/:id", apiKeyController.Update)
 	apiKeyWriteGroup.DELETE("/:id", apiKeyController.Delete)

@@ -59,6 +59,9 @@ var defaultResources = []Resource{
 	{Name: "api_keys", Action: "update"},
 	{Name: "api_keys", Action: "delete"},
 
+	// API key usage resources
+	{Name: "api_key_usage", Action: "read"},
+
 	// Automation resources
 	{Name: "automations", Action: "create"},
 	{Name: "automations", Action: "read"},
@@ -107,6 +110,36 @@ var defaultResources = []Resource{
 
 	// Analytics resources
 	{Name: "analytics", Action: "read"},
+
+	// Team invite resources
+	{Name: "team_invites", Action: "create"},
+	{Name: "team_invites", Action: "read"},
+	{Name: "team_invites", Action: "update"},
+	{Name: "team_invites", Action: "delete"},
+
+	// Contact import resources
+	{Name: "contact_imports", Action: "create"},
+	{Name: "contact_imports", Action: "read"},
+	{Name: "contact_imports", Action: "update"},
+	{Name: "contact_imports", Action: "delete"},
+
+	// File resources
+	{Name: "files", Action: "create"},
+	{Name: "files", Action: "read"},
+	{Name: "files", Action: "update"},
+	{Name: "files", Action: "delete"},
+
+	// Team settings resources
+	{Name: "team_settings", Action: "create"},
+	{Name: "team_settings", Action: "read"},
+	{Name: "team_settings", Action: "update"},
+	{Name: "team_settings", Action: "delete"},
+
+	// Branding settings resources
+	{Name: "branding_settings", Action: "create"},
+	{Name: "branding_settings", Action: "read"},
+	{Name: "branding_settings", Action: "update"},
+	{Name: "branding_settings", Action: "delete"},
 }
 
 // Role-based permission mappings
@@ -122,6 +155,12 @@ var rolePermissions = map[UserRole][]string{
 		"models:*",
 		"emails:*",
 		"analytics:*",
+		"api_key_usage:*",
+		"team_invites:*",
+		"contact_imports:*",
+		"files:*",
+		"team_settings:*",
+		"branding_settings:*",
 	},
 	UserRoleMember: {
 		// Member has limited permissions
@@ -140,6 +179,12 @@ var rolePermissions = map[UserRole][]string{
 		"emails:read",
 		"emails:create",
 		"analytics:read",
+		"api_key_usage:read",
+		"team_invites:read",
+		"contact_imports:read",
+		"files:read",
+		"team_settings:read",
+		"branding_settings:read",
 	},
 	UserRoleSuperAdmin: {
 		// SuperAdmin has all permissions

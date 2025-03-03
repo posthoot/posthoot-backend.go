@@ -20,7 +20,7 @@ func SetupSMTPRoutes(e *echo.Echo, config *config.Config, db *gorm.DB) {
 	smtp.Use(auth.Middleware())
 
 	// Add permission middleware for SMTP management
-	smtp.Use(middleware.RequirePermissions(db, "smtp:read"))
+	smtp.Use(middleware.RequirePermissions(db, "smtp_configs:read"))
 
 	// SMTP test route
 	smtp.POST("/test", smtpHandler.TestSMTPConnection)
