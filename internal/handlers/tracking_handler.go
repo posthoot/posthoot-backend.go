@@ -572,15 +572,15 @@ func (h *TrackingHandler) GetTeamOverview(c echo.Context) error {
 	endDate := c.QueryParam("endDate")
 
 	// Build query with date range if provided
-	query := h.db.Table("email_tracking").
-		Joins("JOIN emails ON email_tracking.email_id = emails.id").
+	query := h.db.Table("email_trackings").
+		Joins("JOIN emails ON email_trackings.email_id = emails.id").
 		Where("emails.team_id = ?", teamID)
 
 	if startDate != "" {
-		query = query.Where("email_tracking.timestamp >= ?", startDate)
+		query = query.Where("email_trackings.timestamp >= ?", startDate)
 	}
 	if endDate != "" {
-		query = query.Where("email_tracking.timestamp <= ?", endDate)
+		query = query.Where("email_trackings.timestamp <= ?", endDate)
 	}
 
 	// Get overview metrics
@@ -722,8 +722,8 @@ func (h *TrackingHandler) GetEngagementTimes(c echo.Context) error {
 
 	// Get all tracking data for the team
 	var tracking []models.EmailTracking
-	if err := h.db.Table("email_tracking").
-		Joins("JOIN emails ON email_tracking.email_id = emails.id").
+	if err := h.db.Table("email_trackings").
+		Joins("JOIN emails ON email_trackings.email_id = emails.id").
 		Where("emails.team_id = ?", teamID).
 		Find(&tracking).Error; err != nil {
 		return c.String(http.StatusInternalServerError, "Failed to fetch tracking data")
@@ -821,15 +821,15 @@ func (h *TrackingHandler) GetTrendAnalysis(c echo.Context) error {
 	interval := c.QueryParam("interval") // daily, weekly, monthly
 
 	// Build query with date range
-	query := h.db.Table("email_tracking").
-		Joins("JOIN emails ON email_tracking.email_id = emails.id").
+	query := h.db.Table("email_trackings").
+		Joins("JOIN emails ON email_trackings.email_id = emails.id").
 		Where("emails.team_id = ?", teamID)
 
 	if startDate != "" {
-		query = query.Where("email_tracking.timestamp >= ?", startDate)
+		query = query.Where("email_trackings.timestamp >= ?", startDate)
 	}
 	if endDate != "" {
-		query = query.Where("email_tracking.timestamp <= ?", endDate)
+		query = query.Where("email_trackings.timestamp <= ?", endDate)
 	}
 
 	var tracking []models.EmailTracking
