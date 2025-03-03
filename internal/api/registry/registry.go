@@ -156,6 +156,14 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	apiKeyWriteGroup.PUT("/:id", apiKeyController.Update)
 	apiKeyWriteGroup.DELETE("/:id", apiKeyController.Delete)
 
+	// API KEY USAGE with team-specific permissions
+	apiKeyUsageService := services.NewBaseService(db, models.APIKeyUsage{})
+	apiKeyUsageController := controllers.NewBaseController(apiKeyUsageService)
+	apiKeyUsageGroup := g.Group("/api-key-usage")
+	apiKeyUsageGroup.Use(middleware.RequirePermissions(db, "api_key_usage:read"))
+	apiKeyUsageGroup.GET("", apiKeyUsageController.List)
+	apiKeyUsageGroup.GET("/:id", apiKeyUsageController.Get)
+
 	// Campaigns with team-specific permissions
 	campaignService := services.NewBaseService(db, models.Campaign{})
 	campaignController := controllers.NewBaseController(campaignService)
