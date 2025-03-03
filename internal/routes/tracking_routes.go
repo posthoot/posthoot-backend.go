@@ -17,7 +17,7 @@ func RegisterTrackingRoutes(e *echo.Echo, h *handlers.TrackingHandler, cfg *conf
 	trackGroup.GET("/open", h.HandleEmailOpen)
 
 	// Analytics endpoints (require auth)
-	analyticsGroup := e.Group("/analytics")
+	analyticsGroup := e.Group("/api/v1/analytics")
 	// Add authentication middleware
 	auth := middleware.NewAuthMiddleware(cfg.JWT.Secret)
 	analyticsGroup.Use(auth.Middleware())
