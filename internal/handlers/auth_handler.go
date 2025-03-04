@@ -454,7 +454,7 @@ func (h *AuthHandler) GetMe(c echo.Context) error {
 	userId := c.Get("userID").(string)
 
 	var user models.User
-	if err := h.db.Where("id = ?", userId).First(&user).Error; err != nil {
+	if err := h.db.Where("id = ?", userId).Preload("Team").First(&user).Error; err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
 	}
 	return c.JSON(http.StatusOK, user)
