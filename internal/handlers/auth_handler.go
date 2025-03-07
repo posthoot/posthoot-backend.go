@@ -184,22 +184,31 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /auth/password-reset [post]
 func (h *AuthHandler) RequestPasswordReset(c echo.Context) error {
+	tx := h.db.Begin()
+	if tx.Error != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to start transaction"})
+	}
+
 	var req ResetPasswordRequest
 	if err := c.Bind(&req); err != nil {
+		tx.Rollback()
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	if err := c.Validate(req); err != nil {
+		tx.Rollback()
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	var user models.User
 	if err := h.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		tx.Rollback()
 		return c.JSON(http.StatusOK, map[string]string{"message": "If the email exists, a reset code will be sent"})
 	}
 
 	code, err := generateResetCode(10)
 	if err != nil {
+		tx.Rollback()
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate reset code"})
 	}
 
@@ -209,9 +218,17 @@ func (h *AuthHandler) RequestPasswordReset(c echo.Context) error {
 		ExpiresAt: time.Now().Add(15 * time.Minute),
 	}
 
-	if err := h.db.Create(&reset).Preload("User").Error; err != nil {
+	if err := tx.Create(&reset).Error; err != nil {
+		tx.Rollback()
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create reset code"})
 	}
+
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to commit transaction"})
+	}
+
+	reset.User = &user
 
 	events.Emit("password.reset", &reset)
 
