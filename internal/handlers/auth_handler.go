@@ -209,7 +209,7 @@ func (h *AuthHandler) RequestPasswordReset(c echo.Context) error {
 		ExpiresAt: time.Now().Add(15 * time.Minute),
 	}
 
-	if err := h.db.Create(&reset).Error; err != nil {
+	if err := h.db.Create(&reset).Preload("User").Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create reset code"})
 	}
 
