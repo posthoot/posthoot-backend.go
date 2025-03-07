@@ -92,6 +92,17 @@ func init() {
 		}
 	})
 
+	events.On("password.reset", func(data interface{}) {
+		reset := data.(*models.PasswordReset)
+		log.Info("Sending password reset email to %s", reset.User.Email)
+		if err := sendPasswordResetEmail(reset); err != nil {
+			err := log.Error("Failed to send password reset email: %v", err)
+			if err != nil {
+				return
+			}
+		}
+	})
+
 	events.On("email.send", func(data interface{}) {
 		email := data.(*models.Email)
 		var emailData map[string]string
@@ -128,6 +139,53 @@ func init() {
 			}
 		}
 	})
+}
+
+func sendPasswordResetEmail(reset *models.PasswordReset) error {
+	tx := db.DB.Begin()
+	team := &models.Team{}
+	if err := tx.Where("name =?", os.Getenv("SUPERADMIN_TEAM_NAME")).First(team).Error; err != nil {
+		tx.Rollback()
+		return log.Error("failed to get team details", err)
+	}
+
+	// Get default SMTP config
+	smtpConfig := &models.SMTPConfig{}
+	if err := tx.Where("team_id = ? AND is_default = ?", team.ID, true).First(smtpConfig).Error; err != nil {
+		tx.Rollback()
+		return log.Error("failed to get default smtp config", err)
+	}
+
+	template := &models.Template{}
+	if err := tx.Where("name = ? AND team_id = ?", "Password Reset", team.ID).First(template).Error; err != nil {
+		tx.Rollback()
+		return log.Error("failed to get template", err)
+	}
+
+	mailingList := &models.MailingList{}
+	if err := tx.Where("name = ? AND team_id = ?", "All Users", team.ID).First(mailingList).Error; err != nil {
+		tx.Rollback()
+		return log.Error("failed to get mailing list", err)
+	}
+
+	handler := &sendEmailHandlerBody{
+		teamId:       team.ID,
+		templateId:   template.ID,
+		to:           reset.User.Email,
+		SMTPProvider: smtpConfig.Provider,
+		categoryId:   template.CategoryID,
+		variables:    map[string]string{"name": reset.User.FirstName, "code": reset.Code, "url": fmt.Sprintf("%s/auth/reset-password/%s", os.Getenv("OFFICE_URL"), reset.Code)},
+		subject:      fmt.Sprintf("Hey %s 👋🏻! We've received a request to reset your password on Posthoot", reset.User.FirstName),
+		listId:       mailingList.ID,
+		campaignId:   "",
+		body:         "",
+		cc:           "",
+		bcc:          "",
+		replyTo:      "",
+		testMail:     false,
+	}
+
+	return sendEmail(handler)
 }
 
 func sendTeamInviteEmail(invite *models.TeamInvite) error {

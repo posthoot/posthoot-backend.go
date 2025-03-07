@@ -1,15 +1,17 @@
 package handlers
 
 import (
-	"fmt"
-	"math/rand"
+	"encoding/base64"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"kori/internal/events"
 	"kori/internal/models"
 	"kori/internal/utils"
+
+	"crypto/rand"
 
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
@@ -41,7 +43,6 @@ type ResetPasswordRequest struct {
 }
 
 type VerifyResetCodeRequest struct {
-	Email    string `json:"email" validate:"required,email"`
 	Code     string `json:"code" validate:"required"`
 	Password string `json:"new_password" validate:"required,min=8"`
 }
@@ -197,7 +198,11 @@ func (h *AuthHandler) RequestPasswordReset(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"message": "If the email exists, a reset code will be sent"})
 	}
 
-	code := generateResetCode()
+	code, err := generateResetCode(10)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate reset code"})
+	}
+
 	reset := models.PasswordReset{
 		UserID:    user.ID,
 		Code:      code,
@@ -208,8 +213,7 @@ func (h *AuthHandler) RequestPasswordReset(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create reset code"})
 	}
 
-	// TODO: Implement email sending functionality
-	// sendResetEmail(user.Email, code)
+	events.Emit("password.reset", &reset)
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "If the email exists, a reset code will be sent"})
 }
@@ -235,14 +239,9 @@ func (h *AuthHandler) VerifyResetCode(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	var user models.User
-	if err := h.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid reset code"})
-	}
-
 	var reset models.PasswordReset
-	if err := h.db.Where("user_id = ? AND code = ? AND used = ? AND expires_at > ?",
-		user.ID, req.Code, false, time.Now()).First(&reset).Error; err != nil {
+	if err := h.db.Where("code = ? AND used = ? AND expires_at > ?",
+		req.Code, false, time.Now()).First(&reset).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid or expired reset code"})
 	}
 
@@ -251,16 +250,45 @@ func (h *AuthHandler) VerifyResetCode(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to hash password"})
 	}
 
+	var user models.User
+	if err := h.db.Where("id = ?", reset.UserID).First(&user).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get user"})
+	}
+
 	h.db.Model(&user).Update("password", string(hashedPassword))
 	h.db.Model(&reset).Update("used", true)
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Password reset successfully"})
 }
 
-// generateResetCode generates a 6-digit reset code
-func generateResetCode() string {
-	code := rand.Intn(900000) + 100000 // Generates a number between 100000 and 999999
-	return fmt.Sprintf("%06d", code)
+// GenerateResetCode generates a cryptographically secure random code
+// without special characters, using crypto/rand
+func generateResetCode(length int) (string, error) {
+	// Generate random bytes (we need more than length because
+	// of the base64 encoding and replacement of special chars)
+	buffer := make([]byte, length*2)
+	_, err := rand.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+
+	// Convert to base64 string
+	encoded := base64.StdEncoding.EncodeToString(buffer)
+
+	// Remove non-alphanumeric characters
+	result := strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return -1 // Will be removed
+	}, encoded)
+
+	// Trim to desired length
+	if len(result) > length {
+		result = result[:length]
+	}
+
+	return result, nil
 }
 
 // ListUsers returns a list of all users (admin only)
@@ -501,7 +529,6 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 	invite.ExpiresAt = time.Now().Add(24 * time.Hour)
 	invite.InviterID = userID
 	invite.TeamID = user.TeamID
-	invite.Role = invite.Role
 	invite.Status = "pending"
 
 	// 💾 Save invitation

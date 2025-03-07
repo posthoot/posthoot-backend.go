@@ -20,6 +20,7 @@ type User struct {
 
 type PasswordReset struct {
 	Base
+	User      *User     `json:"user,omitempty"`
 	UserID    string    `gorm:"type:uuid;not null" json:"userId"`
 	Code      string    `gorm:"not null" json:"code"`
 	Used      bool      `gorm:"default:false" json:"used"`
