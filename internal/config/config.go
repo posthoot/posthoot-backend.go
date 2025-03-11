@@ -19,6 +19,7 @@ type Config struct {
 	S3       S3Config
 	Crypto   CryptoConfig
 	SMTP     SMTPConfig
+	Monitor  MonitorConfig
 }
 
 type CryptoConfig struct {
@@ -77,6 +78,10 @@ type RedisConfig struct {
 	Password string
 	Username string
 	DB       int
+}
+
+type MonitorConfig struct {
+	DiscordWebhookURL string
 }
 
 var (
@@ -143,6 +148,9 @@ func Load() (*Config, error) {
 			Password:  getEnv("SMTP_PASSWORD", ""),
 			FromEmail: getEnv("SMTP_FROM_EMAIL", ""),
 			Provider:  getEnv("SMTP_PROVIDER", "CUSTOM"),
+		},
+		Monitor: MonitorConfig{
+			DiscordWebhookURL: getEnv("DISCORD_WEBHOOK_URL", ""),
 		},
 	}
 

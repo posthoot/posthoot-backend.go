@@ -59,6 +59,15 @@ func main() {
 		}
 	}()
 
+	// Set up Discord webhook for monitoring
+	if cfg.Monitor.DiscordWebhookURL != "" {
+		db.SetDiscordWebhook(cfg.Monitor.DiscordWebhookURL)
+		logger.Info("Discord webhook monitoring enabled")
+	}
+
+	// Start monitoring database connection pool
+	db.MonitorConnectionPool(5 * time.Minute)
+
 	// Initialize task handlers
 	taskHandler := tasks.NewTaskHandler(db.GetDB())
 
