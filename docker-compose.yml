@@ -72,7 +72,7 @@ services:
   asynqmon:
     image: hibiken/asynqmon
     environment:
-      - ASYNQMON_REDIS_DSN=redis://posthoot_redis:6379
+      - REDIS_ADDR=posthoot_redis:6379
     networks:
       - posthoot_network
       - dokploy-network
