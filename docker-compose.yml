@@ -63,6 +63,14 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  asynqmon:
+    image: hibiken/asynqmon
+    environment:
+      - ASYNQMON_REDIS_DSN=redis://posthoot_redis:6379
+    networks:
+      - posthoot_network
+      - dokploy-network
+
 volumes:
   posthoot_redis_data:
   posthoot_postgres_data:
