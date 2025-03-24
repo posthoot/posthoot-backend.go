@@ -1,6 +1,10 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"kori/internal/events"
+
+	"gorm.io/gorm"
+)
 
 func (a *APIKey) AfterCreate(tx *gorm.DB) error {
 
@@ -38,5 +42,10 @@ func (a *APIKey) AfterCreate(tx *gorm.DB) error {
 		}
 	}
 
+	return nil
+}
+
+func (t *TeamInvite) AfterCreate(tx *gorm.DB) error {
+	events.Emit("invite.created", t)
 	return nil
 }

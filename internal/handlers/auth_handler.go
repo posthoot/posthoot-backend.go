@@ -562,10 +562,6 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 		log.Error("Failed to create invitation", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create invitation"})
 	}
-
-	// 📧 Trigger invite email event
-	events.Emit("invite.created", &invite)
-
 	return c.JSON(http.StatusCreated, map[string]string{"message": "Invitation sent successfully"})
 }
 
