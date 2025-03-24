@@ -28,6 +28,18 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	teamWriteGroup.PUT("/:id", teamController.Update)
 	teamWriteGroup.DELETE("/:id", teamController.Delete)
 
+	// Team Invitations with team-specific permissions
+	invitationService := services.NewBaseService(db, models.TeamInvite{})
+	invitationController := controllers.NewBaseController(invitationService)
+	invitationGroup := g.Group("/team-invitations")
+	invitationGroup.Use(middleware.RequirePermissions(db, "team_invites:read"))
+	invitationGroup.GET("", invitationController.List)
+
+	// Protected invitation routes
+	invitationWriteGroup := invitationGroup.Group("")
+	invitationWriteGroup.Use(middleware.RequirePermissions(db, "team_invites:write"))
+	invitationWriteGroup.DELETE("/:id", invitationController.Delete)
+
 	// file routes
 	fileService := services.NewBaseService(db, models.File{})
 	fileController := controllers.NewBaseController(fileService)
