@@ -520,13 +520,19 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 	// 🔒 Get current user ID from context
 	userID := c.Get("userID").(string)
 
+	var input struct {
+		Email string `json:"email" validate:"required,email"`
+		Name  string `json:"name" validate:"required,min=2"`
+		Role  string `json:"role" default:"MEMBER" validate:"required,oneof=MEMBER ADMIN SUPER_ADMIN"`
+	}
+
 	var invite models.TeamInvite
-	if err := c.Bind(&invite); err != nil {
+	if err := c.Bind(&input); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	// 🔍 Validate invite data
-	if err := c.Validate(invite); err != nil {
+	if err := c.Validate(input); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
@@ -547,6 +553,9 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 	invite.InviterID = userID
 	invite.TeamID = user.TeamID
 	invite.Status = "pending"
+	invite.Role = models.UserRole(input.Role)
+	invite.Email = input.Email
+	invite.Name = input.Name
 
 	// 💾 Save invitation
 	if err := h.db.Create(&invite).Error; err != nil {
