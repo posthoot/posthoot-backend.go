@@ -66,7 +66,7 @@ func main() {
 	}
 
 	// Start monitoring database connection pool
-	db.MonitorConnectionPool(2 * time.Hour)
+	db.MonitorConnectionPool(5 * time.Hour)
 
 	// Initialize task handlers
 	taskHandler := tasks.NewTaskHandler(db.GetDB())
