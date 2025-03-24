@@ -505,13 +505,21 @@ func (h *AuthHandler) GetMe(c echo.Context) error {
 	return c.JSON(http.StatusOK, user)
 }
 
+// InviteUserRequest is the request body for inviting a user to a team
+// @Description Send an invitation email to a user to join a team
+type InviteUserRequest struct {
+	Email string `json:"email" validate:"required,email"`
+	Name  string `json:"name" validate:"required,min=2"`
+	Role  string `json:"role" default:"MEMBER" validate:"required,oneof=MEMBER ADMIN SUPER_ADMIN"`
+}
+
 // InviteUser handles sending invitations to new team members
 // @Summary Invite a user to join a team
 // @Description Send an invitation email to a user to join a team
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param request body models.TeamInvite true "Invitation details"
+// @Param request body InviteUserRequest true "Invitation details"
 // @Success 201 {object} map[string]string "Invitation sent successfully"
 // @Failure 400 {object} map[string]string "Validation error"
 // @Failure 500 {object} map[string]string "Internal server error"
@@ -519,27 +527,16 @@ func (h *AuthHandler) GetMe(c echo.Context) error {
 func (h *AuthHandler) InviteUser(c echo.Context) error {
 	// 🔒 Get current user ID from context
 	userID := c.Get("userID").(string)
+	teamID := c.Get("teamID").(string)
 
-	var input struct {
-		Email string `json:"email" validate:"required,email"`
-		Name  string `json:"name" validate:"required,min=2"`
-		Role  string `json:"role" default:"MEMBER" validate:"required,oneof=MEMBER ADMIN SUPER_ADMIN"`
-	}
-
-	var invite models.TeamInvite
-	if err := c.Bind(&input); err != nil {
+	var request InviteUserRequest
+	if err := c.Bind(&request); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	// 🔍 Validate invite data
-	if err := c.Validate(input); err != nil {
+	if err := c.Validate(request); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-
-	// 👥 Get inviter's team
-	var user models.User
-	if err := h.db.First(&user, userID).Error; err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get user"})
 	}
 
 	// Generate invite code
@@ -548,22 +545,23 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate invite code"})
 	}
 
-	invite.Code = code
-	invite.ExpiresAt = time.Now().Add(24 * 7 * time.Hour)
-	invite.InviterID = userID
-	invite.TeamID = user.TeamID
-	invite.Status = "pending"
-	invite.Role = models.UserRole(input.Role)
-	invite.Email = input.Email
-	invite.Name = input.Name
+	// 💾 Save invitation
+	invite := models.TeamInvite{
+		Code:      code,
+		ExpiresAt: time.Now().Add(24 * 7 * time.Hour),
+		InviterID: userID,
+		TeamID:    teamID,
+		Status:    "pending",
+		Role:      models.UserRole(request.Role),
+		Email:     request.Email,
+		Name:      request.Name,
+	}
 
 	// 💾 Save invitation
 	if err := h.db.Create(&invite).Error; err != nil {
 		log.Error("Failed to create invitation", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create invitation"})
 	}
-
-	log.Info("Invitation created %v", invite)
 
 	// 📧 Trigger invite email event
 	events.Emit("invite.created", &invite)
