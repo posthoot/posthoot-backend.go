@@ -549,7 +549,7 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 	}
 
 	invite.Code = code
-	invite.ExpiresAt = time.Now().Add(24 * time.Hour)
+	invite.ExpiresAt = time.Now().Add(24 * 7 * time.Hour)
 	invite.InviterID = userID
 	invite.TeamID = user.TeamID
 	invite.Status = "pending"
@@ -559,6 +559,7 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 
 	// 💾 Save invitation
 	if err := h.db.Create(&invite).Error; err != nil {
+		log.Error("Failed to create invitation", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create invitation"})
 	}
 
