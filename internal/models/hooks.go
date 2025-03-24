@@ -46,6 +46,7 @@ func (a *APIKey) AfterCreate(tx *gorm.DB) error {
 }
 
 func (t *TeamInvite) AfterCreate(tx *gorm.DB) error {
+	log.Info("Team invite created %v", t)
 	events.Emit("invite.created", t)
 	return nil
 }

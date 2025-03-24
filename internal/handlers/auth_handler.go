@@ -529,6 +529,8 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 	userID := c.Get("userID").(string)
 	teamID := c.Get("teamID").(string)
 
+	log.Info("Inviting user %s to team %s", userID, teamID)
+
 	var request InviteUserRequest
 	if err := c.Bind(&request); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
