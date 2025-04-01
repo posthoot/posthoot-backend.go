@@ -113,6 +113,10 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		return h.logger.Error("❌ failed to get smtp config: %w", err)
 	}
 
+	if smtpConfig == nil {
+		return h.logger.Error("❌ failed to get smtp config: %w", fmt.Errorf("smtp config is nil"))
+	}
+
 	// Get the campaign's email list
 	emailList, contactCount, err := models.GetEmailListByID(campaign.ListID, h.db)
 	if err != nil {
@@ -223,7 +227,7 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 	// Save all emails in a transaction
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
 		for _, email := range emails {
-			if err := tx.Create(email).Preload("SMTPConfig").Error; err != nil {
+			if err := tx.Create(email).Error; err != nil {
 				return err
 			}
 		}
@@ -232,7 +236,7 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		return h.logger.Error("❌ failed to create emails: %w", err)
 	}
 
-	h.mailHandler.SendCampaignEmails(emails, task.BatchSize, campaign.BatchDelay)
+	h.mailHandler.SendCampaignEmails(emails, task.BatchSize, campaign.BatchDelay, smtpConfig)
 
 	campaign.Processed += contactCount
 	campaign.Status = models.CampaignStatusCompleted
