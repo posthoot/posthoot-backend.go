@@ -127,8 +127,11 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		Select("contacts.*").
 		Joins("LEFT JOIN emails ON emails.contact_id = contacts.id AND emails.campaign_id = ?", campaign.ID).
 		Where("contacts.list_id = ? AND contacts.status = ?", emailList.ID, models.SubscriberStatusActive).
-		Where("contacts.id NOT IN (?)", alreadyProcessedContacts).
 		Where("contacts.status != ?", models.SubscriberStatusUnsubscribed)
+
+	if len(alreadyProcessedContacts) > 0 {
+		query = query.Where("contacts.id NOT IN (?)", alreadyProcessedContacts)
+	}
 
 	if err := query.Group("contacts.id").
 		Order("MAX(emails.sent_at) ASC NULLS FIRST"). // Contacts with no emails come first

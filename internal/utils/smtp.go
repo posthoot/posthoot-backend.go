@@ -146,10 +146,7 @@ func (h *EmailHandler) SendCampaignEmails(campaign *models.Campaign, emails []*m
 
 	// Process in batches
 	for i := 0; i < totalEmails; i += batchSize {
-		end := i + batchSize
-		if end > totalEmails {
-			end = totalEmails
-		}
+		end := min(i+batchSize, totalEmails)
 
 		// Send batch
 		batchResults := h.SendBatchEmails(emails[i:end])
