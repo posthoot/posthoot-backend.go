@@ -420,6 +420,7 @@ type Campaign struct {
 	BatchSize         int                       `gorm:"not null;default:100" json:"batchSize"`
 	Processed         int                       `gorm:"not null;default:0" json:"processed"`
 	BatchDelay        time.Duration             `gorm:"not null" json:"batchDelay"`
+	Timezone          string                    `gorm:"not null;default:'America/New_York'" json:"timezone"`
 }
 type RateLimit struct {
 	Base
