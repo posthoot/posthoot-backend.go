@@ -125,23 +125,31 @@ func (h *EmailHandler) SendBatchEmails(emails []*models.Email, smtpConfig *model
 
 	h.logger.Info("📤 Starting to send batch emails, total: %d", len(emails))
 
-	for i, email := range emails {
-		wg.Add(1)
-		go func(index int, e *models.Email) {
-			defer wg.Done()
-			h.logger.Info("📧 Sending email to: %s", e.To)
-			e.SMTPConfig = smtpConfig
-			err := h.SendEmail(e)
-			if err != nil {
-				h.logger.Error("❌ Failed to send email, error: %v", err)
-			} else {
-				h.logger.Success("✅ Email sent successfully to: %s", e.To)
-			}
-			results[index] = BatchEmailResult{
-				Email: e,
-				Error: err,
-			}
-		}(i, email)
+	safeBatchSize := min(len(emails), smtpConfig.MaxSendRate)
+
+	for i := 0; i < len(emails); i += safeBatchSize {
+		end := min(i+safeBatchSize, len(emails))
+		batchEmails := emails[i:end]
+
+		for _, email := range batchEmails {
+			wg.Add(1)
+			go func(index int, e *models.Email) {
+				defer wg.Done()
+				h.logger.Info("📧 Sending email to: %s", e.To)
+				e.SMTPConfig = smtpConfig
+				err := h.SendEmail(e)
+				if err != nil {
+					h.logger.Error("❌ Failed to send email, error: %v", err)
+				} else {
+					h.logger.Success("✅ Email sent successfully to: %s", e.To)
+				}
+				results[index] = BatchEmailResult{
+					Email: e,
+					Error: err,
+				}
+				time.Sleep(time.Second * 1)
+			}(i, email)
+		}
 	}
 
 	wg.Wait()
@@ -156,12 +164,9 @@ func (h *EmailHandler) SendCampaignEmails(emails []*models.Email, batchSize int,
 
 	h.logger.Info("📊 Starting to send campaign emails in batches, total: %d, batch size: %d", totalEmails, batchSize)
 
-	// Calculate safe batch size based on SMTP rate limit
-	safeBatchSize := min(batchSize, smtpConfig.MaxSendRate)
-
 	// Process in batches
-	for i := 0; i < totalEmails; i += safeBatchSize {
-		end := min(i+safeBatchSize, totalEmails)
+	for i := 0; i < totalEmails; i += batchSize {
+		end := min(i+batchSize, totalEmails)
 
 		h.logger.Info("📦 Sending batch from %d to %d", i, end)
 		// Send batch
