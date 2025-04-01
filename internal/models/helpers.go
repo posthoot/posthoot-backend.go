@@ -55,7 +55,7 @@ func GetTeamByName(name string, db *gorm.DB) (*Team, error) {
 
 func GetCampaignByID(id string, db *gorm.DB) (*Campaign, error) {
 	campaign := &Campaign{}
-	if err := db.Where("id = ?", id).Preload("Template").First(campaign).Error; err != nil {
+	if err := db.Where("id = ?", id).Preload("Template.HtmlFile").First(campaign).Error; err != nil {
 		return nil, err
 	}
 	return campaign, nil
