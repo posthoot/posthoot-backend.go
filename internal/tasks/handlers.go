@@ -145,7 +145,7 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 	if err := query.Group("contacts.id").
 		Order("MAX(emails.sent_at) ASC NULLS FIRST"). // Contacts with no emails come first
 		Offset(campaign.Processed).
-		Limit(task.BatchSize).
+		Limit(contactCount).
 		Find(&contacts).Error; err != nil {
 		return h.logger.Error("❌ failed to get contacts: %w", err)
 	}
@@ -223,7 +223,7 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 	// Save all emails in a transaction
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
 		for _, email := range emails {
-			if err := tx.Create(email).Error; err != nil {
+			if err := tx.Create(email).Preload("SMTPConfig").Error; err != nil {
 				return err
 			}
 		}
@@ -232,39 +232,12 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		return h.logger.Error("❌ failed to create emails: %w", err)
 	}
 
-	h.mailHandler.SendCampaignEmails(campaign, emails, task.BatchSize, campaign.BatchDelay)
+	h.mailHandler.SendCampaignEmails(emails, task.BatchSize, campaign.BatchDelay)
 
-	needToScheduleNextBatch := false
-	// Update campaign status if needed
-	if task.Offset+task.BatchSize >= contactCount {
-		campaign.Status = models.CampaignStatusSending
-		if err := h.db.Save(campaign).Error; err != nil {
-			return h.logger.Error("❌ failed to update campaign status: %w", err)
-		}
-		needToScheduleNextBatch = true
-	}
-
-	campaign.Processed += len(contacts)
-	if !needToScheduleNextBatch {
-		campaign.Status = models.CampaignStatusCompleted
-	}
+	campaign.Processed += contactCount
+	campaign.Status = models.CampaignStatusCompleted
 	if err := h.db.Save(campaign).Error; err != nil {
 		return h.logger.Error("❌ failed to update campaign processed: %w", err)
-	}
-
-	h.logger.Success("✅ Successfully processed campaign batch")
-
-	// Enqueue next batch if needed
-	if needToScheduleNextBatch {
-		nextTask := CampaignTask{
-			CampaignID: campaign.ID,
-			BatchSize:  task.BatchSize,
-			Offset:     campaign.Processed,
-		}
-
-		if err := h.taskClient.EnqueueCampaignTask(ctx, nextTask, campaign.BatchDelay); err != nil {
-			return h.logger.Error("❌ failed to enqueue next batch: %w", err)
-		}
 	}
 
 	h.logger.Success("✅ Successfully processed campaign batch")

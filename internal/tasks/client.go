@@ -132,10 +132,12 @@ func (c *TaskClient) EnqueueCampaignTask(ctx context.Context, task CampaignTask,
 
 	// Configure task options based on scheduling type
 	var opts []asynq.Option
+
 	opts = append(opts,
 		asynq.Queue(QueueDefault),
 		asynq.Timeout(TimeoutLong),
 		asynq.MaxRetry(RetryMax),
+		asynq.TaskID(task.CampaignID),
 	)
 
 	switch {

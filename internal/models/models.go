@@ -419,7 +419,7 @@ type Campaign struct {
 	SMTPConfig        *SMTPConfig               `json:"smtpConfig,omitempty"`
 	BatchSize         int                       `gorm:"not null;default:100" json:"batchSize"`
 	Processed         int                       `gorm:"not null;default:0" json:"processed"`
-	BatchDelay        time.Duration             `gorm:"not null" json:"batchDelay"`
+	BatchDelay        time.Duration             `gorm:"not null;default:3600" json:"batchDelay"` // 1 hour delay between batches
 	Timezone          string                    `gorm:"not null;default:'America/New_York'" json:"timezone"`
 }
 type RateLimit struct {
