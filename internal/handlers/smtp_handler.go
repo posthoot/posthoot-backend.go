@@ -73,6 +73,22 @@ func (h *SMTPHandler) TestSMTPConnection(c echo.Context) error {
 		}
 	}
 
+	// maybe try to send a dummy email to our own email
+
+	client.Mail(req.From)
+	client.Rcpt(req.From)
+
+	writer, err := client.Data()
+	if err != nil {
+		log.Error("Failed to send test email", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "Failed to send test email")
+	}
+
+	writer.Write([]byte("Hello, world! This is a test email from Posthoot."))
+	writer.Close()
+
+	client.Quit()
+
 	log.Success("SMTP connection test successful for team %s", teamID)
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "SMTP connection test successful",
