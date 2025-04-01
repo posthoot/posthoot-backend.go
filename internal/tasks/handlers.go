@@ -179,7 +179,7 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		return h.logger.Error("❌ failed to create emails: %w", err)
 	}
 
-	h.mailHandler.SendBatchEmails(emails)
+	h.mailHandler.SendCampaignEmails(campaign, emails, task.BatchSize, campaign.BatchDelay)
 
 	// Update campaign status if needed
 	if task.Offset+task.BatchSize >= len(emailList.Contacts) {
@@ -193,8 +193,6 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 	if err := h.db.Save(campaign).Error; err != nil {
 		return h.logger.Error("❌ failed to update campaign processed: %w", err)
 	}
-
-	h.mailHandler.SendCampaignEmails(campaign, emails, task.BatchSize, campaign.BatchDelay)
 
 	h.logger.Success("✅ Successfully processed campaign batch")
 
@@ -214,7 +212,7 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 	h.logger.Success("✅ Successfully processed campaign batch")
 
 	// Check for after function in payload
-	var payload map[string]interface{}
+	var payload map[string]any
 	if err := json.Unmarshal(t.Payload(), &payload); err == nil {
 		if fn, ok := payload["after_func"].(func(context.Context, *asynq.Task) error); ok {
 			if err := fn(ctx, t); err != nil {
