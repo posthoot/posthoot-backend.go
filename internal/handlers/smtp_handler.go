@@ -21,7 +21,7 @@ type SMTPTestRequest struct {
 	Port       int    `json:"port" validate:"required"`
 	Username   string `json:"username" validate:"required"`
 	Password   string `json:"password" validate:"required"`
-	From       string `json:"from" validate:"required,email"`
+	From       string `json:"from" validate:"required"`
 	RequireTLS bool   `json:"requireTls" default:"false"`
 }
 
