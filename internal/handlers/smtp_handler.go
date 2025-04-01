@@ -78,14 +78,11 @@ func (h *SMTPHandler) TestSMTPConnection(c echo.Context) error {
 	client.Mail(req.From)
 	client.Rcpt(req.From)
 
-	writer, err := client.Data()
+	err = smtp.SendMail(addr, auth, req.From, []string{req.From}, []byte("Hello, world! This is a test email from Posthoot."))
 	if err != nil {
 		log.Error("Failed to send test email", err)
-		return echo.NewHTTPError(http.StatusBadRequest, "Failed to send test email")
+		return echo.NewHTTPError(http.StatusBadRequest, "Failed to send test email: "+err.Error())
 	}
-
-	writer.Write([]byte("Hello, world! This is a test email from Posthoot."))
-	writer.Close()
 
 	client.Quit()
 
