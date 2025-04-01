@@ -50,70 +50,70 @@ func (s *Scheduler) Stop() {
 
 // registerTasks registers all periodic tasks
 func (s *Scheduler) registerTasks() error {
-	// Campaign scheduling (every minute)
-	entryID, err := s.scheduler.Register("*/1 * * * *", asynq.NewTask(
-		TaskTypeCampaignSchedule,
-		nil,
-		asynq.Queue(QueueDefault),
-		asynq.MaxRetry(RetryDefault),
-		asynq.Timeout(TimeoutMedium),
-	))
-	if err != nil {
-		return fmt.Errorf("failed to register campaign scheduler: %w", err)
-	}
-	s.logger.Debug("registered campaign scheduler %s", entryID)
+	// // Campaign scheduling (every minute)
+	// entryID, err := s.scheduler.Register("*/1 * * * *", asynq.NewTask(
+	// 	TaskTypeCampaignSchedule,
+	// 	nil,
+	// 	asynq.Queue(QueueDefault),
+	// 	asynq.MaxRetry(RetryDefault),
+	// 	asynq.Timeout(TimeoutMedium),
+	// ))
+	// if err != nil {
+	// 	return fmt.Errorf("failed to register campaign scheduler: %w", err)
+	// }
+	// s.logger.Debug("registered campaign scheduler %s", entryID)
 
-	// Email retry (every 5 minutes)
-	entryID, err = s.scheduler.Register("*/5 * * * *", asynq.NewTask(
-		TaskTypeEmailRetry,
-		nil,
-		asynq.Queue(QueueDefault),
-		asynq.MaxRetry(RetryDefault),
-		asynq.Timeout(TimeoutMedium),
-	))
-	if err != nil {
-		return fmt.Errorf("failed to register email retry scheduler: %w", err)
-	}
-	s.logger.Debug("registered email retry scheduler %s", entryID)
+	// // Email retry (every 5 minutes)
+	// entryID, err = s.scheduler.Register("*/5 * * * *", asynq.NewTask(
+	// 	TaskTypeEmailRetry,
+	// 	nil,
+	// 	asynq.Queue(QueueDefault),
+	// 	asynq.MaxRetry(RetryDefault),
+	// 	asynq.Timeout(TimeoutMedium),
+	// ))
+	// if err != nil {
+	// 	return fmt.Errorf("failed to register email retry scheduler: %w", err)
+	// }
+	// s.logger.Debug("registered email retry scheduler %s", entryID)
 
-	// Webhook retry (every 5 minutes)
-	entryID, err = s.scheduler.Register("*/5 * * * *", asynq.NewTask(
-		TaskTypeWebhookRetry,
-		nil,
-		asynq.Queue(QueueDefault),
-		asynq.MaxRetry(RetryDefault),
-		asynq.Timeout(TimeoutMedium),
-	))
-	if err != nil {
-		return fmt.Errorf("failed to register webhook retry scheduler: %w", err)
-	}
-	s.logger.Debug("registered webhook retry scheduler %s", entryID)
+	// // Webhook retry (every 5 minutes)
+	// entryID, err = s.scheduler.Register("*/5 * * * *", asynq.NewTask(
+	// 	TaskTypeWebhookRetry,
+	// 	nil,
+	// 	asynq.Queue(QueueDefault),
+	// 	asynq.MaxRetry(RetryDefault),
+	// 	asynq.Timeout(TimeoutMedium),
+	// ))
+	// if err != nil {
+	// 	return fmt.Errorf("failed to register webhook retry scheduler: %w", err)
+	// }
+	// s.logger.Debug("registered webhook retry scheduler %s", entryID)
 
-	// Domain verification (daily at midnight)
-	entryID, err = s.scheduler.Register("0 0 * * *", asynq.NewTask(
-		TaskTypeDomainCheck,
-		nil,
-		asynq.Queue(QueueLow),
-		asynq.MaxRetry(RetryMin),
-		asynq.Timeout(TimeoutLong),
-	))
-	if err != nil {
-		return fmt.Errorf("failed to register domain verification scheduler: %w", err)
-	}
-	s.logger.Debug("registered domain verification scheduler %s", entryID)
+	// // Domain verification (daily at midnight)
+	// entryID, err = s.scheduler.Register("0 0 * * *", asynq.NewTask(
+	// 	TaskTypeDomainCheck,
+	// 	nil,
+	// 	asynq.Queue(QueueLow),
+	// 	asynq.MaxRetry(RetryMin),
+	// 	asynq.Timeout(TimeoutLong),
+	// ))
+	// if err != nil {
+	// 	return fmt.Errorf("failed to register domain verification scheduler: %w", err)
+	// }
+	// s.logger.Debug("registered domain verification scheduler %s", entryID)
 
-	// Contact sync (every 15 minutes)
-	entryID, err = s.scheduler.Register("*/15 * * * *", asynq.NewTask(
-		TaskTypeContactSync,
-		nil,
-		asynq.Queue(QueueDefault),
-		asynq.MaxRetry(RetryDefault),
-		asynq.Timeout(TimeoutMedium),
-	))
-	if err != nil {
-		return fmt.Errorf("failed to register contact sync scheduler: %w", err)
-	}
-	s.logger.Debug("registered contact sync scheduler %s", entryID)
+	// // Contact sync (every 15 minutes)
+	// entryID, err = s.scheduler.Register("*/15 * * * *", asynq.NewTask(
+	// 	TaskTypeContactSync,
+	// 	nil,
+	// 	asynq.Queue(QueueDefault),
+	// 	asynq.MaxRetry(RetryDefault),
+	// 	asynq.Timeout(TimeoutMedium),
+	// ))
+	// if err != nil {
+	// 	return fmt.Errorf("failed to register contact sync scheduler: %w", err)
+	// }
+	// s.logger.Debug("registered contact sync scheduler %s", entryID)
 
 	s.logger.Info("registered all periodic tasks")
 	return nil

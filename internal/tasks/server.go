@@ -53,14 +53,13 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc(TaskTypeEmailSend, s.handler.HandleEmailSend)
 	mux.HandleFunc(TaskTypeEmailRetry, s.handler.HandleEmailSend)
 	mux.HandleFunc(TaskTypeCampaignProcess, s.handler.HandleCampaignProcess)
-	mux.HandleFunc(TaskTypeCampaignSchedule, s.handler.HandleCampaignProcess)
-	mux.HandleFunc(TaskTypeWebhookDelivery, s.handler.HandleWebhookDelivery)
-	mux.HandleFunc(TaskTypeWebhookRetry, s.handler.HandleWebhookDelivery)
-	mux.HandleFunc(TaskTypeDomainVerification, s.handler.HandleDomainVerification)
-	mux.HandleFunc(TaskTypeDomainCheck, s.handler.HandleDomainVerification)
+	// mux.HandleFunc(TaskTypeCampaignSchedule, s.handler.HandleCampaignProcess)
+	// mux.HandleFunc(TaskTypeWebhookDelivery, s.handler.HandleWebhookDelivery)
+	// mux.HandleFunc(TaskTypeWebhookRetry, s.handler.HandleWebhookDelivery)
+	// mux.HandleFunc(TaskTypeDomainVerification, s.handler.HandleDomainVerification)
+	// mux.HandleFunc(TaskTypeDomainCheck, s.handler.HandleDomainVerification)
 	mux.HandleFunc(TaskTypeContactImport, s.handler.HandleContactImport)
-	mux.HandleFunc(TaskTypeContactSync, s.handler.HandleContactImport)
-	mux.HandleFunc(TaskTypeLLMEmailWriter, s.handler.HandleLLMEmailWriter)
+	// mux.HandleFunc(TaskTypeLLMEmailWriter, s.handler.HandleLLMEmailWriter)
 
 	s.logger.Info("starting task processing server concurrency %d queues %v", 10, map[string]int{
 		QueueCritical: 6,
