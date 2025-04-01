@@ -11,7 +11,6 @@ import (
 	"kori/internal/utils"
 	"kori/internal/utils/logger"
 
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/hibiken/asynq"
@@ -385,7 +384,10 @@ func (h *TaskHandler) HandleContactImport(ctx context.Context, t *asynq.Task) er
 		contact.Company = getFieldValue("company")
 
 		// Store all fields in metadata
-		contact.Metadata = datatypes.JSON(fmt.Sprintf("%v", recordMap))
+		contact.Metadata, err = utils.MapToJSON(recordMap)
+		if err != nil {
+			return h.logger.Error("❌ failed to convert record map to json: %w", err)
+		}
 
 		contacts = append(contacts, contact)
 
