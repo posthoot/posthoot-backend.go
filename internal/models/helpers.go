@@ -55,18 +55,22 @@ func GetTeamByName(name string, db *gorm.DB) (*Team, error) {
 
 func GetCampaignByID(id string, db *gorm.DB) (*Campaign, error) {
 	campaign := &Campaign{}
-	if err := db.Where("id = ?", id).First(campaign).Error; err != nil {
+	if err := db.Where("id = ?", id).Preload("Template").First(campaign).Error; err != nil {
 		return nil, err
 	}
 	return campaign, nil
 }
 
-func GetEmailListByID(id string, db *gorm.DB) (*MailingList, error) {
+func GetEmailListByID(id string, db *gorm.DB) (*MailingList, int, error) {
 	emailList := &MailingList{}
 	if err := db.Where("id = ?", id).First(emailList).Error; err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return emailList, nil
+	var count int64
+	if err := db.Model(&Contact{}).Where("list_id = ?", id).Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+	return emailList, int(count), nil
 }
 
 func GetEmailsByCampaignID(campaignID string, db *gorm.DB) ([]*Email, error) {
