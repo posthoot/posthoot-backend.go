@@ -86,16 +86,28 @@ type TeamInvite struct {
 
 type Contact struct {
 	Base
-	Email     string         `gorm:"not null" json:"email" validate:"required,email"`
-	FirstName string         `json:"firstName" validate:"omitempty,min=2"`
-	LastName  string         `json:"lastName" validate:"omitempty,min=2"`
-	Metadata  datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"metadata" validate:"omitempty"`
-	Tags      []Tag          `gorm:"many2many:contact_tags;" json:"tags"`
-	ListID    string         `gorm:"type:uuid;not null" json:"listId" validate:"required,uuid"`
-	TeamID    string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
-	List      *MailingList   `json:"list,omitempty"`
-	ImportID  string         `gorm:"type:uuid;default:NULL;" json:"importId" validate:"omitempty,uuid"`
-	Import    *ContactImport `json:"import,omitempty"`
+	Email     string           `gorm:"not null" json:"email" validate:"required,email"`
+	FirstName string           `json:"firstName" validate:"omitempty,min=2"`
+	LastName  string           `json:"lastName" validate:"omitempty,min=2"`
+	Metadata  datatypes.JSON   `gorm:"type:jsonb;default:'{}'" json:"metadata" validate:"omitempty,json"`
+	LinkedIn  string           `json:"linkedin" validate:"omitempty,url"`
+	Twitter   string           `json:"twitter" validate:"omitempty,url"`
+	Facebook  string           `json:"facebook" validate:"omitempty,url"`
+	Instagram string           `json:"instagram" validate:"omitempty,url"`
+	Tags      []Tag            `gorm:"many2many:contact_tags;" json:"tags"`
+	Country   string           `json:"country" validate:"omitempty"`
+	Phone     string           `json:"phone" validate:"omitempty"`
+	City      string           `json:"city" validate:"omitempty"`
+	State     string           `json:"state" validate:"omitempty"`
+	Zip       string           `json:"zip" validate:"omitempty"`
+	Address   string           `json:"address" validate:"omitempty"`
+	Company   string           `json:"company" validate:"omitempty"`
+	ListID    string           `gorm:"type:uuid;not null" json:"listId" validate:"required,uuid"`
+	TeamID    string           `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
+	List      *MailingList     `json:"list,omitempty"`
+	ImportID  string           `gorm:"type:uuid;default:NULL;" json:"importId" validate:"omitempty,uuid"`
+	Import    *ContactImport   `json:"import,omitempty"`
+	Status    SubscriberStatus `gorm:"not null;default:'ACTIVE'" json:"status" validate:"required,oneof=ACTIVE UNSUBSCRIBED BOUNCED COMPLAINED"`
 }
 
 type ContactImport struct {
@@ -107,7 +119,7 @@ type ContactImport struct {
 	File      *File               `json:"file,omitempty"`
 	ListID    string              `gorm:"type:uuid;not null" json:"listId" validate:"required,uuid"`
 	List      *MailingList        `json:"list,omitempty"`
-	FieldsMap datatypes.JSON      `gorm:"type:jsonb" json:"fieldsMap" validate:"required,json"`
+	FieldsMap datatypes.JSON      `gorm:"type:jsonb;default:'{}'" json:"fieldsMap" validate:"required,json"`
 	Contacts  []Contact           `gorm:"foreignKey:ImportID" json:"contacts,omitempty"`
 }
 
@@ -303,6 +315,10 @@ func (e *Email) AfterUpdate(tx *gorm.DB) error {
 }
 
 func (e *Email) AfterCreate(tx *gorm.DB) error {
+	if e.CampaignID != "" {
+		// If the email is part of a campaign, we don't need to send it immediately this is handled in the campaign handler
+		return nil
+	}
 	smtp, err := GetSMTPConfig(e.TeamID, e.SMTPConfigID, "", tx)
 	if err != nil {
 		return err
@@ -401,6 +417,9 @@ type Campaign struct {
 	Analytics         []EmailTracking           `gorm:"foreignKey:CampaignID" json:"analytics,omitempty"`
 	SMTPConfigID      string                    `gorm:"type:uuid;not null" json:"smtpConfigId"`
 	SMTPConfig        *SMTPConfig               `json:"smtpConfig,omitempty"`
+	BatchSize         int                       `gorm:"not null;default:100" json:"batchSize"`
+	Processed         int                       `gorm:"not null;default:0" json:"processed"`
+	BatchDelay        time.Duration             `gorm:"not null" json:"batchDelay"`
 }
 type RateLimit struct {
 	Base

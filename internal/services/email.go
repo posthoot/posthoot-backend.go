@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"kori/internal/config"
 	"kori/internal/db"
@@ -77,6 +78,47 @@ func init() {
 			err := log.Error("Failed to enqueue email task: %v", err)
 			if err != nil {
 				return
+			}
+		}
+	})
+
+	events.On("campaign.created", func(data interface{}) {
+		campaign := data.(*models.Campaign)
+		log.Info("Enqueueing campaign task for %s", campaign.ID)
+
+		if campaign.Schedule == models.CampaignScheduleRecurring {
+
+			cron := ""
+
+			if campaign.RecurringSchedule == models.CampaignRecurringScheduleDaily {
+				cron = "0 0 * * *"
+			} else if campaign.RecurringSchedule == models.CampaignRecurringScheduleWeekly {
+				cron = "0 0 * * 1"
+			} else if campaign.RecurringSchedule == models.CampaignRecurringScheduleMonthly {
+				cron = "0 0 1 * *"
+			} else if campaign.RecurringSchedule == models.CampaignRecurringScheduleCustom {
+				cron = campaign.CronExpression
+			} else {
+				log.Error("%s", fmt.Errorf("invalid recurring schedule: %s", campaign.RecurringSchedule))
+				return
+			}
+
+			if err := taskClient.EnqueueCampaignTask(context.Background(), tasks.CampaignTask{
+				CampaignID:     campaign.ID,
+				BatchSize:      campaign.BatchSize,
+				CronExpression: cron,
+				Offset:         0,
+			}, 0); err != nil {
+				log.Error("Failed to enqueue campaign task: %v", err)
+			}
+		} else {
+			if err := taskClient.EnqueueCampaignTask(context.Background(), tasks.CampaignTask{
+				CampaignID:  campaign.ID,
+				BatchSize:   campaign.BatchSize,
+				Offset:      0,
+				ScheduledAt: campaign.ScheduledFor,
+			}, 0); err != nil {
+				log.Error("Failed to enqueue campaign task: %v", err)
 			}
 		}
 	})
@@ -408,13 +450,16 @@ func sendEmail(
 
 	htmlFromTemplate := handler.body
 
-	if handler.body == "" {
+	if handler.body == "" && template.HtmlFile != nil {
 		// Get HTML content outside transaction since it's an external operation
 		htmlFromTemplate, err = utils.GetHTMLFromURL(template.HtmlFile.SignedURL)
 		if err != nil {
 			tx.Rollback()
 			return log.Error("failed to get html from template ❌", err)
 		}
+	} else if handler.body == "" && template.HtmlFile == nil {
+		tx.Rollback()
+		return log.Error("failed to get html from template ❌", errors.New("body is empty"))
 	}
 
 	parsedBody := utils.ReplaceVariables(htmlFromTemplate, handler.variables, definedID.String(), cfg, true)

@@ -71,7 +71,7 @@ func (h *UploadHandler) UploadFile(c echo.Context) error {
 	}
 
 	// Upload file to S3
-	url, err := storage.UploadFile(c.Request().Context(), content, file.Filename, h.acl)
+	url, err := storage.UploadFile(c.Request().Context(), content, file.Filename, h.acl, file.Header.Get("Content-Type"))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to upload file",

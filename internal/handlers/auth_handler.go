@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"encoding/base64"
+	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"kori/internal/config"
 	"kori/internal/events"
 	"kori/internal/models"
 	"kori/internal/utils"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -45,6 +48,10 @@ type ResetPasswordRequest struct {
 type VerifyResetCodeRequest struct {
 	Code     string `json:"code" validate:"required"`
 	Password string `json:"new_password" validate:"required,min=8"`
+}
+
+type GoogleAuthRequest struct {
+	IdToken string `json:"idToken" validate:"required"`
 }
 
 // Register handles the registration of a new user by validating input, hashing the password, storing user data, and assigning permissions.
@@ -376,9 +383,10 @@ func (h *AuthHandler) UpdateUser(c echo.Context) error {
 
 	// Only update allowed fields
 	var updateData struct {
-		FirstName string          `json:"first_name"`
-		LastName  string          `json:"last_name"`
-		Role      models.UserRole `json:"role"`
+		FirstName        string          `json:"first_name"`
+		LastName         string          `json:"last_name"`
+		Role             models.UserRole `json:"role"`
+		ProfilePictureID string          `json:"profilePictureId"`
 	}
 
 	if err := c.Bind(&updateData); err != nil {
@@ -393,6 +401,10 @@ func (h *AuthHandler) UpdateUser(c echo.Context) error {
 	user.FirstName = updateData.FirstName
 	user.LastName = updateData.LastName
 	user.Role = updateData.Role
+
+	if updateData.ProfilePictureID != "" {
+		user.ProfilePictureID = updateData.ProfilePictureID
+	}
 
 	if err := h.db.Save(&user).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
@@ -675,4 +687,203 @@ func (h *AuthHandler) DeleteInvite(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Invitation deleted successfully"})
+}
+
+// GoogleAuth handles authentication with Google OAuth
+// @Summary Authenticate with Google
+// @Description Authenticate user using Google OAuth ID token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body GoogleAuthRequest true "Google ID token"
+// @Success 200 {object} map[string]string "JWT token"
+// @Failure 400 {object} map[string]string "Invalid token"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/google [post]
+func (h *AuthHandler) GoogleAuth(c echo.Context) error {
+	var req GoogleAuthRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	if err := c.Validate(req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	// Verify the Google ID token
+	token, err := config.FirebaseAuth.VerifyIDToken(c.Request().Context(), req.IdToken)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid Google ID token"})
+	}
+
+	// Start a transaction
+	tx := h.db.Begin()
+	if tx.Error != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to start transaction"})
+	}
+
+	// Check if user exists with either email or provider ID
+	var user models.User
+	err = tx.Where("email = ? OR (provider = ? AND provider_id = ?)",
+		token.Claims["email"], "google", token.UID).First(&user).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Check for pending team invitation first
+			var invite models.TeamInvite
+			inviteErr := tx.Where("email = ? AND status = ? AND expires_at > ?",
+				token.Claims["email"], "pending", time.Now()).First(&invite).Error
+
+			var teamID string
+			var userRole models.UserRole
+
+			if inviteErr == nil {
+				// Use the invited team and role
+				teamID = invite.TeamID
+				userRole = invite.Role
+
+				// Mark invitation as accepted
+				invite.Status = "accepted"
+				if err := tx.Save(&invite).Error; err != nil {
+					tx.Rollback()
+					return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update invitation"})
+				}
+			} else {
+				// No invitation found, create new team
+				team := models.Team{
+					Name: token.Claims["name"].(string) + "'s Team",
+				}
+
+				if err = tx.Create(&team).Error; err != nil {
+					tx.Rollback()
+					return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create team"})
+				}
+
+				teamID = team.ID
+				userRole = models.UserRoleAdmin
+			}
+			var fileModel *models.File = &models.File{}
+			// download the profile picture
+			profilePictureURL := token.Claims["picture"].(string)
+			profilePicture, err := http.Get(profilePictureURL)
+			if err != nil {
+				// Log the error but do not affect account creation
+				log.Error("Failed to download profile picture", err)
+			} else {
+				// read the profile picture
+				profilePictureBytes, err := io.ReadAll(profilePicture.Body)
+				if err != nil {
+					log.Error("Failed to read profile picture", err)
+				} else {
+					// Get storage handler
+					storage := GetStorageHandler()
+					if storage != nil {
+						// upload the profile picture to s3
+						profilePictureURL, err = storage.UploadFile(c.Request().Context(), profilePictureBytes, user.ID, "public-read", "image/jpeg")
+						if err != nil {
+							log.Error("Failed to upload profile picture", err)
+						} else {
+							fileModel := &models.File{
+								TeamID: teamID,
+								UserID: user.ID,
+								Path:   profilePictureURL[strings.LastIndex(profilePictureURL, "/")+1:],
+								Name:   "profile_picture.jpg",
+								Size:   int64(len(profilePictureBytes)),
+								Type:   "image/jpeg",
+							}
+							if err := tx.Create(&fileModel).Error; err != nil {
+								log.Error("Failed to create profile picture", err)
+							}
+						}
+					} else {
+						log.Error("Storage handler not configured", err)
+					}
+				}
+			}
+
+			// Create user with both Firebase and local auth capabilities
+			user = models.User{
+				Email:            token.Claims["email"].(string),
+				FirstName:        token.Claims["name"].(string),
+				LastName:         "",
+				Role:             userRole,
+				TeamID:           teamID,
+				Provider:         "google",
+				ProviderID:       token.UID,
+				ProfilePictureID: fileModel.ID,
+				Password:         "", // Empty password for Firebase users
+				ProviderData:     datatypes.JSON{},
+			}
+
+			if err := tx.Create(&user).Error; err != nil {
+				tx.Rollback()
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
+			}
+
+			// Assign default permissions
+			if err := models.AssignDefaultPermissions(tx, &user); err != nil {
+				tx.Rollback()
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to assign permissions"})
+			}
+
+			// Emit different events based on invitation status
+			if inviteErr == nil {
+				events.Emit("users.invite_accepted", &user)
+			} else {
+				events.Emit("users.created", &user)
+			}
+		} else {
+			tx.Rollback()
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to check user existence"})
+		}
+	} else {
+		// If user exists but hasn't used Google auth before, link the accounts
+		if user.Provider == "local" {
+			user.Provider = "google"
+			user.ProviderID = token.UID
+			if err := tx.Save(&user).Error; err != nil {
+				tx.Rollback()
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
+			}
+		} else if user.Provider == "google" {
+			if err := tx.Save(&user).Error; err != nil {
+				tx.Rollback()
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
+			}
+		}
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to commit transaction"})
+	}
+
+	// Generate JWT token
+	jwtToken, err := utils.GenerateJWT(user)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate token"})
+	}
+
+	refreshToken, err := utils.GenerateRefreshToken(user)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate refresh token"})
+	}
+
+	// Create auth transaction
+	authtransaction := &models.AuthTransaction{
+		UserID: user.ID,
+		TeamID: user.TeamID,
+		Token:  jwtToken,
+	}
+
+	if err := h.db.Create(authtransaction).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create auth transaction"})
+	}
+
+	events.Emit("users.google_auth", &user)
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"token":         jwtToken,
+		"refresh_token": refreshToken,
+	})
 }

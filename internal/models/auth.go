@@ -2,20 +2,27 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/datatypes"
 )
 
 type User struct {
 	Base
-	Email       string           `gorm:"uniqueIndex;not null" json:"email"`
-	Password    string           `gorm:"not null" json:"-"`
-	FirstName   string           `json:"firstName"`
-	LastName    string           `json:"lastName"`
-	Role        UserRole         `gorm:"not null;default:'member'" json:"role"`
-	TeamID      string           `gorm:"type:uuid;not null" json:"teamId"`
-	Team        *Team            `json:"team,omitempty"`
-	Permissions []UserPermission `gorm:"foreignKey:UserID" json:"permissions,omitempty"`
-	Invites     []TeamInvite     `gorm:"foreignKey:InviterID" json:"invites,omitempty"`
-	Files       []File           `gorm:"foreignKey:UserID" json:"files,omitempty"`
+	Email            string           `gorm:"uniqueIndex;not null" json:"email"`
+	Password         string           `gorm:"not null" json:"-"`
+	FirstName        string           `json:"firstName"`
+	LastName         string           `json:"lastName"`
+	Role             UserRole         `gorm:"not null;default:'member'" json:"role"`
+	TeamID           string           `gorm:"type:uuid;not null" json:"teamId"`
+	Team             *Team            `json:"team,omitempty"`
+	Permissions      []UserPermission `gorm:"foreignKey:UserID" json:"permissions,omitempty"`
+	Invites          []TeamInvite     `gorm:"foreignKey:InviterID" json:"invites,omitempty"`
+	Files            []File           `gorm:"foreignKey:UserID" json:"files,omitempty"`
+	ProfilePicture   File             `gorm:"foreignKey:ProfilePictureID" json:"profilePicture,omitempty"`
+	ProfilePictureID string           `gorm:"type:uuid" json:"profilePictureId,omitempty"`
+	Provider         string           `gorm:"default:'local'" json:"provider"`          // 'local', 'google', etc.
+	ProviderID       string           `gorm:"index" json:"providerId,omitempty"`        // ID from the OAuth provider
+	ProviderData     datatypes.JSON   `gorm:"type:jsonb" json:"providerData,omitempty"` // Additional data from provider
 }
 
 type PasswordReset struct {

@@ -235,6 +235,254 @@ POST /api/v1/auth/password-reset
 }
 ```
 
+### 🔒 Authentication System Architecture
+
+The authentication system supports both traditional email/password authentication and Google OAuth, integrated with JWT-based session management.
+
+```mermaid
+graph TD
+    subgraph "Traditional Email/Password Authentication"
+        A[User Registration/Login] -->|Email & Password| B{Exists?}
+        B -->|No - Register| C[Create Team & User]
+        C --> D[Assign Default Permissions]
+        B -->|Yes - Login| E[Validate Password]
+        D --> F[Generate Tokens]
+        E -->|Valid| F
+        E -->|Invalid| G[Return Error]
+        F --> H[Create Auth Transaction]
+        H --> I[Return JWT & Refresh Token]
+    end
+
+    subgraph "Google OAuth Authentication"
+        J[Google Sign-In] -->|ID Token| K[Verify with Firebase]
+        K -->|Valid| L{User Exists?}
+        L -->|No| M[Create Team & User]
+        M --> N[Assign Default Permissions]
+        L -->|Yes| O[Update Provider Data]
+        N --> P[Generate Tokens]
+        O --> P
+        P --> Q[Create Auth Transaction]
+        Q --> R[Return JWT & Refresh Token]
+    end
+
+    subgraph "JWT Token Flow"
+        S[Protected API Request] -->|JWT Token| T[Auth Middleware]
+        T -->|Validate| U{Token Valid?}
+        U -->|Yes| V[Extract Claims]
+        V --> W[Set Context]
+        W --> X[Continue to Handler]
+        U -->|No| Y[Return 401]
+    end
+
+    subgraph "Token Refresh Flow"
+        Z[Refresh Token Request] -->|Refresh Token| AA{Valid?}
+        AA -->|Yes| AB[Get User]
+        AB --> AC[Generate New Access Token]
+        AC --> AD[Update Auth Transaction]
+        AD --> AE[Return New Access Token]
+        AA -->|No| AF[Return 401]
+    end
+
+    subgraph "Password Reset Flow"
+        AG[Reset Request] -->|Email| AH[Generate Reset Code]
+        AH --> AI[Store Reset Code]
+        AI --> AJ[Send Reset Email]
+        AK[Reset Verification] -->|Code & New Password| AL{Valid Code?}
+        AL -->|Yes| AM[Update Password]
+        AM --> AN[Mark Code Used]
+        AL -->|No| AO[Return Error]
+    end
+
+    subgraph "Team Invite Flow"
+        AP[Team Invite] -->|Email & Role| AQ[Generate Invite Code]
+        AQ --> AR[Store Invite]
+        AR --> AS[Send Invite Email]
+        AT[Accept Invite] -->|Code & Password| AU{Valid Invite?}
+        AU -->|Yes| AV[Create User]
+        AV --> AW[Assign Team & Role]
+        AU -->|No| AX[Return Error]
+    end
+```
+
+#### Key Components:
+
+1. **🔐 Authentication Methods**
+   - 📧 Traditional Email/Password
+   - 🔑 Google OAuth via Firebase
+   - 📨 Team Invitations
+
+2. **🎟️ Token Management**
+   - 🔒 JWT Access Tokens (24h validity)
+   - 🔄 Refresh Tokens (7 days validity)
+   - 📝 Auth Transaction Tracking
+
+3. **👥 User Management**
+   - 🏢 Automatic Team Creation
+   - 👑 Role Assignment
+   - 🔑 Permission Management
+
+4. **🔒 Security Features**
+   - 🔐 Bcrypt Password Hashing
+   - ⏰ Time-Limited Reset Codes
+   - 🔍 Firebase Token Verification
+   - 📊 Transaction-based Operations
+
+5. **🤝 Integration Points**
+   - 🔌 Firebase Authentication
+   - 📨 Email Service for Notifications
+   - 📝 Event System for Tracking
+
+#### Authentication Endpoints:
+
+```http
+# Traditional Authentication
+POST /api/v1/auth/register     # User Registration
+POST /api/v1/auth/login        # User Login
+POST /api/v1/auth/refresh      # Token Refresh
+
+# Google OAuth
+POST /api/v1/auth/google       # Google Sign-In
+
+# Password Management
+POST /api/v1/auth/password-reset         # Request Reset
+POST /api/v1/auth/password-reset/verify  # Verify Reset
+
+# Team Management
+POST /api/v1/auth/invite       # Send Team Invite
+POST /api/v1/auth/accept/:code # Accept Invite
+```
+
+### 💳 Subscription System
+
+The subscription system integrates with Dodo Payments to provide flexible subscription management with feature-based access control.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant B as Backend
+    participant D as Dodo Payments
+    participant DB as Database
+
+    %% Initial Purchase Flow
+    U->>F: Click Buy Now
+    F->>B: POST /subscriptions (email + productId)
+    B->>D: Create Customer
+    B->>D: Create Subscription
+    B->>DB: Store Pending Subscription
+    B-->>F: Return Payment URL
+    F->>D: Redirect to Payment Page
+    D->>B: Webhook (subscription.activated)
+    B->>DB: Update Subscription Status
+
+    %% User Registration/Login Flow
+    U->>F: Register/Login
+    F->>B: POST /auth/register or /auth/google
+    B->>DB: Check for Pending Subscription
+    B->>DB: Link Subscription to Team
+    B-->>F: Return JWT Token
+
+    %% Subscription Management Flow
+    U->>F: Manage Subscription
+    F->>B: GET /subscriptions/portal
+    B->>D: Create Portal Session
+    B-->>F: Return Portal URL
+    F->>D: Redirect to Portal
+```
+
+#### 🎯 Key Components
+
+1. **📦 Products & Features**
+   ```go
+   type Product struct {
+       Name        string
+       Description string
+       Price       float64
+       Interval    string    // monthly, yearly
+       Features    []ProductFeatureConfig
+   }
+
+   type ProductFeature string
+   const (
+       FeatureEmailCampaigns    ProductFeature = "email_campaigns"
+       FeatureTemplateLibrary   ProductFeature = "template_library"
+       FeatureAdvancedAnalytics ProductFeature = "advanced_analytics"
+       // ... more features
+   )
+   ```
+
+2. **🔄 Subscription States**
+   ```go
+   type SubscriptionStatus string
+   const (
+       SubscriptionStatusPending  SubscriptionStatus = "pending"
+       SubscriptionStatusActive   SubscriptionStatus = "active"
+       SubscriptionStatusCanceled SubscriptionStatus = "canceled"
+       SubscriptionStatusPaused   SubscriptionStatus = "paused"
+       SubscriptionStatusFailed   SubscriptionStatus = "failed"
+   )
+   ```
+
+#### 🛣️ Subscription Flow
+
+1. **💰 Pre-Purchase**
+   - User selects a plan
+   - Backend creates pending subscription
+   - User is redirected to Dodo Payments
+
+2. **👤 Account Creation**
+   - User registers/logs in after payment
+   - System matches email with pending subscription
+   - Subscription is linked to user's team
+
+3. **✨ Feature Access**
+   - Each product defines enabled features
+   - System checks feature access via `HasFeature()`
+   - Optional limits per feature (e.g., email campaign limits)
+
+4. **⚙️ Management**
+   - Team admins can access subscription portal
+   - Portal allows plan changes, cancellation
+   - Webhooks handle subscription updates
+
+#### 🔌 API Endpoints
+
+```http
+# Public Endpoints
+POST   /api/v1/subscriptions         # Create subscription
+POST   /api/v1/subscriptions/webhook # Handle Dodo webhooks
+
+# Protected Endpoints (Requires Auth)
+GET    /api/v1/subscriptions/portal   # Get management portal URL
+GET    /api/v1/subscriptions/features # Get enabled features
+```
+
+#### 🔐 Security Features
+
+1. **👥 Access Control**
+   - Only team admins can manage subscriptions
+   - Feature checks on all protected endpoints
+   - Webhook signature verification
+
+2. **💾 Data Integrity**
+   - Transaction-based subscription updates
+   - Email verification for subscription linking
+   - Secure portal access via Dodo Payments
+
+3. **🔄 State Management**
+   - Automatic status updates via webhooks
+   - Period tracking for billing cycles
+   - Trial period support
+
+#### ⚙️ Configuration
+
+```env
+# Dodo Payments Configuration
+DODO_API_KEY=your_dodo_api_key
+DODO_WEBHOOK_SECRET=your_dodo_webhook_secret
+APP_ENV=development # or production
+```
+
 ## 🛡️ Security Features
 
 1. **⚡ Rate Limiting**

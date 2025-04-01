@@ -50,3 +50,15 @@ func (t *TeamInvite) AfterCreate(tx *gorm.DB) error {
 	events.Emit("invite.created", t)
 	return nil
 }
+
+func (c *ContactImport) AfterCreate(tx *gorm.DB) error {
+	log.Info("Contact import created %v", c)
+	events.Emit("contact_import.created", c)
+	return nil
+}
+
+func (c *Campaign) AfterCreate(tx *gorm.DB) error {
+	log.Info("Campaign created %v", c)
+	events.Emit("campaign.created", c)
+	return nil
+}

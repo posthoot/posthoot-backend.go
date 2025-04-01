@@ -52,3 +52,59 @@ func GetTeamByName(name string, db *gorm.DB) (*Team, error) {
 	}
 	return team, nil
 }
+
+func GetCampaignByID(id string, db *gorm.DB) (*Campaign, error) {
+	campaign := &Campaign{}
+	if err := db.Where("id = ?", id).First(campaign).Error; err != nil {
+		return nil, err
+	}
+	return campaign, nil
+}
+
+func GetEmailListByID(id string, db *gorm.DB) (*MailingList, error) {
+	emailList := &MailingList{}
+	if err := db.Where("id = ?", id).First(emailList).Error; err != nil {
+		return nil, err
+	}
+	return emailList, nil
+}
+
+func GetEmailsByCampaignID(campaignID string, db *gorm.DB) ([]*Email, error) {
+	emails := []*Email{}
+	if err := db.Where("campaign_id = ?", campaignID).Find(&emails).Error; err != nil {
+		return nil, err
+	}
+	return emails, nil
+}
+
+func GetUnsubscribedContactsByListID(listID string, db *gorm.DB) ([]*Contact, error) {
+	contacts := []*Contact{}
+	if err := db.Where("list_id = ? AND status = ?", listID, SubscriberStatusUnsubscribed).Find(&contacts).Error; err != nil {
+		return nil, err
+	}
+	return contacts, nil
+}
+
+func GetContactImportByID(id string, db *gorm.DB) (*ContactImport, error) {
+	contactImport := &ContactImport{}
+	if err := db.Where("id = ?", id).First(contactImport).Error; err != nil {
+		return nil, err
+	}
+	return contactImport, nil
+}
+
+func GetContactImportByFileID(fileID string, db *gorm.DB) (*ContactImport, error) {
+	contactImport := &ContactImport{}
+	if err := db.Where("file_id = ?", fileID).First(contactImport).Error; err != nil {
+		return nil, err
+	}
+	return contactImport, nil
+}
+
+func GetFileByID(id string, db *gorm.DB) (*File, error) {
+	file := &File{}
+	if err := db.Where("id = ?", id).First(file).Error; err != nil {
+		return nil, err
+	}
+	return file, nil
+}

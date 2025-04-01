@@ -83,11 +83,12 @@ func NewS3Service(bucketName, endpoint, region, accessKey, secretKey string) (*S
 }
 
 // UploadFile uploads a file to S3 or S3-compatible storage and returns the URL
-func (s *S3Service) UploadFile(ctx context.Context, file []byte, filename string, acl types.ObjectCannedACL) (string, error) {
+func (s *S3Service) UploadFile(ctx context.Context, file []byte, filename string, acl types.ObjectCannedACL, contentType string) (string, error) {
 	s.logger.Info("📤 Starting file upload: %s", filename)
 
 	// Generate unique filename
 	ext := filepath.Ext(filename)
+
 	filename = fmt.Sprintf("%s%s", uuid.New().String(), ext)
 
 	s.logger.Info("🔄 Processing upload for file: %s", filename)
@@ -105,7 +106,7 @@ func (s *S3Service) UploadFile(ctx context.Context, file []byte, filename string
 		Key:         aws.String(filename),
 		Body:        bytes.NewReader(file),
 		ACL:         ACL,
-		ContentType: aws.String("text/html"),
+		ContentType: aws.String(contentType),
 	})
 	if err != nil {
 		return "", s.logger.Error("Failed to upload file to storage ❌", err)

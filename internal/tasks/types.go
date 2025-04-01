@@ -72,11 +72,12 @@ type EmailTask struct {
 }
 
 type CampaignTask struct {
-	CampaignID  string                 `json:"campaign_id"`
-	BatchSize   int                    `json:"batch_size"`
-	Offset      int                    `json:"offset"`
-	Parameters  map[string]interface{} `json:"parameters,omitempty"`
-	ScheduledAt time.Time              `json:"scheduled_at,omitempty"`
+	CampaignID     string                 `json:"campaign_id"`
+	BatchSize      int                    `json:"batch_size"`
+	Offset         int                    `json:"offset"`
+	Parameters     map[string]interface{} `json:"parameters,omitempty"`
+	ScheduledAt    time.Time              `json:"scheduled_at,omitempty"`
+	CronExpression string                 `json:"cron_expression,omitempty"`
 }
 
 type WebhookDeliveryTask struct {
@@ -94,13 +95,7 @@ type DomainVerificationTask struct {
 }
 
 type ContactImportTask struct {
-	ImportID   string                 `json:"import_id"`
-	FileID     string                 `json:"file_id"`
-	TeamID     string                 `json:"team_id"`
-	BatchSize  int                    `json:"batch_size"`
-	Offset     int                    `json:"offset"`
-	FieldsMap  map[string]string      `json:"fields_map"`
-	Parameters map[string]interface{} `json:"parameters,omitempty"`
+	ImportID string `json:"import_id"`
 }
 
 type LLMEmailWriterTask struct {

@@ -48,6 +48,11 @@ func main() {
 		log.Fatalf("Failed to initialize keys: %v", err)
 	}
 
+	// Initialize Firebase
+	if err := config.InitFirebase(); err != nil {
+		log.Fatalf("Error initializing Firebase: %v", err)
+	}
+
 	// Connect to database
 	if err := db.Connect(cfg); err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -66,7 +71,7 @@ func main() {
 	}
 
 	// Start monitoring database connection pool
-	db.MonitorConnectionPool(5 * time.Hour)
+	db.MonitorConnectionPool(10 * time.Hour)
 
 	// Initialize task handlers
 	taskHandler := tasks.NewTaskHandler(db.GetDB())

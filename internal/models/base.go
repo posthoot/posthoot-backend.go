@@ -163,9 +163,10 @@ const (
 type EmailTrackingEvent string
 
 const (
-	EmailTrackingEventClick     EmailTrackingEvent = "click"
-	EmailTrackingEventOpen      EmailTrackingEvent = "open"
-	EmailTrackingEventReply     EmailTrackingEvent = "reply"
-	EmailTrackingEventBounce    EmailTrackingEvent = "bounce"
-	EmailTrackingEventComplaint EmailTrackingEvent = "complaint"
+	EmailTrackingEventClick       EmailTrackingEvent = "click"
+	EmailTrackingEventOpen        EmailTrackingEvent = "open"
+	EmailTrackingEventReply       EmailTrackingEvent = "reply"
+	EmailTrackingEventBounce      EmailTrackingEvent = "bounce"
+	EmailTrackingEventComplaint   EmailTrackingEvent = "complaint"
+	EmailTrackingEventUnsubscribe EmailTrackingEvent = "unsubscribe"
 )

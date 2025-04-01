@@ -161,6 +161,9 @@ func runMigrations() error {
 		&models.AuthTransaction{},
 		&models.Campaign{},
 
+		// Subscriber models
+		&models.ContactImport{},
+
 		// Email-related models
 		&models.Email{},
 		&models.EmailTracking{},
@@ -179,6 +182,11 @@ func runMigrations() error {
 		&models.AutomationNode{},
 		&models.AutomationNodeEdge{},
 		&models.LLMEmailWriterJob{},
+
+		// Subscription models
+		&models.Subscription{},
+		&models.Product{},
+		&models.ProductFeatureConfig{},
 	); err != nil {
 		tx.Rollback()
 		return err

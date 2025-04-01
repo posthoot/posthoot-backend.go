@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -119,26 +120,93 @@ func (c *TaskClient) EnqueueEmailTask(ctx context.Context, task EmailTask) error
 	return nil
 }
 
-// EnqueueCampaignTask enqueues a campaign processing task
+// EnqueueCampaignTask enqueues a campaign task with support for cron scheduling
 func (c *TaskClient) EnqueueCampaignTask(ctx context.Context, task CampaignTask, processIn time.Duration) error {
 	payload, err := json.Marshal(task)
 	if err != nil {
 		return fmt.Errorf("failed to marshal campaign task: %w", err)
 	}
 
-	info, err := c.client.EnqueueContext(ctx,
-		asynq.NewTask(TaskTypeCampaignProcess, payload),
-		asynq.ProcessIn(processIn),
+	// Base task with type and payload
+	t := asynq.NewTask(TaskTypeCampaignProcess, payload)
+
+	// Configure task options based on scheduling type
+	var opts []asynq.Option
+	opts = append(opts,
 		asynq.Queue(QueueDefault),
 		asynq.Timeout(TimeoutLong),
 		asynq.MaxRetry(RetryMax),
 	)
+
+	switch {
+	case task.CronExpression != "":
+		// For recurring campaigns using cron
+		opts = append(opts,
+			CronSchedule(task.CronExpression),
+			// Remove Unique from base options to avoid duplicate
+			asynq.Unique(24*time.Hour), // Prevent duplicate schedules
+		)
+
+		// Schedule the next run after this one completes
+		opts = append(opts, AfterFunc(func(ctx context.Context, t *asynq.Task) error {
+			// Decode the task payload
+			var taskData CampaignTask
+			if err := json.Unmarshal(t.Payload(), &taskData); err != nil {
+				return fmt.Errorf("failed to unmarshal task payload: %w", err)
+			}
+
+			// Schedule next run with reset batch processing
+			return c.EnqueueCampaignTask(ctx, CampaignTask{
+				CampaignID:     taskData.CampaignID,
+				CronExpression: taskData.CronExpression,
+				BatchSize:      taskData.BatchSize, // Preserve batch size
+				Offset:         0,                  // Reset offset for new cron run
+			}, time.Second) // 1 second delay
+		}))
+
+		c.logger.Info("📅 Scheduling recurring campaign [%s] with cron: %s",
+			task.CampaignID, task.CronExpression)
+
+	case !task.ScheduledAt.IsZero():
+		// For one-time scheduled campaigns
+		processAt := task.ScheduledAt
+		if processAt.Before(time.Now()) {
+			processAt = time.Now()
+		}
+		opts = append(opts, asynq.ProcessAt(processAt))
+		c.logger.Info("⏰ Scheduling one-time campaign [%s] at: %s",
+			task.CampaignID, processAt.Format(time.RFC3339))
+
+	case processIn > 0:
+		// For delayed processing
+		opts = append(opts, asynq.ProcessIn(processIn))
+		c.logger.Info("⌛ Delaying campaign [%s] by: %v",
+			task.CampaignID, processIn)
+
+	default:
+		// For immediate processing
+		c.logger.Info("🚀 Enqueueing campaign [%s] for immediate processing",
+			task.CampaignID)
+	}
+
+	// Enqueue the task with configured options
+	info, err := c.client.EnqueueContext(ctx, t, opts...)
 	if err != nil {
+		if errors.Is(err, asynq.ErrDuplicateTask) {
+			return fmt.Errorf("campaign task already scheduled: %w", err)
+		}
 		return fmt.Errorf("failed to enqueue campaign task: %w", err)
 	}
 
-	c.logger.Info("Enqueued campaign task [%s] in queue %s for campaign %s scheduled at %s",
-		info.ID, info.Queue, task.CampaignID, task.ScheduledAt)
+	// Log successful enqueue with details
+	c.logger.Success("✅ Enqueued campaign task [ID: %s] [Queue: %s]", info.ID, info.Queue)
+	if info.NextProcessAt.IsZero() {
+		c.logger.Info("⚡ Task will process immediately")
+	} else {
+		c.logger.Info("🕒 Next processing scheduled for: %s",
+			info.NextProcessAt.Format(time.RFC3339))
+	}
+
 	return nil
 }
 
@@ -200,8 +268,8 @@ func (c *TaskClient) EnqueueContactImportTask(ctx context.Context, task ContactI
 		return fmt.Errorf("failed to enqueue contact import task: %w", err)
 	}
 
-	c.logger.Info("Enqueued contact import task [%s] in queue %s for import %s and team %s",
-		info.ID, info.Queue, task.ImportID, task.TeamID)
+	c.logger.Info("Enqueued contact import task [%s] in queue %s for import %s",
+		info.ID, info.Queue, task.ImportID)
 	return nil
 }
 

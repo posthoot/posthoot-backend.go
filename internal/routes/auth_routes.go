@@ -19,6 +19,7 @@ func SetupAuthRoutes(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	// Public routes (no auth required)
 	auth.POST("/register", authHandler.Register)
 	auth.POST("/login", authHandler.Login)
+	auth.POST("/google", authHandler.GoogleAuth)
 	auth.POST("/invite", authHandler.InviteUser)
 	auth.POST("/accept/:code", authHandler.AcceptInvite)
 	auth.DELETE("/invite/:code", authHandler.DeleteInvite)

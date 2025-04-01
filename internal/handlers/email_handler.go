@@ -13,7 +13,7 @@ import (
 type SendEmailRequest struct {
 	TemplateID         string         `json:"templateId"`
 	To                 string         `json:"to" validate:"required,email"`
-	Variables          datatypes.JSON `json:"data" validate:"required"`
+	Variables          datatypes.JSON `json:"data" validate:"required,json"`
 	SMTPConfigProvider string         `json:"provider" validate:"omitempty,oneof=CUSTOM GMAIL OUTLOOK AMAZON"`
 	Subject            string         `json:"subject"`
 	Body               string         `json:"html"`

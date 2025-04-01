@@ -155,7 +155,7 @@ func CreateHTMLFile(db *gorm.DB, teamId string, content string) (*models.File, e
 	}
 
 	// Upload file
-	url, err := storage.UploadFile(context.Background(), fileBytes, fileName, types.ObjectCannedACLAuthenticatedRead)
+	url, err := storage.UploadFile(context.Background(), fileBytes, fileName, types.ObjectCannedACLAuthenticatedRead, "text/html")
 	if err != nil {
 		return nil, log.Error("failed to upload file", err)
 	}

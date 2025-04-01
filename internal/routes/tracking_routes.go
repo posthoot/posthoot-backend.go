@@ -15,6 +15,7 @@ func RegisterTrackingRoutes(e *echo.Echo, h *handlers.TrackingHandler, cfg *conf
 	trackGroup := e.Group("/track")
 	trackGroup.GET("/click/*", h.HandleEmailClick) // The * captures the rest of the URL
 	trackGroup.GET("/open", h.HandleEmailOpen)
+	trackGroup.GET("/unsubscribe", h.HandleEmailUnsubscribe)
 
 	// Analytics endpoints (require auth)
 	analyticsGroup := e.Group("/api/v1/analytics")

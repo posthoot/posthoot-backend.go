@@ -90,8 +90,10 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 	if email.BCC != "" {
 		to = append(to, strings.Split(email.BCC, ",")...)
 	}
+
 	// Send the email
 	addr := fmt.Sprintf("%s:%d", email.SMTPConfig.Host, email.SMTPConfig.Port)
+
 	err = smtp.SendMail(addr, auth, email.From, to, msg)
 
 	if err != nil {
@@ -138,7 +140,7 @@ func (h *EmailHandler) SendBatchEmails(emails []*models.Email) []BatchEmailResul
 }
 
 // SendCampaignEmails sends campaign emails in batches
-func (h *EmailHandler) SendCampaignEmails(campaign *models.Campaign, emails []*models.Email, batchSize int) []BatchEmailResult {
+func (h *EmailHandler) SendCampaignEmails(campaign *models.Campaign, emails []*models.Email, batchSize int, delay time.Duration) []BatchEmailResult {
 	totalEmails := len(emails)
 	results := make([]BatchEmailResult, totalEmails)
 
@@ -157,7 +159,7 @@ func (h *EmailHandler) SendCampaignEmails(campaign *models.Campaign, emails []*m
 
 		// Optional: Add delay between batches to prevent overwhelming the SMTP server
 		if end < totalEmails {
-			time.Sleep(time.Second * 2)
+			time.Sleep(delay)
 		}
 	}
 
