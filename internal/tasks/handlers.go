@@ -9,9 +9,12 @@ import (
 	"kori/internal/config"
 	"kori/internal/models"
 	"kori/internal/utils"
+	"kori/internal/utils/base64"
 	"kori/internal/utils/logger"
 
 	"gorm.io/gorm"
+
+	"maps"
 
 	"github.com/hibiken/asynq"
 )
@@ -98,6 +101,12 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		return nil
 	}
 
+	// update campaign status to sending
+	campaign.Status = models.CampaignStatusSending
+	if err := h.db.Save(campaign).Error; err != nil {
+		return h.logger.Error("❌ failed to update campaign status: %w", err)
+	}
+
 	// Get the campaign's SMTP config
 	smtpConfig, err := models.GetSMTPConfig(campaign.TeamID, campaign.SMTPConfigID, "", h.db)
 	if err != nil {
@@ -105,7 +114,7 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 	}
 
 	// Get the campaign's email list
-	emailList, err := models.GetEmailListByID(campaign.ListID, h.db)
+	emailList, contactCount, err := models.GetEmailListByID(campaign.ListID, h.db)
 	if err != nil {
 		return h.logger.Error("❌ failed to get email list: %w", err)
 	}
@@ -151,14 +160,55 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		return nil
 	}
 
+	// Get HTML content outside transaction since it's an external operation
+	htmlFromTemplate, err := utils.GetHTMLFromURL(campaign.Template.HtmlFile.SignedURL)
+	if err != nil {
+		return h.logger.Error("❌ failed to get html from template: %w", err)
+	}
+
 	// Create emails for each contact
 	emails := make([]*models.Email, len(contacts))
 	for i, contact := range contacts {
+		// default variables
+		defaultVariables := make(map[string]string)
+		defaultVariables["email"] = contact.Email
+		defaultVariables["first_name"] = contact.FirstName
+		defaultVariables["last_name"] = contact.LastName
+		defaultVariables["company"] = contact.Company
+		defaultVariables["country"] = contact.Country
+		defaultVariables["city"] = contact.City
+		defaultVariables["state"] = contact.State
+		defaultVariables["zip"] = contact.Zip
+		defaultVariables["address"] = contact.Address
+		defaultVariables["phone"] = contact.Phone
+		defaultVariables["linkedin"] = contact.LinkedIn
+		defaultVariables["twitter"] = contact.Twitter
+		defaultVariables["facebook"] = contact.Facebook
+		defaultVariables["instagram"] = contact.Instagram
+
+		variables := make(map[string]string)
+		maps.Copy(variables, defaultVariables)
+
+		parsedBody := utils.ReplaceVariables(htmlFromTemplate, variables, campaign.ID, cfg, true)
+		parsedSubject := utils.ReplaceVariables(campaign.Template.Subject, variables, campaign.ID, cfg, false)
+
+		parsedSubject, err = base64.DecodeFromBase64(parsedSubject)
+		if err != nil {
+			return h.logger.Error("❌ failed to decode subject: %w", err)
+		}
+
+		jsonData, err := utils.MapToJSON(variables)
+
+		if err != nil {
+			return h.logger.Error("❌ failed to convert variables to json: %w", err)
+		}
+
 		email := &models.Email{
 			From:         smtpConfig.FromEmail,
 			To:           contact.Email,
-			Subject:      campaign.Template.Subject,
-			Body:         campaign.Template.DesignJSON,
+			Subject:      parsedSubject,
+			Body:         parsedBody,
+			Data:         jsonData,
 			Status:       models.EmailStatusPending,
 			TeamID:       campaign.TeamID,
 			TemplateID:   campaign.TemplateID,
@@ -184,15 +234,20 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 
 	h.mailHandler.SendCampaignEmails(campaign, emails, task.BatchSize, campaign.BatchDelay)
 
+	needToScheduleNextBatch := false
 	// Update campaign status if needed
-	if task.Offset+task.BatchSize >= len(emailList.Contacts) {
+	if task.Offset+task.BatchSize >= contactCount {
 		campaign.Status = models.CampaignStatusSending
 		if err := h.db.Save(campaign).Error; err != nil {
 			return h.logger.Error("❌ failed to update campaign status: %w", err)
 		}
+		needToScheduleNextBatch = true
 	}
 
 	campaign.Processed += len(contacts)
+	if !needToScheduleNextBatch {
+		campaign.Status = models.CampaignStatusCompleted
+	}
 	if err := h.db.Save(campaign).Error; err != nil {
 		return h.logger.Error("❌ failed to update campaign processed: %w", err)
 	}
@@ -200,7 +255,7 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 	h.logger.Success("✅ Successfully processed campaign batch")
 
 	// Enqueue next batch if needed
-	if len(contacts) == task.BatchSize && campaign.Schedule != models.CampaignScheduleRecurring { // Only schedule next batch for non-recurring campaigns
+	if needToScheduleNextBatch {
 		nextTask := CampaignTask{
 			CampaignID: campaign.ID,
 			BatchSize:  task.BatchSize,
