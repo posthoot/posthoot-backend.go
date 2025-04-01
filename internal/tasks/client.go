@@ -161,7 +161,7 @@ func (c *TaskClient) EnqueueCampaignTask(ctx context.Context, task CampaignTask,
 				CronExpression: taskData.CronExpression,
 				BatchSize:      taskData.BatchSize, // Preserve batch size
 				Offset:         0,                  // Reset offset for new cron run
-			}, time.Second) // 1 second delay
+			}, time.Minute) // 1 minute delay
 		}))
 
 		c.logger.Info("📅 Scheduling recurring campaign [%s] with cron: %s",
