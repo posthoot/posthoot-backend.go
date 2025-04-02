@@ -48,26 +48,26 @@ services:
       timeout: 5s
       retries: 5
 
-  posthoot_server:
-    build: .
-    env_file:
-      - .env
-    depends_on:
-      posthoot_redis:
-        condition: service_healthy
-      posthoot_postgres:
-        condition: service_healthy
-    networks:
-      - posthoot_network
-      - dokploy-network
-    environment:
-      - SERVER_HOST=0.0.0.0  # Ensure the service is reachable within Docker
-      - SERVER_PORT=9001
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # posthoot_server:
+  #   build: .
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     posthoot_redis:
+  #       condition: service_healthy
+  #     posthoot_postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - posthoot_network
+  #     - dokploy-network
+  #   environment:
+  #     - SERVER_HOST=0.0.0.0  # Ensure the service is reachable within Docker
+  #     - SERVER_PORT=9001
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
 
   asynqmon:
     image: hibiken/asynqmon
