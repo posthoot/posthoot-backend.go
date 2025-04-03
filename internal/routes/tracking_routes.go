@@ -26,18 +26,42 @@ func RegisterTrackingRoutes(e *echo.Echo, h *handlers.TrackingHandler, cfg *conf
 	analyticsGroup.Use(middleware.RequirePermissions(db, "analytics:read"))
 
 	// Basic analytics
+	// @Summary Get email analytics
 	analyticsGroup.GET("/email", h.GetEmailAnalytics)
+
+	// @Summary Get campaign analytics
+	// @Description Get campaign analytics
 	analyticsGroup.GET("/campaign", h.GetCampaignAnalytics)
 
 	// Advanced analytics
-	analyticsGroup.GET("/team/overview", h.GetTeamOverview)       // Team-wide stats
-	analyticsGroup.GET("/campaign/compare", h.CompareCampaigns)   // Compare multiple campaigns
-	analyticsGroup.GET("/heatmap", h.GetClickHeatmap)             // Click heatmap data
+	// @Summary Get team overview
+	analyticsGroup.GET("/team/overview", h.GetTeamOverview) // Team-wide stats
+
+	// @Summary Compare multiple campaigns
+	// @Description Compare multiple campaigns
+	analyticsGroup.GET("/campaign/compare", h.CompareCampaigns) // Compare multiple campaigns
+
+	// @Summary Get click heatmap
+	// @Description Get click heatmap
+	analyticsGroup.GET("/heatmap", h.GetClickHeatmap) // Click heatmap data
+
+	// @Summary Get best engagement times
+	// @Description Get best engagement times
 	analyticsGroup.GET("/engagement-times", h.GetEngagementTimes) // Best engagement times
-	analyticsGroup.GET("/audience", h.GetAudienceInsights)        // Audience insights
-	analyticsGroup.GET("/trends", h.GetTrendAnalysis)             // Trend analysis
+
+	// @Summary Get audience insights
+	// @Description Get audience insights
+	analyticsGroup.GET("/audience", h.GetAudienceInsights) // Audience insights
+
+	// @Summary Get trend analysis
+	// @Description Get trend analysis
+	analyticsGroup.GET("/trends", h.GetTrendAnalysis) // Trend analysis
 
 	// Export endpoints
-	analyticsGroup.GET("/export/email", h.ExportEmailAnalytics)       // Export email analytics
+	// @Summary Export email analytics
+	analyticsGroup.GET("/export/email", h.ExportEmailAnalytics) // Export email analytics
+
+	// @Summary Export campaign analytics
+	// @Description Export campaign analytics
 	analyticsGroup.GET("/export/campaign", h.ExportCampaignAnalytics) // Export campaign analytics
 }

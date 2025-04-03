@@ -34,6 +34,18 @@ func NewTrackingHandler(db *gorm.DB) *TrackingHandler {
 }
 
 // 📊 createTrackingEntry creates a new tracking entry with device and location info
+// @Summary Create a new tracking entry
+// @Description Create a new tracking entry with device and location info
+// @Accept json
+// @Produce json
+// @Param emailID path string true "Email ID"
+// @Param event path string true "Event"
+// @Param url path string true "URL"
+// @Success 200 {object} models.EmailTracking "Tracking entry created successfully"
+// @Failure 400 {object} map[string]string "Validation error or email not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/tracking [post]
+
 func (h *TrackingHandler) createTrackingEntry(c echo.Context, emailID string, event models.EmailTrackingEvent, url string) (*models.EmailTracking, error) {
 	// Get email details
 	var email models.Email
@@ -86,6 +98,16 @@ func (h *TrackingHandler) createTrackingEntry(c echo.Context, emailID string, ev
 }
 
 // 🖱️ HandleClick handles click tracking
+// @Summary Handle click tracking
+// @Description Handle click tracking
+// @Accept json
+// @Produce json
+// @Param token query string true "Token"
+// @Success 200 {object} models.EmailTracking "Tracking entry created successfully"
+// @Failure 400 {object} map[string]string "Validation error or token missing"
+// @Failure 401 {object} map[string]string "Invalid token"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/tracking/click [get]
 func (h *TrackingHandler) HandleEmailClick(c echo.Context) error {
 	// Extract token from query params
 	token := c.QueryParam("token")
@@ -124,6 +146,16 @@ func (h *TrackingHandler) HandleEmailClick(c echo.Context) error {
 }
 
 // 👁️ HandleOpen handles open tracking
+// @Summary Handle open tracking
+// @Description Handle open tracking
+// @Accept json
+// @Produce json
+// @Param token query string true "Token"
+// @Success 200 {object} models.EmailTracking "Tracking entry created successfully"
+// @Failure 400 {object} map[string]string "Validation error or token missing"
+// @Failure 401 {object} map[string]string "Invalid token"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/tracking/open [get]
 func (h *TrackingHandler) HandleEmailOpen(c echo.Context) error {
 	// Extract token from query params
 	token := c.QueryParam("token")
@@ -160,6 +192,15 @@ func (h *TrackingHandler) HandleEmailOpen(c echo.Context) error {
 }
 
 // 📈 GetEmailAnalytics returns analytics for a specific email
+// @Summary Get email analytics
+// @Description Get email analytics
+// @Accept json
+// @Produce json
+// @Param emailId query string true "Email ID"
+// @Success 200 {object} EmailAnalytics "Email analytics"
+// @Failure 400 {object} map[string]string "Validation error or email not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/email [get]
 func (h *TrackingHandler) GetEmailAnalytics(c echo.Context) error {
 	emailID := c.QueryParam("emailId")
 	if emailID == "" {
@@ -199,6 +240,15 @@ func (h *TrackingHandler) GetEmailAnalytics(c echo.Context) error {
 }
 
 // 📊 GetCampaignAnalytics returns analytics for a campaign
+// @Summary Get campaign analytics
+// @Description Get campaign analytics
+// @Accept json
+// @Produce json
+// @Param campaignId query string true "Campaign ID"
+// @Success 200 {object} EmailAnalytics "Campaign analytics"
+// @Failure 400 {object} map[string]string "Validation error or campaign not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/campaign [get]
 func (h *TrackingHandler) GetCampaignAnalytics(c echo.Context) error {
 	campaignID := c.QueryParam("campaignId")
 	if campaignID == "" {
@@ -217,6 +267,8 @@ func (h *TrackingHandler) GetCampaignAnalytics(c echo.Context) error {
 }
 
 // Analytics response structures
+// 📊 EmailAnalytics represents email analytics data
+// @Description Email analytics data
 type EmailAnalytics struct {
 	// 📊 Basic Metrics
 	OpenCount      int     `json:"openCount"`
@@ -281,6 +333,8 @@ type TimelineDataPoint struct {
 	Browser     string    `json:"browser,omitempty"`
 }
 
+// 📊 processEmailAnalytics processes email analytics data
+// @Description Process email analytics data
 func processEmailAnalytics(tracking []models.EmailTracking, timeZone string) EmailAnalytics {
 	// Parse timezone or default to UTC
 	location, err := time.LoadLocation(timeZone)
@@ -423,6 +477,7 @@ func processEmailAnalytics(tracking []models.EmailTracking, timeZone string) Ema
 }
 
 // 🎯 Calculate engagement score based on various metrics
+// @Description Calculate engagement score based on various metrics
 func calculateEngagementScore(analytics EmailAnalytics) float64 {
 	// Example scoring formula (customize based on your needs)
 	score := 0.0
@@ -444,6 +499,8 @@ func calculateEngagementScore(analytics EmailAnalytics) float64 {
 	return math.Min(score, 100.0) // Cap at 100
 }
 
+// 📊 processCampaignAnalytics processes campaign analytics data
+// @Description Process campaign analytics data
 func processCampaignAnalytics(tracking []models.EmailTracking) EmailAnalytics {
 	// Similar to processEmailAnalytics but with campaign-specific metrics
 	return processEmailAnalytics(tracking, "UTC") // For now, reuse email analytics
@@ -561,6 +618,15 @@ type PreferenceMetrics struct {
 }
 
 // 📊 GetTeamOverview returns team-wide analytics
+// @Summary Get team overview
+// @Description Get team overview
+// @Accept json
+// @Produce json
+// @Param teamId query string true "Team ID"
+// @Success 200 {object} TeamOverview "Team overview"
+// @Failure 400 {object} map[string]string "Validation error or team not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/team/overview [get]
 func (h *TrackingHandler) GetTeamOverview(c echo.Context) error {
 	teamID := c.QueryParam("teamId")
 	if teamID == "" {
@@ -647,6 +713,15 @@ func (h *TrackingHandler) GetTeamOverview(c echo.Context) error {
 }
 
 // 🔄 CompareCampaigns compares multiple campaigns
+// @Summary Compare multiple campaigns
+// @Description Compare multiple campaigns
+// @Accept json
+// @Produce json
+// @Param campaignIds query string true "Campaign IDs"
+// @Success 200 {object} map[string]EmailAnalytics "Campaign analytics"
+// @Failure 400 {object} map[string]string "Validation error or campaignIds missing"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/campaign/compare [get]
 func (h *TrackingHandler) CompareCampaigns(c echo.Context) error {
 	campaignIDs := strings.Split(c.QueryParam("campaignIds"), ",")
 	if len(campaignIDs) == 0 {
@@ -666,6 +741,15 @@ func (h *TrackingHandler) CompareCampaigns(c echo.Context) error {
 }
 
 // 🎯 GetClickHeatmap returns click heatmap data
+// @Summary Get click heatmap
+// @Description Get click heatmap
+// @Accept json
+// @Produce json
+// @Param emailId query string true "Email ID"
+// @Success 200 {object} HeatmapData "Click heatmap"
+// @Failure 400 {object} map[string]string "Validation error or emailId missing"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/heatmap [get]
 func (h *TrackingHandler) GetClickHeatmap(c echo.Context) error {
 	emailID := c.QueryParam("emailId")
 	if emailID == "" {
@@ -708,6 +792,16 @@ func (h *TrackingHandler) GetClickHeatmap(c echo.Context) error {
 }
 
 // ⏰ GetEngagementTimes returns optimal engagement time data
+// @Summary Get engagement times
+// @Description Get optimal engagement time data
+// @Accept json
+// @Produce json
+// @Param teamId query string true "Team ID"
+// @Success 200 {object} EngagementTimeData "Engagement time data"
+// @Failure 400 {object} map[string]string "Validation error or team not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/engagement-times [get]
+
 func (h *TrackingHandler) GetEngagementTimes(c echo.Context) error {
 	teamID := c.QueryParam("teamId")
 	if teamID == "" {
@@ -758,6 +852,15 @@ func (h *TrackingHandler) GetEngagementTimes(c echo.Context) error {
 }
 
 // 👥 GetAudienceInsights returns audience analysis
+// @Summary Get audience insights
+// @Description Get audience analysis
+// @Accept json
+// @Produce json
+// @Param teamId query string true "Team ID"
+// @Success 200 {object} AudienceInsights "Audience insights"
+// @Failure 400 {object} map[string]string "Validation error or team not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/audience [get]
 func (h *TrackingHandler) GetAudienceInsights(c echo.Context) error {
 	teamID := c.QueryParam("teamId")
 	if teamID == "" {
@@ -809,6 +912,15 @@ func (h *TrackingHandler) GetAudienceInsights(c echo.Context) error {
 }
 
 // 📈 GetTrendAnalysis returns trend analysis
+// @Summary Get trend analysis
+// @Description Get trend analysis
+// @Accept json
+// @Produce json
+// @Param teamId query string true "Team ID"
+// @Success 200 {object} []trendPoint "Trend analysis"
+// @Failure 400 {object} map[string]string "Validation error or team not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/trends [get]
 func (h *TrackingHandler) GetTrendAnalysis(c echo.Context) error {
 	teamID := c.QueryParam("teamId")
 	if teamID == "" {
@@ -844,6 +956,15 @@ func (h *TrackingHandler) GetTrendAnalysis(c echo.Context) error {
 }
 
 // 📊 ExportEmailAnalytics exports email analytics
+// @Summary Export email analytics
+// @Description Export email analytics
+// @Accept json
+// @Produce json
+// @Param emailId query string true "Email ID"
+// @Success 200 {object} []byte "Exported email analytics"
+// @Failure 400 {object} map[string]string "Validation error or emailId missing"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/export/email [get]
 func (h *TrackingHandler) ExportEmailAnalytics(c echo.Context) error {
 	emailID := c.QueryParam("emailId")
 	if emailID == "" {
@@ -872,6 +993,15 @@ func (h *TrackingHandler) ExportEmailAnalytics(c echo.Context) error {
 }
 
 // 📊 ExportCampaignAnalytics exports campaign analytics
+// @Summary Export campaign analytics
+// @Description Export campaign analytics
+// @Accept json
+// @Produce json
+// @Param campaignId query string true "Campaign ID"
+// @Success 200 {object} []byte "Exported campaign analytics"
+// @Failure 400 {object} map[string]string "Validation error or campaignId missing"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/analytics/export/campaign [get]
 func (h *TrackingHandler) ExportCampaignAnalytics(c echo.Context) error {
 	campaignID := c.QueryParam("campaignId")
 	if campaignID == "" {
@@ -900,8 +1030,6 @@ func (h *TrackingHandler) ExportCampaignAnalytics(c echo.Context) error {
 }
 
 // Helper functions
-
-// 🕒 calculateOptimalSendTimes analyzes engagement patterns to find best send times
 func calculateOptimalSendTimes(data EngagementTimeData) []OptimalTimeSlot {
 	slots := make([]OptimalTimeSlot, 0)
 
@@ -1034,18 +1162,19 @@ func calculateEngagementTrend(tracking []models.EmailTracking) string {
 	}
 }
 
+type trendPoint struct {
+	Period         string                 `json:"period"`
+	OpenCount      int                    `json:"openCount"`
+	ClickCount     int                    `json:"clickCount"`
+	EngagementRate float64                `json:"engagementRate"`
+	Devices        map[string]int         `json:"devices"`
+	Locations      map[string]int         `json:"locations"`
+	Growth         float64                `json:"growth"`
+	Events         []models.EmailTracking `json:"events"`
+}
+
 // 📊 processTrends generates trend analysis data
-func processTrends(tracking []models.EmailTracking, interval string) interface{} {
-	type trendPoint struct {
-		Period         string                 `json:"period"`
-		OpenCount      int                    `json:"openCount"`
-		ClickCount     int                    `json:"clickCount"`
-		EngagementRate float64                `json:"engagementRate"`
-		Devices        map[string]int         `json:"devices"`
-		Locations      map[string]int         `json:"locations"`
-		Growth         float64                `json:"growth"`
-		Events         []models.EmailTracking `json:"events"`
-	}
+func processTrends(tracking []models.EmailTracking, interval string) []trendPoint {
 
 	trends := make(map[string]*trendPoint)
 

@@ -19,5 +19,14 @@ func SetupEMAILRoutes(e *echo.Echo, config *config.Config, db *gorm.DB) {
 
 	email.Use(middleware.RequirePermissions(db, "emails:create"))
 
+	// @Summary Send an email
+	// @Description Send an email to a list of contacts
+	// @Accept json
+	// @Produce json
+	// @Param email body handlers.Email true "Email details"
+	// @Success 200 {object} map[string]string "Email sent successfully"
+	// @Failure 400 {object} map[string]string "Validation error or email not found"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/emails [post]
 	email.POST("", handlers.SendEmail)
 }

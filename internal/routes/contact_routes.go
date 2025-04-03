@@ -23,6 +23,17 @@ func SetupImportRoutes(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	auth := middleware.NewAuthMiddleware(cfg.JWT.Secret)
 	importGroup.Use(auth.Middleware())
 
+	// Handle contact import
+	// @Summary Import contacts from a file
+	// @Description Import contacts from a file
+	// @Accept json
+	// @Produce json
+	// @Param fileId path string true "File ID"
+	// @Param listId path string true "List ID"
+	// @Success 200 {object} map[string]string "Contact import queued successfully"
+	// @Failure 400 {object} map[string]string "Validation error or file not found"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/imports/contact [post]
 	importGroup.POST("/contact", func(c echo.Context) error {
 
 		// content-type is application/json

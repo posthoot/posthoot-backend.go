@@ -30,6 +30,15 @@ func NewUploadHandler(acl types.ObjectCannedACL) *UploadHandler {
 }
 
 // UploadFile handles file uploads to S3
+// @Summary Upload a file
+// @Description Upload a file to the server
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "File to upload"
+// @Success 200 {object} map[string]string "File uploaded successfully"
+// @Failure 400 {object} map[string]string "Validation error or file not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/files/upload [post]
 func (h *UploadHandler) UploadFile(c echo.Context) error {
 
 	contentType := c.Request().Header.Get("Content-Type")

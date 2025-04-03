@@ -35,7 +35,8 @@ deps:
 
 docs:
 	@echo "Generating docs..."
-	@swag init -g internal/api/server.go
+	@swag init -g internal/*
+	
 # Cross compilation
 build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_UNIX) -v $(MAIN_PATH)

@@ -23,5 +23,13 @@ func SetupSMTPRoutes(e *echo.Echo, config *config.Config, db *gorm.DB) {
 	smtp.Use(middleware.RequirePermissions(db, "smtp_configs:read"))
 
 	// SMTP test route
+	// @Summary Test SMTP connection
+	// @Description Test SMTP connection
+	// @Accept json
+	// @Produce json
+	// @Success 200 {object} map[string]string "SMTP connection test successful"
+	// @Failure 400 {object} map[string]string "Validation error or SMTP configuration not found"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/smtp/test [post]
 	smtp.POST("/test", smtpHandler.TestSMTPConnection)
 }

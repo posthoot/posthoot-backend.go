@@ -565,7 +565,7 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 		ExpiresAt: time.Now().Add(24 * 7 * time.Hour),
 		InviterID: userID,
 		TeamID:    teamID,
-		Status:    "pending",
+		Status:    models.InviteStatusPending,
 		Role:      models.UserRole(request.Role),
 		Email:     request.Email,
 		Name:      request.Name,
@@ -573,7 +573,6 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 
 	// 💾 Save invitation
 	if err := h.db.Create(&invite).Error; err != nil {
-		log.Error("Failed to create invitation", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create invitation"})
 	}
 	return c.JSON(http.StatusCreated, map[string]string{"message": "Invitation sent successfully"})

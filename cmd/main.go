@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"kori/docs/swagger"
 	"kori/internal/handlers"
 	"kori/internal/models/seeder/airley"
 	"kori/internal/utils/crypto"
@@ -141,6 +142,14 @@ func main() {
 		}
 
 		logger.Success("API server started")
+
+		// Swagger documentation
+		swagger.SwaggerInfo.Title = "Posthoot API Documentation"
+		swagger.SwaggerInfo.Description = "API documentation for Posthoot application"
+		swagger.SwaggerInfo.Version = "1.0"
+		swagger.SwaggerInfo.Host = "backyard.posthoot.com"
+		swagger.SwaggerInfo.BasePath = "/api/v1"
+		swagger.SwaggerInfo.Schemes = []string{"https"}
 
 		if err := apiServer.Start(); err != nil {
 			logger.Error("API server error", err)

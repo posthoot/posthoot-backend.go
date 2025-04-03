@@ -10,6 +10,16 @@ import (
 )
 
 // HandleEmailUnsubscribe handles unsubscribe requests from email links
+// @Summary Unsubscribe from email list
+// @Description Unsubscribe from an email list
+// @Accept json
+// @Produce json
+// @Param token query string true "Unsubscribe token"
+// @Success 200 {object} map[string]string "Unsubscribed successfully"
+// @Failure 400 {object} map[string]string "Missing token"
+// @Failure 401 {object} map[string]string "Invalid token"
+// @Router /track/unsubscribe [get]
+
 func (h *TrackingHandler) HandleEmailUnsubscribe(c echo.Context) error {
 	// Extract token from query params
 	token := c.QueryParam("token")
