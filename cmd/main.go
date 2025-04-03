@@ -23,6 +23,24 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// 🚀 Main function
+// @Summary Main function
+// @Description Main function
+// @title Posthoot API
+// @version 1.0
+// @description API documentation for Posthoot application
+// @host backyard.posthoot.com
+// @BasePath /
+// @schemes https
+
+// @securityDefinitions.basic BasicAuth
+// @in header
+// @name Authorization
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-KEY
+
 func main() {
 
 	logger := logger.New("kori")
@@ -148,7 +166,6 @@ func main() {
 		swagger.SwaggerInfo.Description = "API documentation for Posthoot application"
 		swagger.SwaggerInfo.Version = "1.0"
 		swagger.SwaggerInfo.Host = "backyard.posthoot.com"
-		swagger.SwaggerInfo.BasePath = "/api/v1"
 		swagger.SwaggerInfo.Schemes = []string{"https"}
 
 		if err := apiServer.Start(); err != nil {

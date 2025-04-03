@@ -1640,30 +1640,34 @@ definitions:
     type: object
   time.Duration:
     enum:
-    - 1
-    - 1000
-    - 1000000
-    - 1000000000
-    - 60000000000
+    - -9223372036854775808
+    - 9223372036854775807
     - 1
     - 1000
     - 1000000
     - 1000000000
     - 60000000000
     - 3600000000000
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
     type: integer
     x-enum-varnames:
-    - Nanosecond
-    - Microsecond
-    - Millisecond
-    - Second
-    - Minute
+    - minDuration
+    - maxDuration
     - Nanosecond
     - Microsecond
     - Millisecond
     - Second
     - Minute
     - Hour
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
 info:
   contact: {}
 paths:
@@ -2655,4 +2659,11 @@ paths:
       summary: Handle subscription webhooks
       tags:
       - subscriptions
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: X-API-KEY
+    type: apiKey
+  BasicAuth:
+    type: basic
 swagger: "2.0"

@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 📝 RegisterCRUDRoutes registers CRUD routes for all models
+// 📝 RegisterCRUDRoutes registers CRUD routes for all models - godoc
 // @Summary Register CRUD routes for all models
 // @Description Register CRUD routes for all models
 // @Accept json

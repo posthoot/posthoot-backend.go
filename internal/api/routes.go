@@ -32,6 +32,8 @@ func (s *Server) registerRoutes() {
 	api.Use(auth.Middleware())
 
 	// Register CRUD routes for all models
+	// @Summary Register CRUD routes for all models
+	// @Description Register CRUD routes for all models
 	registry.RegisterCRUDRoutes(api, s.db)
 
 	routes.SetupUploadRoutes(api, s.config)
