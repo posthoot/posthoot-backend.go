@@ -40,6 +40,12 @@ services:
       - pg_stat_statements.track=all
       - '-c'
       - pg_stat_statements.max=10000
+      - '-c'
+      - max_connections=300
+      - '-c'
+      - shared_buffers=128MB
+      - '-c'
+      - work_mem=16MB
     networks:
       - posthoot_network
     healthcheck:
