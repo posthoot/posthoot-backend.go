@@ -864,4 +864,32 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	// @Failure 500 {object} map[string]string "Internal server error"
 	// @Router /api/v1/models/{id} [delete]
 	modelWriteGroup.DELETE("/:id", modelController.Delete)
+
+	// Emails with team-specific permissions
+	emailService := services.NewBaseService(db, models.Email{})
+	emailController := controllers.NewBaseController(emailService)
+	emailGroup := g.Group("/emails")
+	emailGroup.Use(middleware.RequirePermissions(db, "emails:read"))
+	// @Summary List emails
+	// @Description Get a list of all emails
+	// @Accept json
+	// @Produce json
+	// @Success 200 {array} models.Email
+	// @Failure 401 {object} map[string]string "Unauthorized"
+	// @Failure 403 {object} map[string]string "Forbidden"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/emails [get]
+	emailGroup.GET("", emailController.List)
+	// @Summary Get email
+	// @Description Get an email by ID
+	// @Accept json
+	// @Produce json
+	// @Param id path string true "Email ID"
+	// @Success 200 {object} models.Email
+	// @Failure 401 {object} map[string]string "Unauthorized"
+	// @Failure 403 {object} map[string]string "Forbidden"
+	// @Failure 404 {object} map[string]string "Not found"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/emails/{id} [get]
+	emailGroup.GET("/:id", emailController.Get)
 }
