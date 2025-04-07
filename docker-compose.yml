@@ -43,7 +43,7 @@ services:
       - '-c'
       - max_connections=300
       - '-c'
-      - shared_buffers=128MB
+      - shared_buffers=80MB
       - '-c'
       - work_mem=16MB
     networks:
