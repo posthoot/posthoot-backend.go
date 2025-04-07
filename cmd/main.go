@@ -92,8 +92,10 @@ func main() {
 	// Start monitoring database connection pool
 	db.MonitorConnectionPool(10 * time.Hour)
 
+	db_instance := db.GetDB()
+
 	// Initialize task handlers
-	taskHandler := tasks.NewTaskHandler(db.GetDB())
+	taskHandler := tasks.NewTaskHandler(db_instance)
 
 	// Initialize task server
 	taskServer := tasks.NewServer(
@@ -133,7 +135,7 @@ func main() {
 	}()
 
 	// Initialize API server
-	apiServer := api.NewServer(cfg, db.GetDB())
+	apiServer := api.NewServer(cfg, db_instance)
 	go func() {
 
 		// Initialize S3 service
@@ -153,7 +155,7 @@ func main() {
 		handlers.RegisterStorageHandler(s3Service)
 
 		// Seed Airley templates
-		if err := airley.LoadAirleyTemplates(db.GetDB()); err != nil {
+		if err := airley.LoadAirleyTemplates(db_instance); err != nil {
 			logger.Error("Warning: Failed to seed Airley templates: %v", err)
 		} else {
 			logger.Success("Successfully seeded Airley templates")
