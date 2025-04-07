@@ -116,6 +116,17 @@ func (m *AuthMiddleware) validateAPIKeyPermissions(c echo.Context, apiKey *model
 		return echo.NewHTTPError(http.StatusForbidden, "Insufficient permissions")
 	}
 
+	// track api key usage
+	db.DB.Model(&models.APIKey{}).Where("id = ?", apiKey.ID).Update("last_used_at", time.Now())
+	db.DB.Model(&models.APIKeyUsage{}).Create(&models.APIKeyUsage{
+		APIKeyID:  apiKey.ID,
+		APIKey:    apiKey,
+		Endpoint:  path,
+		Method:    method,
+		Timestamp: time.Now(),
+		Success:   true,
+	})
+
 	// Set context values
 	c.Set("apiKeyID", apiKey.ID)
 	c.Set("teamID", apiKey.TeamID)
