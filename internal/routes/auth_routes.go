@@ -20,9 +20,8 @@ func SetupAuthRoutes(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	auth.POST("/register", authHandler.Register)
 	auth.POST("/login", authHandler.Login)
 	auth.POST("/google", authHandler.GoogleAuth)
-	auth.POST("/invite", authHandler.InviteUser)
+
 	auth.POST("/accept/:code", authHandler.AcceptInvite)
-	auth.DELETE("/invite/:code", authHandler.DeleteInvite)
 	auth.POST("/password-reset", authHandler.RequestPasswordReset)
 	auth.POST("/password-reset/verify", authHandler.VerifyResetCode)
 	auth.POST("/refresh", authHandler.RefreshToken)
@@ -31,6 +30,10 @@ func SetupAuthRoutes(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	protectedAuth := users.Group("")
 	authMiddleware := middleware.NewAuthMiddleware(cfg.JWT.Secret)
 	protectedAuth.Use(authMiddleware.Middleware())
+
+	// Invite user route (require admin permissions)
+	protectedAuth.POST("/invite", authHandler.InviteUser)
+	protectedAuth.DELETE("/invite/:code", authHandler.DeleteInvite)
 
 	// User management routes (require admin permissions)
 	// userManagement := protectedAuth.Group("/users")
