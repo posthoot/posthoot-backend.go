@@ -126,9 +126,24 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 
 	for _, field := range exclude {
 		excludeFields[field] = true
+
+	}
+	// we also need to sort the fields based on the fields in the entity and the order of the sort query parameter
+	sort := ctx.QueryParam("sort")
+	order := ctx.QueryParam("order")
+	var sortFields []string
+	if sort != "" {
+		sortFields = strings.Split(sort, ",")
+		var entity T
+		entityType := reflect.TypeOf(entity)
+		for _, field := range sortFields {
+			if _, found := entityType.FieldByName(field); found {
+				sortFields = append(sortFields, field)
+			}
+		}
 	}
 
-	entities, total, err := c.service.List(ctx.Request().Context(), page, limit, filters, excludeFields, includes...)
+	entities, total, err := c.service.List(ctx.Request().Context(), page, limit, filters, excludeFields, sortFields, order, includes...)
 
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())

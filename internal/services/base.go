@@ -14,7 +14,7 @@ import (
 type BaseService[T any] interface {
 	Create(ctx context.Context, entity *T, includes ...string) error
 	Get(ctx context.Context, id string, includes ...string) (*T, error)
-	List(ctx context.Context, page, limit int, filters map[string]interface{}, excludeFields map[string]bool, includes ...string) ([]T, int64, error)
+	List(ctx context.Context, page, limit int, filters map[string]interface{}, excludeFields map[string]bool, sortFields []string, order string, includes ...string) ([]T, int64, error)
 	Update(ctx context.Context, id string, entity *T, includes ...string) error
 	Delete(ctx context.Context, id string) error
 }
@@ -98,7 +98,7 @@ func (s *BaseServiceImpl[T]) Get(ctx context.Context, id string, includes ...str
 	return &entity, nil
 }
 
-func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters map[string]interface{}, excludes map[string]bool, includes ...string) ([]T, int64, error) {
+func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters map[string]interface{}, excludes map[string]bool, sortFields []string, order string, includes ...string) ([]T, int64, error) {
 	var entities []T
 	var total int64
 
@@ -120,6 +120,11 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 
 	// Apply excludes
 	query = s.applyExcludes(query, excludes)
+
+	// Apply sort
+	if len(sortFields) > 0 {
+		query = query.Order(fmt.Sprintf("%s %s", sortFields[0], order))
+	}
 
 	// filter deleted entities
 	query = query.Where("is_deleted = ?", false)
