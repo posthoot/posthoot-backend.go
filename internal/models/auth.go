@@ -19,7 +19,7 @@ type User struct {
 	Invites          []TeamInvite     `gorm:"foreignKey:InviterID" json:"invites,omitempty"`
 	Files            []File           `gorm:"foreignKey:UserID" json:"files,omitempty"`
 	ProfilePicture   File             `gorm:"foreignKey:ProfilePictureID" json:"profilePicture,omitempty"`
-	ProfilePictureID string           `gorm:"type:uuid" json:"profilePictureId,omitempty"`
+	ProfilePictureID string           `gorm:"type:uuid;default:NULL" json:"profilePictureId,omitempty"`
 	Provider         string           `gorm:"default:'local'" json:"provider"`          // 'local', 'google', etc.
 	ProviderID       string           `gorm:"index" json:"providerId,omitempty"`        // ID from the OAuth provider
 	ProviderData     datatypes.JSON   `gorm:"type:jsonb" json:"providerData,omitempty"` // Additional data from provider
