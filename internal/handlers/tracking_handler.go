@@ -752,13 +752,22 @@ func (h *TrackingHandler) CompareCampaigns(c echo.Context) error {
 // @Router /api/v1/analytics/heatmap [get]
 func (h *TrackingHandler) GetClickHeatmap(c echo.Context) error {
 	emailID := c.QueryParam("emailId")
-	if emailID == "" {
-		return c.String(http.StatusBadRequest, "Missing emailId")
+	campaignID := c.QueryParam("campaignId")
+
+	if emailID == "" && campaignID == "" {
+		return c.String(http.StatusBadRequest, "Missing both emailId and campaignId. At least one is required")
 	}
 
 	var tracking []models.EmailTracking
-	if err := h.db.Where("email_id = ? AND event = ?", emailID, models.EmailTrackingEventClick).
-		Find(&tracking).Error; err != nil {
+	query := h.db.Where("event = ?", models.EmailTrackingEventClick)
+
+	if emailID != "" {
+		query = query.Where("email_id = ?", emailID)
+	} else {
+		query = query.Where("campaign_id = ?", campaignID)
+	}
+
+	if err := query.Find(&tracking).Error; err != nil {
 		return c.String(http.StatusInternalServerError, "Failed to fetch click data")
 	}
 
