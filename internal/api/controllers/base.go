@@ -113,7 +113,7 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 	// Parse filters from query parameters
 	filters := make(map[string]interface{})
 	for key, values := range ctx.QueryParams() {
-		if key != "page" && key != "limit" && key != "include" && key != "exclude" && len(values) > 0 {
+		if key != "page" && key != "limit" && key != "include" && key != "exclude" && key != "sort" && key != "order" && len(values) > 0 {
 			filters[key] = values[0]
 		}
 	}
