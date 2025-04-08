@@ -746,6 +746,7 @@ func (h *TrackingHandler) CompareCampaigns(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param emailId query string true "Email ID"
+// @Param campaignId query string true "Campaign ID"
 // @Success 200 {object} HeatmapData "Click heatmap"
 // @Failure 400 {object} map[string]string "Validation error or emailId missing"
 // @Failure 500 {object} map[string]string "Internal server error"
