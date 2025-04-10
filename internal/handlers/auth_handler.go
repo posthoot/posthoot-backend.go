@@ -2,13 +2,13 @@ package handlers
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"kori/internal/config"
 	"kori/internal/events"
 	"kori/internal/models"
 	"kori/internal/utils"
@@ -709,10 +709,16 @@ func (h *AuthHandler) GoogleAuth(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	// Verify the Google ID token
-	token, err := config.FirebaseAuth.VerifyIDToken(c.Request().Context(), req.IdToken)
+	// get user data from google
+	userDataBytes, err := utils.GetUserDataFromGoogle(req.IdToken)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid Google ID token"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to get user data from Google"})
+	}
+
+	// parse user data
+	var userData map[string]interface{}
+	if err := json.Unmarshal(userDataBytes, &userData); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to parse user data from Google"})
 	}
 
 	// Start a transaction
@@ -724,14 +730,14 @@ func (h *AuthHandler) GoogleAuth(c echo.Context) error {
 	// Check if user exists with either email or provider ID
 	var user models.User
 	err = tx.Where("email = ? OR (provider = ? AND provider_id = ?)",
-		token.Claims["email"], "google", token.UID).First(&user).Error
+		userData["email"], "google", userData["localId"]).First(&user).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			// Check for pending team invitation first
 			var invite models.TeamInvite
 			inviteErr := tx.Where("email = ? AND status = ? AND expires_at > ?",
-				token.Claims["email"], "pending", time.Now()).First(&invite).Error
+				userData["email"], "pending", time.Now()).First(&invite).Error
 
 			var teamID string
 			var userRole models.UserRole
@@ -750,7 +756,7 @@ func (h *AuthHandler) GoogleAuth(c echo.Context) error {
 			} else {
 				// No invitation found, create new team
 				team := models.Team{
-					Name: token.Claims["name"].(string) + "'s Team",
+					Name: userData["displayName"].(string) + "'s Team",
 				}
 
 				if err = tx.Create(&team).Error; err != nil {
@@ -763,7 +769,7 @@ func (h *AuthHandler) GoogleAuth(c echo.Context) error {
 			}
 			var fileModel *models.File = &models.File{}
 			// download the profile picture
-			profilePictureURL := token.Claims["picture"].(string)
+			profilePictureURL := userData["photoUrl"].(string)
 			profilePicture, err := http.Get(profilePictureURL)
 			if err != nil {
 				// Log the error but do not affect account creation
@@ -800,17 +806,17 @@ func (h *AuthHandler) GoogleAuth(c echo.Context) error {
 				}
 			}
 
-			// Create user with both Firebase and local auth capabilities
+			// Create user with both google and local auth capabilities
 			user = models.User{
-				Email:            token.Claims["email"].(string),
-				FirstName:        token.Claims["name"].(string),
+				Email:            userData["email"].(string),
+				FirstName:        userData["displayName"].(string),
 				LastName:         "",
 				Role:             userRole,
 				TeamID:           teamID,
 				Provider:         "google",
-				ProviderID:       token.UID,
+				ProviderID:       userData["localId"].(string),
 				ProfilePictureID: fileModel.ID,
-				Password:         "", // Empty password for Firebase users
+				Password:         "", // Empty password for google users
 				ProviderData:     datatypes.JSON{},
 			}
 
@@ -839,7 +845,7 @@ func (h *AuthHandler) GoogleAuth(c echo.Context) error {
 		// If user exists but hasn't used Google auth before, link the accounts
 		if user.Provider == "local" {
 			user.Provider = "google"
-			user.ProviderID = token.UID
+			user.ProviderID = userData["localId"].(string)
 			if err := tx.Save(&user).Error; err != nil {
 				tx.Rollback()
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
