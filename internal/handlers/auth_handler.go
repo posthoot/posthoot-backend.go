@@ -51,7 +51,7 @@ type VerifyResetCodeRequest struct {
 }
 
 type GoogleAuthRequest struct {
-	IdToken string `json:"idToken" validate:"required"`
+	Code string `json:"code" validate:"required"`
 }
 
 // Register handles the registration of a new user by validating input, hashing the password, storing user data, and assigning permissions.
@@ -710,7 +710,7 @@ func (h *AuthHandler) GoogleAuth(c echo.Context) error {
 	}
 
 	// get user data from google
-	userDataBytes, err := utils.GetUserDataFromGoogle(req.IdToken)
+	userDataBytes, err := utils.GetUserDataFromGoogle(req.Code)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to get user data from Google"})
 	}
