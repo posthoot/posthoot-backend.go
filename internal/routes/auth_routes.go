@@ -12,9 +12,11 @@ import (
 func SetupAuthRoutes(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	authHandler := handlers.NewAuthHandler(db)
 
+	base := e.Group("/api/v1")
+
 	// Public auth routes group
-	auth := e.Group("/api/v1/auth")
-	users := e.Group("/api/v1/users")
+	auth := base.Group("/auth")
+	users := base.Group("/users")
 
 	// Public routes (no auth required)
 	auth.POST("/register", authHandler.Register)

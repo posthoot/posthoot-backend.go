@@ -729,7 +729,7 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 	// Check if user exists with either email or provider ID
 	var user models.User
 	err = tx.Where("email = ? OR (provider = ? AND provider_id = ?)",
-		userData["email"], "google", userData["localId"]).First(&user).Error
+		userData["email"], "google", userData["id"]).First(&user).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -755,7 +755,7 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 			} else {
 				// No invitation found, create new team
 				team := models.Team{
-					Name: userData["displayName"].(string) + "'s Team",
+					Name: userData["given_name"].(string) + "'s Team",
 				}
 
 				if err = tx.Create(&team).Error; err != nil {
@@ -808,12 +808,12 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 			// Create user with both google and local auth capabilities
 			user = models.User{
 				Email:            userData["email"].(string),
-				FirstName:        userData["displayName"].(string),
-				LastName:         "",
+				FirstName:        userData["given_name"].(string),
+				LastName:         userData["family_name"].(string),
 				Role:             userRole,
 				TeamID:           teamID,
 				Provider:         "google",
-				ProviderID:       userData["localId"].(string),
+				ProviderID:       userData["id"].(string),
 				ProfilePictureID: fileModel.ID,
 				Password:         "", // Empty password for google users
 				ProviderData:     datatypes.JSON{},
@@ -844,7 +844,7 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 		// If user exists but hasn't used Google auth before, link the accounts
 		if user.Provider == "local" {
 			user.Provider = "google"
-			user.ProviderID = userData["localId"].(string)
+			user.ProviderID = userData["id"].(string)
 			if err := tx.Save(&user).Error; err != nil {
 				tx.Rollback()
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
