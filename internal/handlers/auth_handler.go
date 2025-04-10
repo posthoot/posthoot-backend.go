@@ -696,7 +696,9 @@ func (h *AuthHandler) DeleteInvite(c echo.Context) error {
 // @Produce json
 // @Param request body GoogleAuthRequest true "Google ID token"
 // @Success 200 {object} map[string]string "JWT token"
-// @Failure 400 {object} map[string]string "Invalid token"
+// @Failure 400 {object} map[string]string "No access token provided"
+// @Failure 400 {object} map[string]string "Failed to parse user data from Google"
+// @Failure 401 {object} map[string]string "Failed to get user data from Google"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /auth/google/callback [get]
 func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
@@ -711,7 +713,7 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 	// get user data from google
 	userDataBytes, err := utils.GetUserDataFromGoogle(accessToken)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to get user data from Google"})
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Failed to get user data from Google"})
 	}
 
 	// parse user data

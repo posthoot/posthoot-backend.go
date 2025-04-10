@@ -69,6 +69,10 @@ func (m *AuthMiddleware) Middleware() echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid authorization header format")
 			}
 
+			if strings.Contains(c.Request().URL.Path, "/auth/google/callback") {
+				return next(c)
+			}
+
 			return m.validateJWT(c, tokenParts[1], next)
 		}
 	}
@@ -159,6 +163,7 @@ func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next ec
 	})
 
 	if err != nil || !token.Valid {
+		log.Error("Error parsing JWT token: %v", err)
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
 	}
 
