@@ -22,7 +22,33 @@ func NewSubscriptionHandler(db *gorm.DB) *SubscriptionHandler {
 
 type CreateSubscriptionRequest struct {
 	ProductID string `json:"product_id" validate:"required"`
-	Email     string `json:"email" validate:"required,email"`
+}
+
+type GetPlansResponse struct {
+	Plans []models.Product `json:"plans"`
+}
+
+type GetPlanResponse struct {
+	Plan models.Product `json:"plan"`
+}
+
+// GetPlans returns all available plans
+// @Summary Get all plans
+// @Description Get all available plans
+// @Tags plans
+// @Accept json
+// @Produce json
+// @Success 200 {object} GetPlansResponse "Plans"
+// @Router /plans [get]
+func (h *SubscriptionHandler) GetPlans(c echo.Context) error {
+	var plans []models.Product
+	if err := h.db.Where("is_active = ?", true).Preload("Features").Find(&plans).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get plans"})
+	}
+
+	return c.JSON(http.StatusOK, GetPlansResponse{
+		Plans: plans,
+	})
 }
 
 // CreateSubscription initiates a subscription purchase
@@ -37,6 +63,16 @@ type CreateSubscriptionRequest struct {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /subscriptions [post]
 func (h *SubscriptionHandler) CreateSubscription(c echo.Context) error {
+	teamID := c.Get("teamID").(string)
+	userID := c.Get("userID").(string)
+
+	// check if user is team admin or owner
+	var user models.User
+	if err := h.db.Where("id = ? AND team_id = ? AND role IN ?",
+		userID, teamID, []models.UserRole{models.UserRoleAdmin, models.UserRoleSuperAdmin}).First(&user).Error; err != nil {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Not authorized"})
+	}
+
 	var req CreateSubscriptionRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -60,7 +96,7 @@ func (h *SubscriptionHandler) CreateSubscription(c echo.Context) error {
 	}
 
 	// Create Dodo customer
-	dodoCustomer, err := utils.CreateDodoCustomer(req.Email)
+	dodoCustomer, err := utils.CreateDodoCustomer(user.Email)
 	if err != nil {
 		tx.Rollback()
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create customer"})
@@ -77,9 +113,10 @@ func (h *SubscriptionHandler) CreateSubscription(c echo.Context) error {
 	subscription := models.Subscription{
 		ProductID:          product.ID,
 		Status:             models.SubscriptionStatusPending,
-		Email:              req.Email,
+		Email:              user.Email,
 		DodoCustomerID:     dodoCustomer.ID,
 		DodoSubscriptionID: dodoSub.ID,
+		TeamID:             teamID,
 	}
 
 	if err := tx.Create(&subscription).Error; err != nil {
@@ -94,6 +131,26 @@ func (h *SubscriptionHandler) CreateSubscription(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"payment_url": dodoSub.PaymentLink,
 	})
+}
+
+// GetSubscription returns the current subscription for the team
+// @Summary Get current subscription
+// @Description Get the current subscription for the team
+// @Tags subscriptions
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.Subscription "Subscription"
+// @Failure 403 {object} map[string]string "Not authorized"
+// @Router /subscriptions [get]
+func (h *SubscriptionHandler) GetSubscription(c echo.Context) error {
+	teamID := c.Get("teamID").(string)
+
+	var subscription models.Subscription
+	if err := h.db.Where("team_id = ?", teamID).First(&subscription).Error; err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "No active subscription"})
+	}
+
+	return c.JSON(http.StatusOK, subscription)
 }
 
 // WebhookPayload represents the webhook payload from Dodo Payments
