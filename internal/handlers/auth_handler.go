@@ -51,7 +51,7 @@ type VerifyResetCodeRequest struct {
 }
 
 type GoogleAuthRequest struct {
-	Code string `json:"code" validate:"required"`
+	AccessToken string `json:"access_token" validate:"required"`
 }
 
 // Register handles the registration of a new user by validating input, hashing the password, storing user data, and assigning permissions.
@@ -698,19 +698,18 @@ func (h *AuthHandler) DeleteInvite(c echo.Context) error {
 // @Success 200 {object} map[string]string "JWT token"
 // @Failure 400 {object} map[string]string "Invalid token"
 // @Failure 500 {object} map[string]string "Internal server error"
-// @Router /auth/google [post]
-func (h *AuthHandler) GoogleAuth(c echo.Context) error {
-	var req GoogleAuthRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+// @Router /auth/google/callback [get]
+func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
+	accessToken := c.Request().Header.Get("Authorization")
+
+	if accessToken == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "No access token provided"})
 	}
 
-	if err := c.Validate(req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
+	accessToken = strings.TrimPrefix(accessToken, "Bearer ")
 
 	// get user data from google
-	userDataBytes, err := utils.GetUserDataFromGoogle(req.Code)
+	userDataBytes, err := utils.GetUserDataFromGoogle(accessToken)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to get user data from Google"})
 	}
