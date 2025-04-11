@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"crypto/tls"
 	"fmt"
 	"kori/internal/db"
 	"kori/internal/models"
@@ -11,8 +12,7 @@ import (
 
 	"kori/internal/utils/logger"
 
-	"github.com/emersion/go-sasl"
-	"github.com/emersion/go-smtp"
+	"gopkg.in/gomail.v2"
 )
 
 // EmailConfig holds the configuration for the email server
@@ -64,39 +64,45 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 
 	h.logger.Info("📧 Sending email to: %s using SMTP server: %s", email.To, email.SMTPConfig.Host)
 
-	auth := sasl.NewPlainClient("", email.SMTPConfig.Username, email.SMTPConfig.Password)
+	// Create new message
+	m := gomail.NewMessage()
+	m.SetHeader("From", email.From)
+	m.SetHeader("To", email.To)
+	m.SetHeader("Subject", email.Subject)
 
-	// Compose the email
-	subject := fmt.Sprintf("Subject: %s\n", email.Subject)
+	if email.ReplyTo != "" {
+		m.SetHeader("Reply-To", email.ReplyTo)
+	}
+
+	if email.CC != "" {
+		m.SetHeader("Cc", strings.Split(email.CC, ",")...)
+	}
+
+	if email.BCC != "" {
+		m.SetHeader("Bcc", strings.Split(email.BCC, ",")...)
+	}
+
+	// Decode base64 body
 	decodedBody, err := base64.DecodeFromBase64(email.Body)
 	if err != nil {
 		return fmt.Errorf("❌ failed to decode email body: %w", err)
 	}
-	replyToFormatted := fmt.Sprintf("Reply-To: %s\n", email.ReplyTo)
+	m.SetBody("text/html", decodedBody)
 
-	to := []string{email.To}
-	toFormatted := fmt.Sprintf("To: %s\nContent-Type: text/html; charset=UTF-8\n", strings.Join(to, ","))
+	// Create dialer
+	d := gomail.NewDialer(
+		email.SMTPConfig.Host,
+		email.SMTPConfig.Port,
+		email.SMTPConfig.Username,
+		email.SMTPConfig.Password,
+	)
 
-	cc := []string{}
-	if email.CC != "" {
-		cc = strings.Split(email.CC, ",")
-		to = append(to, cc...)
+	if email.SMTPConfig.SupportsTLS {
+		d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
-	ccFormatted := fmt.Sprintf("Cc: %s\n", strings.Join(cc, ","))
-
-	msg := strings.NewReader(toFormatted + ccFormatted + replyToFormatted + subject + "\n" + decodedBody)
-
-	if email.BCC != "" {
-		to = append(to, strings.Split(email.BCC, ",")...)
-	}
-
-	// Send the email
-	addr := fmt.Sprintf("%s:%d", email.SMTPConfig.Host, email.SMTPConfig.Port)
-
-	err = smtp.SendMail(addr, auth, email.From, to, msg)
-
-	if err != nil {
+	// Send email
+	if err := d.DialAndSend(m); err != nil {
 		email.Error = err.Error()
 		email.Status = models.EmailStatusFailed
 		if dbErr := h.UpdateEmail(email); dbErr != nil {
