@@ -855,6 +855,8 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 			// Only set ProfilePictureID if we successfully created the file
 			if fileModel != nil && fileModel.ID != "" {
 				user.ProfilePictureID = fileModel.ID
+			} else {
+				user.ProfilePictureID = "5574fee5-3ce4-49e5-af2e-21361fc433e4"
 			}
 
 			if err := tx.Create(&user).Error; err != nil {
@@ -883,6 +885,9 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 		if user.Provider == "local" {
 			user.Provider = "google"
 			user.ProviderID = userData["id"].(string)
+			if user.ProfilePictureID == "" {
+				user.ProfilePictureID = "5574fee5-3ce4-49e5-af2e-21361fc433e4"
+			}
 			if err := tx.Save(&user).Error; err != nil {
 				tx.Rollback()
 				fmt.Println("Failed to update user", err)
