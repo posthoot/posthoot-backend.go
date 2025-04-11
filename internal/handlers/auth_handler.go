@@ -77,6 +77,24 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
+	var createTeam bool = true
+	var team models.Team
+	var user models.User
+
+	// check if user already exists
+	if err := h.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "User already exists"})
+	}
+
+	// check if user is already invited
+	var invite models.TeamInvite
+	if err := h.db.Where("email = ? AND status = ? AND expires_at > ?", req.Email, models.InviteStatusPending, time.Now()).First(&invite).Error; err != nil {
+		// accept invite
+		invite.Status = models.InviteStatusAccepted
+		h.db.Save(&invite)
+		createTeam = false
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to hash password"})
@@ -88,23 +106,31 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to start transaction"})
 	}
 
-	// create a team
-	team := models.Team{
-		Name: req.FirstName + "'s Team", // Example team name based on the user's first name
+	if createTeam {
+		// create a team
+		team = models.Team{
+			Name: req.FirstName + "'s Team", // Example team name based on the user's first name
+		}
+
+		if err = tx.Create(&team).Error; err != nil {
+			tx.Rollback()
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create team"})
+		}
+
 	}
 
-	if err = tx.Create(&team).Error; err != nil {
-		tx.Rollback()
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create team"})
-	}
-
-	user := models.User{
+	user = models.User{
 		Email:     req.Email,
 		Password:  string(hashedPassword),
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Role:      models.UserRoleAdmin, // Default role for new users
 		TeamID:    team.ID,
+	}
+
+	if invite.Status == models.InviteStatusAccepted {
+		user.Role = invite.Role
+		user.TeamID = invite.TeamID
 	}
 
 	if err := tx.Create(&user).Error; err != nil {

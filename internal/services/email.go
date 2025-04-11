@@ -290,9 +290,16 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		}
 	}
 
+	// get superadmin team
+	superadminTeam := &models.Team{}
+	if err := tx.Where("name = ?", os.Getenv("SUPERADMIN_TEAM_NAME")).First(superadminTeam).Error; err != nil {
+		tx.Rollback()
+		return log.Error("failed to get superadmin team", err)
+	}
+
 	// Get default SMTP config
 	smtpConfig := &models.SMTPConfig{}
-	if err := tx.Where("team_id = ?", invite.TeamID).First(smtpConfig).Error; err != nil {
+	if err := tx.Where("team_id = ?", superadminTeam.ID).First(smtpConfig).Error; err != nil {
 		tx.Rollback()
 		return log.Error("failed to get default smtp config", err)
 	}
@@ -309,7 +316,7 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		to:           invite.Email,
 		SMTPProvider: smtpConfig.ID,
 		categoryId:   template.CategoryID,
-		variables:    map[string]string{"inviter": fmt.Sprintf("%s %s", inviter.FirstName, inviter.LastName), "name": invite.Name, "role": string(invite.Role), "url": fmt.Sprintf("%s/team/accept-invite/%s", os.Getenv("OFFICE_URL"), invite.Code)},
+		variables:    map[string]string{"inviter": fmt.Sprintf("%s %s", inviter.FirstName, inviter.LastName), "name": invite.Name, "role": string(invite.Role), "url": fmt.Sprintf("%s/auth/accept-invite/%s", os.Getenv("OFFICE_URL"), invite.Code)},
 		subject:      "Hey {{ name }} 👋🏻! You've been invited to join a team on Posthoot",
 		listId:       mailingList.ID,
 		campaignId:   "",
