@@ -575,6 +575,18 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	// @Failure 500 {object} map[string]string "Internal server error"
 	// @Router /api/v1/templates [get]
 	templateGroup.GET("", templateController.List)
+	// @Summary Get template
+	// @Description Get a template by ID
+	// @Accept json
+	// @Produce json
+	// @Param id path string true "Template ID"
+	// @Success 200 {object} models.Template
+	// @Failure 401 {object} map[string]string "Unauthorized"
+	// @Failure 403 {object} map[string]string "Forbidden"
+	// @Failure 404 {object} map[string]string "Not found"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/templates/{id} [get]
+	templateGroup.GET("/:id", templateController.Get)
 
 	// Protected template routes
 	templateWriteGroup := templateGroup.Group("")
