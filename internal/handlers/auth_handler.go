@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -826,7 +827,7 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 			}
 
 			// Only set ProfilePictureID if we successfully created the file
-			if fileModel != nil {
+			if fileModel != nil && fileModel.ID != "" {
 				user.ProfilePictureID = fileModel.ID
 			}
 
@@ -858,11 +859,7 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 			user.ProviderID = userData["id"].(string)
 			if err := tx.Save(&user).Error; err != nil {
 				tx.Rollback()
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
-			}
-		} else if user.Provider == "google" {
-			if err := tx.Save(&user).Error; err != nil {
-				tx.Rollback()
+				fmt.Println("Failed to update user", err)
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
 			}
 		}
