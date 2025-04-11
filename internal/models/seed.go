@@ -314,19 +314,17 @@ func AssignDefaultPermissions(db *gorm.DB, user *User) error {
 		}
 	}
 
-	// Create UserPermission entries
+	// Create UserPermission entries in bulk
+	var userPerms []UserPermission
 	for _, perm := range permissions {
-		userPerm := UserPermission{
+		userPerms = append(userPerms, UserPermission{
 			UserID:               user.ID,
 			ResourcePermissionID: perm.ID,
-		}
+		})
+	}
 
-		if err := db.FirstOrCreate(&userPerm, UserPermission{
-			UserID:               user.ID,
-			ResourcePermissionID: perm.ID,
-		}).Error; err != nil {
-			return fmt.Errorf("failed to create user permission: %v", err)
-		}
+	if err := db.CreateInBatches(&userPerms, 100).Error; err != nil {
+		return fmt.Errorf("failed to create user permissions in bulk: %v", err)
 	}
 
 	return nil
