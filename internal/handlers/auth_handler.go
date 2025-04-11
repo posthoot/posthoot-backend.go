@@ -15,6 +15,7 @@ import (
 
 	"crypto/rand"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
@@ -768,57 +769,65 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 				teamID = team.ID
 				userRole = models.UserRoleAdmin
 			}
-			var fileModel *models.File = &models.File{}
+			var fileModel *models.File
 			// download the profile picture
-			profilePictureURL := userData["photoUrl"].(string)
-			profilePicture, err := http.Get(profilePictureURL)
-			if err != nil {
-				// Log the error but do not affect account creation
-				log.Error("Failed to download profile picture", err)
-			} else {
-				// read the profile picture
-				profilePictureBytes, err := io.ReadAll(profilePicture.Body)
+			if photoURL, ok := userData["photoUrl"].(string); ok {
+				profilePicture, err := http.Get(photoURL)
 				if err != nil {
-					log.Error("Failed to read profile picture", err)
+					// Log the error but do not affect account creation
+					log.Error("Failed to download profile picture", err)
 				} else {
-					// Get storage handler
-					storage := GetStorageHandler()
-					if storage != nil {
-						// upload the profile picture to s3
-						profilePictureURL, err = storage.UploadFile(c.Request().Context(), profilePictureBytes, user.ID, "public-read", "image/jpeg")
-						if err != nil {
-							log.Error("Failed to upload profile picture", err)
-						} else {
-							fileModel := &models.File{
-								TeamID: teamID,
-								UserID: user.ID,
-								Path:   profilePictureURL[strings.LastIndex(profilePictureURL, "/")+1:],
-								Name:   "profile_picture.jpg",
-								Size:   int64(len(profilePictureBytes)),
-								Type:   "image/jpeg",
-							}
-							if err := tx.Create(&fileModel).Error; err != nil {
-								log.Error("Failed to create profile picture", err)
-							}
-						}
+					defer profilePicture.Body.Close()
+					// read the profile picture
+					profilePictureBytes, err := io.ReadAll(profilePicture.Body)
+					if err != nil {
+						log.Error("Failed to read profile picture", err)
 					} else {
-						log.Error("Storage handler not configured", err)
+						// Get storage handler
+						storage := GetStorageHandler()
+						if storage != nil {
+							// Create a temporary user ID since we don't have the real one yet
+							tempUserID := uuid.New().String()
+							// upload the profile picture to s3
+							profilePictureURL, err := storage.UploadFile(c.Request().Context(), profilePictureBytes, tempUserID, "public-read", "image/jpeg")
+							if err != nil {
+								log.Error("Failed to upload profile picture", err)
+							} else {
+								fileModel = &models.File{
+									TeamID: teamID,
+									Path:   profilePictureURL[strings.LastIndex(profilePictureURL, "/")+1:],
+									Name:   "profile_picture.jpg",
+									Size:   int64(len(profilePictureBytes)),
+									Type:   "image/jpeg",
+								}
+								if err := tx.Create(fileModel).Error; err != nil {
+									log.Error("Failed to create profile picture", err)
+									fileModel = nil
+								}
+							}
+						} else {
+							log.Error("Storage handler not configured", nil)
+						}
 					}
 				}
 			}
 
 			// Create user with both google and local auth capabilities
 			user = models.User{
-				Email:            userData["email"].(string),
-				FirstName:        userData["given_name"].(string),
-				LastName:         userData["family_name"].(string),
-				Role:             userRole,
-				TeamID:           teamID,
-				Provider:         "google",
-				ProviderID:       userData["id"].(string),
-				ProfilePictureID: fileModel.ID,
-				Password:         "", // Empty password for google users
-				ProviderData:     datatypes.JSON{},
+				Email:        userData["email"].(string),
+				FirstName:    userData["given_name"].(string),
+				LastName:     userData["family_name"].(string),
+				Role:         userRole,
+				TeamID:       teamID,
+				Provider:     "google",
+				ProviderID:   userData["id"].(string),
+				Password:     "", // Empty password for google users
+				ProviderData: datatypes.JSON{},
+			}
+
+			// Only set ProfilePictureID if we successfully created the file
+			if fileModel != nil {
+				user.ProfilePictureID = fileModel.ID
 			}
 
 			if err := tx.Create(&user).Error; err != nil {
