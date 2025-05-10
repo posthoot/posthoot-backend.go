@@ -81,13 +81,13 @@ func ReplaceLinksWithRedirect(html string, mailId string, cfg *config.Config) st
 		return html
 	}
 
-	html = hrefRe.ReplaceAllString(html, fmt.Sprintf(`<a href="%s/track/click/$1?token=%s"`, cfg.Server.PublicURL, tokenString))
+	html = hrefRe.ReplaceAllString(html, fmt.Sprintf(`<a href="%s/t/click/$1?token=%s"`, cfg.Server.PublicURL, tokenString))
 
 	// Add tracking pixel at bottom of email to track opens
-	html = html + fmt.Sprintf(`<img src="%s/track/open?token=%s" style="display:none" width="1" height="1">`, cfg.Server.PublicURL, tokenString)
+	html = html + fmt.Sprintf(`<img src="%s/t/open?token=%s" style="display:none" width="1" height="1">`, cfg.Server.PublicURL, tokenString)
 
 	// add unsubcribe link to the input this needs to go before the closing body tag
-	html = strings.Replace(html, "</body>", fmt.Sprintf(`<table><tr><td><a href="%s/track/unsubscribe?token=%s">Unsubscribe from this list</a></td></tr></table></body>`, cfg.Server.PublicURL, tokenString), 1)
+	html = strings.Replace(html, "</body>", fmt.Sprintf(`<table><tr><td><a style="color: #888888; font-size: 14px; text-align: center;" href="%s/t/unsubscribe?token=%s">Unsubscribe from this list</a></td></tr></table></body>`, cfg.Server.PublicURL, tokenString), 1)
 
 	return html
 }
