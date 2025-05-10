@@ -19,7 +19,7 @@ func GetSMTPConfig(teamID string, smtpConfigID string, providerName string, db *
 
 		// get the default smtp config for the team
 		smtpConfig := &SMTPConfig{}
-		if err := db.Where("team_id = ? AND is_default = true", teamID).First(smtpConfig).Error; err != nil {
+		if err := db.Where("team_id = ? AND is_default = true AND is_deleted = false", teamID).First(smtpConfig).Error; err != nil {
 			return nil, err
 		}
 		return smtpConfig, nil
@@ -27,7 +27,7 @@ func GetSMTPConfig(teamID string, smtpConfigID string, providerName string, db *
 
 	if smtpConfigID != "" {
 		smtpConfig := &SMTPConfig{}
-		if err := db.Where("id = ? AND team_id = ?", smtpConfigID, teamID).First(smtpConfig).Error; err != nil {
+		if err := db.Where("id = ? AND team_id = ? AND is_deleted = false", smtpConfigID, teamID).First(smtpConfig).Error; err != nil {
 			return nil, err
 		}
 		return smtpConfig, nil
@@ -35,7 +35,7 @@ func GetSMTPConfig(teamID string, smtpConfigID string, providerName string, db *
 
 	if providerName != "" {
 		smtpConfig := &SMTPConfig{}
-		if err := db.Where("provider = ? AND team_id = ?", providerName, teamID).First(smtpConfig).Error; err != nil {
+		if err := db.Where("provider = ? AND team_id = ? AND is_deleted = false", providerName, teamID).First(smtpConfig).Error; err != nil {
 			return nil, err
 		}
 		return smtpConfig, nil
@@ -47,7 +47,7 @@ func GetSMTPConfig(teamID string, smtpConfigID string, providerName string, db *
 // GetTeamByName retrieves a team from the database by its name
 func GetTeamByName(name string, db *gorm.DB) (*Team, error) {
 	team := &Team{}
-	if err := db.Where("name = ?", name).First(team).Error; err != nil {
+	if err := db.Where("name = ? AND is_deleted = false", name).First(team).Error; err != nil {
 		return nil, err
 	}
 	return team, nil
@@ -55,7 +55,7 @@ func GetTeamByName(name string, db *gorm.DB) (*Team, error) {
 
 func GetCampaignByID(id string, db *gorm.DB) (*Campaign, error) {
 	campaign := &Campaign{}
-	if err := db.Where("id = ?", id).Preload("Template.HtmlFile").First(campaign).Error; err != nil {
+	if err := db.Where("id = ? AND is_deleted = false", id).Preload("Template.HtmlFile").First(campaign).Error; err != nil {
 		return nil, err
 	}
 	return campaign, nil
@@ -63,7 +63,7 @@ func GetCampaignByID(id string, db *gorm.DB) (*Campaign, error) {
 
 func GetEmailListByID(id string, db *gorm.DB) (*MailingList, int, error) {
 	emailList := &MailingList{}
-	if err := db.Where("id = ?", id).First(emailList).Error; err != nil {
+	if err := db.Where("id = ? AND is_deleted = false", id).First(emailList).Error; err != nil {
 		return nil, 0, err
 	}
 	var count int64
@@ -75,7 +75,7 @@ func GetEmailListByID(id string, db *gorm.DB) (*MailingList, int, error) {
 
 func GetEmailsByCampaignID(campaignID string, db *gorm.DB) ([]*Email, error) {
 	emails := []*Email{}
-	if err := db.Where("campaign_id = ?", campaignID).Find(&emails).Error; err != nil {
+	if err := db.Where("campaign_id = ? AND is_deleted = false", campaignID).Find(&emails).Error; err != nil {
 		return nil, err
 	}
 	return emails, nil
@@ -83,7 +83,7 @@ func GetEmailsByCampaignID(campaignID string, db *gorm.DB) ([]*Email, error) {
 
 func GetUnsubscribedContactsByListID(listID string, db *gorm.DB) ([]*Contact, error) {
 	contacts := []*Contact{}
-	if err := db.Where("list_id = ? AND status = ?", listID, SubscriberStatusUnsubscribed).Find(&contacts).Error; err != nil {
+	if err := db.Where("list_id = ? AND status = ? AND is_deleted = false", listID, SubscriberStatusUnsubscribed).Find(&contacts).Error; err != nil {
 		return nil, err
 	}
 	return contacts, nil
@@ -91,7 +91,7 @@ func GetUnsubscribedContactsByListID(listID string, db *gorm.DB) ([]*Contact, er
 
 func GetContactImportByID(id string, db *gorm.DB) (*ContactImport, error) {
 	contactImport := &ContactImport{}
-	if err := db.Where("id = ?", id).First(contactImport).Error; err != nil {
+	if err := db.Where("id = ? AND is_deleted = false", id).First(contactImport).Error; err != nil {
 		return nil, err
 	}
 	return contactImport, nil
@@ -99,7 +99,7 @@ func GetContactImportByID(id string, db *gorm.DB) (*ContactImport, error) {
 
 func GetContactImportByFileID(fileID string, db *gorm.DB) (*ContactImport, error) {
 	contactImport := &ContactImport{}
-	if err := db.Where("file_id = ?", fileID).First(contactImport).Error; err != nil {
+	if err := db.Where("file_id = ? AND is_deleted = false", fileID).First(contactImport).Error; err != nil {
 		return nil, err
 	}
 	return contactImport, nil
@@ -107,7 +107,7 @@ func GetContactImportByFileID(fileID string, db *gorm.DB) (*ContactImport, error
 
 func GetFileByID(id string, db *gorm.DB) (*File, error) {
 	file := &File{}
-	if err := db.Where("id = ?", id).First(file).Error; err != nil {
+	if err := db.Where("id = ? AND is_deleted = false", id).First(file).Error; err != nil {
 		return nil, err
 	}
 	return file, nil
