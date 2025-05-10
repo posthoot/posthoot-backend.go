@@ -44,7 +44,7 @@ func NewTrackingHandler(db *gorm.DB) *TrackingHandler {
 // @Success 200 {object} models.EmailTracking "Tracking entry created successfully"
 // @Failure 400 {object} map[string]string "Validation error or email not found"
 // @Failure 500 {object} map[string]string "Internal server error"
-// @Router /api/v1/tracking [post]
+// @Router /api/v1/t [post]
 
 func (h *TrackingHandler) createTrackingEntry(c echo.Context, emailID string, event models.EmailTrackingEvent, url string) (*models.EmailTracking, error) {
 	// Get email details
@@ -107,7 +107,7 @@ func (h *TrackingHandler) createTrackingEntry(c echo.Context, emailID string, ev
 // @Failure 400 {object} map[string]string "Validation error or token missing"
 // @Failure 401 {object} map[string]string "Invalid token"
 // @Failure 500 {object} map[string]string "Internal server error"
-// @Router /api/v1/tracking/click [get]
+// @Router /api/v1/t/click [get]
 func (h *TrackingHandler) HandleEmailClick(c echo.Context) error {
 	// Extract token from query params
 	token := c.QueryParam("token")
@@ -155,7 +155,7 @@ func (h *TrackingHandler) HandleEmailClick(c echo.Context) error {
 // @Failure 400 {object} map[string]string "Validation error or token missing"
 // @Failure 401 {object} map[string]string "Invalid token"
 // @Failure 500 {object} map[string]string "Internal server error"
-// @Router /api/v1/tracking/open [get]
+// @Router /api/v1/t/open [get]
 func (h *TrackingHandler) HandleEmailOpen(c echo.Context) error {
 	// Extract token from query params
 	token := c.QueryParam("token")

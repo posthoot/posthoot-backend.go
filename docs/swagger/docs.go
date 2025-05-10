@@ -500,7 +500,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/tracking/click": {
+        "/api/v1/t/click": {
             "get": {
                 "description": "Handle click tracking",
                 "consumes": [
@@ -556,7 +556,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/tracking/open": {
+        "/api/v1/t/open": {
             "get": {
                 "description": "Handle open tracking",
                 "consumes": [

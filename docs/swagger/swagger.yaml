@@ -1991,7 +1991,7 @@ paths:
               type: string
             type: object
       summary: Upload a file
-  /api/v1/tracking/click:
+  /api/v1/t/click:
     get:
       consumes:
       - application/json
@@ -2028,7 +2028,7 @@ paths:
               type: string
             type: object
       summary: Handle click tracking
-  /api/v1/tracking/open:
+  /api/v1/t/open:
     get:
       consumes:
       - application/json

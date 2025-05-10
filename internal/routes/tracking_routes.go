@@ -12,7 +12,7 @@ import (
 // 📊 RegisterTrackingRoutes registers all tracking related routes
 func RegisterTrackingRoutes(e *echo.Echo, h *handlers.TrackingHandler, cfg *config.Config, db *gorm.DB) {
 	// Public tracking endpoints (no auth required)
-	trackGroup := e.Group("/track")
+	trackGroup := e.Group("/t")
 	trackGroup.GET("/click/*", h.HandleEmailClick) // The * captures the rest of the URL
 	trackGroup.GET("/open", h.HandleEmailOpen)
 	trackGroup.GET("/unsubscribe", h.HandleEmailUnsubscribe)
