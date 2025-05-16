@@ -8,6 +8,7 @@ import (
 	"kori/internal/models"
 	"kori/internal/utils"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -241,6 +242,10 @@ func (h *IMAPHandler) GetEmails(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to fetch email UIDs: %v", err))
 	}
+
+	sort.Slice(uids, func(i, j int) bool {
+		return uids[i] > uids[j]
+	})
 
 	// Validate pagination bounds
 	if pagination.Offset >= len(uids) {
