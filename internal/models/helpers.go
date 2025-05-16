@@ -44,6 +44,27 @@ func GetSMTPConfig(teamID string, smtpConfigID string, providerName string, db *
 	return nil, errors.New("no smtp config found")
 }
 
+func GetIMAPConfig(teamID string, imapConfigID string, db *gorm.DB) (*IMAPConfig, error) {
+
+	if imapConfigID == "" {
+		imapConfig := &IMAPConfig{}
+		if err := db.Where("team_id = ? AND is_deleted = false", teamID).First(imapConfig).Error; err != nil {
+			return nil, err
+		}
+		return imapConfig, nil
+	}
+
+	if imapConfigID != "" {
+		imapConfig := &IMAPConfig{}
+		if err := db.Where("id = ? AND team_id = ? AND is_deleted = false", imapConfigID, teamID).First(imapConfig).Error; err != nil {
+			return nil, err
+		}
+		return imapConfig, nil
+	}
+
+	return nil, errors.New("no imap config found")
+}
+
 // GetTeamByName retrieves a team from the database by its name
 func GetTeamByName(name string, db *gorm.DB) (*Team, error) {
 	team := &Team{}

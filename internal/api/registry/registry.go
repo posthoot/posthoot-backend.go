@@ -428,6 +428,76 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	// @Router /api/v1/smtp-configs/{id} [delete]
 	smtpWriteGroup.DELETE("/:id", smtpConfigController.Delete)
 
+	// IMAP with team-specific permissions
+	imapService := services.NewBaseService(db, models.IMAPConfig{})
+	imapController := controllers.NewBaseController(imapService)
+	imapGroup := g.Group("/imap")
+	imapGroup.Use(middleware.RequirePermissions(db, "imap_configs:read"))
+	// @Summary List IMAP configs
+	// @Description Get a list of all IMAP configurations
+	// @Accept json
+	// @Produce json
+	// @Success 200 {array} models.IMAPConfig
+	// @Failure 401 {object} map[string]string "Unauthorized"
+	// @Failure 403 {object} map[string]string "Forbidden"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/imap [get]
+	imapGroup.GET("", imapController.List)
+	// @Summary Get IMAP config
+	// @Description Get an IMAP configuration by ID
+	// @Accept json
+	// @Produce json
+	// @Param id path string true "Config ID"
+	// @Success 200 {object} models.IMAPConfig
+	// @Failure 401 {object} map[string]string "Unauthorized"
+	// @Failure 403 {object} map[string]string "Forbidden"
+	// @Failure 404 {object} map[string]string "Not found"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/imap/{id} [get]
+	imapGroup.GET("/:id", imapController.Get)
+
+	// Protected IMAP config routes
+	imapWriteGroup := imapGroup.Group("")
+	imapWriteGroup.Use(middleware.RequirePermissions(db, "imap_configs:write"))
+	// @Summary Create IMAP config
+	// @Description Create a new IMAP configuration
+	// @Accept json
+	// @Produce json
+	// @Param config body models.IMAPConfig true "Config object"
+	// @Success 201 {object} models.IMAPConfig
+	// @Failure 400 {object} map[string]string "Bad request"
+	// @Failure 401 {object} map[string]string "Unauthorized"
+	// @Failure 403 {object} map[string]string "Forbidden"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/imap [post]
+	imapWriteGroup.POST("", imapController.Create)
+	// @Summary Update IMAP config
+	// @Description Update an existing IMAP configuration
+	// @Accept json
+	// @Produce json
+	// @Param id path string true "Config ID"
+	// @Param config body models.IMAPConfig true "Config object"
+	// @Success 200 {object} models.IMAPConfig
+	// @Failure 400 {object} map[string]string "Bad request"
+	// @Failure 401 {object} map[string]string "Unauthorized"
+	// @Failure 403 {object} map[string]string "Forbidden"
+	// @Failure 404 {object} map[string]string "Not found"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/imap/{id} [put]
+	imapWriteGroup.PUT("/:id", imapController.Update)
+	// @Summary Delete IMAP config
+	// @Description Delete an IMAP configuration
+	// @Accept json
+	// @Produce json
+	// @Param id path string true "Config ID"
+	// @Success 204 "No content"
+	// @Failure 401 {object} map[string]string "Unauthorized"
+	// @Failure 403 {object} map[string]string "Forbidden"
+	// @Failure 404 {object} map[string]string "Not found"
+	// @Failure 500 {object} map[string]string "Internal server error"
+	// @Router /api/v1/imap/{id} [delete]
+	imapWriteGroup.DELETE("/:id", imapController.Delete)
+
 	// Domains with team-specific permissions
 	domainService := services.NewBaseService(db, models.Domain{})
 	domainController := controllers.NewBaseController(domainService)

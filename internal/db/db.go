@@ -187,6 +187,9 @@ func runMigrations() error {
 		&models.Subscription{},
 		&models.Product{},
 		&models.ProductFeatureConfig{},
+
+		// IMAP models
+		&models.IMAPConfig{},
 	); err != nil {
 		tx.Rollback()
 		return err

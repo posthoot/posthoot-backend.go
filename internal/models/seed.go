@@ -74,6 +74,12 @@ var defaultResources = []Resource{
 	{Name: "smtp_configs", Action: "update"},
 	{Name: "smtp_configs", Action: "delete"},
 
+	// IMAP config resources
+	{Name: "imap_configs", Action: "create"},
+	{Name: "imap_configs", Action: "read"},
+	{Name: "imap_configs", Action: "update"},
+	{Name: "imap_configs", Action: "delete"},
+
 	// Domain resources
 	{Name: "domains", Action: "create"},
 	{Name: "domains", Action: "read"},
@@ -161,6 +167,7 @@ var rolePermissions = map[UserRole][]string{
 		"files:*",
 		"team_settings:*",
 		"branding_settings:*",
+		"imap_configs:*",
 	},
 	UserRoleMember: {
 		// Member has limited permissions
@@ -185,6 +192,7 @@ var rolePermissions = map[UserRole][]string{
 		"files:read",
 		"team_settings:read",
 		"branding_settings:read",
+		"imap_configs:read",
 	},
 	UserRoleSuperAdmin: {
 		// SuperAdmin has all permissions

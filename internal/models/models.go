@@ -191,10 +191,34 @@ type SMTPConfig struct {
 	TeamID       string `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 }
 
+type IMAPConfig struct {
+	Base
+	Host     string `gorm:"not null" json:"host" validate:"required,hostname"`
+	Port     int    `gorm:"not null" json:"port" validate:"required,min=1,max=65535"`
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required,min=8"`
+	IsActive bool   `gorm:"not null;default:true" json:"isActive"`
+	TeamID   string `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
+	Team     *Team  `json:"team,omitempty"`
+}
+
 func (s *SMTPConfig) BeforeCreate(tx *gorm.DB) error {
 	if s.ID == "" {
 		s.ID = uuid.New().String()
 	}
+	password, err := crypto.Encrypt(s.Password)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt password: %w", err)
+	}
+	s.Password = password
+	return nil
+}
+
+func (s *IMAPConfig) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == "" {
+		s.ID = uuid.New().String()
+	}
+
 	password, err := crypto.Encrypt(s.Password)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt password: %w", err)
@@ -212,7 +236,25 @@ func (s *SMTPConfig) BeforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
+func (s *IMAPConfig) BeforeUpdate(tx *gorm.DB) error {
+	password, err := crypto.Encrypt(s.Password)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt password: %w", err)
+	}
+	s.Password = password
+	return nil
+}
+
 func (s *SMTPConfig) AfterFind(tx *gorm.DB) error {
+	password, err := crypto.Decrypt(s.Password)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt password: %w", err)
+	}
+	s.Password = password
+	return nil
+}
+
+func (s *IMAPConfig) AfterFind(tx *gorm.DB) error {
 	password, err := crypto.Decrypt(s.Password)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt password: %w", err)

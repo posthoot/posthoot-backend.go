@@ -9,6 +9,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.67
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.3
+	github.com/emersion/go-imap v1.2.1
+	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21
 	github.com/go-advanced-admin/admin v0.1.2
 	github.com/go-advanced-admin/orm-gorm v0.1.1
 	github.com/go-advanced-admin/web-echo v1.0.1

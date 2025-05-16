@@ -132,6 +132,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	routes.SetupImportRoutes(s.echo, s.db, s.config)
 	routes.SetupSMTPRoutes(s.echo, s.config, s.db)
 	routes.SetupEMAILRoutes(s.echo, s.config, s.db)
+	routes.SetupIMAPRoutes(s.echo, s.config, s.db)
 	routes.RegisterTrackingRoutes(s.echo, trackingHandler, s.config, s.db)
 	return s
 }
