@@ -73,21 +73,13 @@ func (h *IMAPHandler) GetFolders(c echo.Context) error {
 	log.Info("Fetching IMAP folders")
 
 	teamID := c.Get("teamID").(string)
-	imapConfigID := c.QueryParam("imap_config_id") // this is optional, if not provided, it will fetch all imap configs for the team
+	configId := c.QueryParam("config_id") // this is optional, if not provided, it will fetch all imap configs for the team
 
-	log.Info("Fetching IMAP config for team %s and imap config id %s", teamID, imapConfigID)
 	var imapConfig *models.IMAPConfig
 	var err error
-	if imapConfigID == "" {
-		imapConfig, err = models.GetIMAPConfig(teamID, "", h.db)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to get IMAP config: %v", err))
-		}
-	} else {
-		imapConfig, err = models.GetIMAPConfig(teamID, imapConfigID, h.db)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to get IMAP config: %v", err))
-		}
+	imapConfig, err = models.GetIMAPConfig(teamID, configId, h.db)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to get IMAP config: %v", err))
 	}
 
 	// Connect to IMAP server
@@ -173,7 +165,9 @@ func (h *IMAPHandler) GetEmails(c echo.Context) error {
 
 	teamID := c.Get("teamID").(string)
 
-	imapConfig, err := models.GetIMAPConfig(teamID, "", h.db)
+	configId := c.QueryParam("config_id")
+
+	imapConfig, err := models.GetIMAPConfig(teamID, configId, h.db)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to get IMAP config: %v", err))
 	}
