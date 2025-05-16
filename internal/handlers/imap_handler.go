@@ -238,6 +238,16 @@ func (h *IMAPHandler) GetEmails(c echo.Context) error {
 		criteria.Header.Add("TO", c.QueryParam("to"))
 	}
 
+	// allow search by cc
+	if c.QueryParam("cc") != "" {
+		criteria.Header.Add("CC", c.QueryParam("cc"))
+	}
+
+	// allow search by bcc
+	if c.QueryParam("bcc") != "" {
+		criteria.Header.Add("BCC", c.QueryParam("bcc"))
+	}
+
 	uids, err := im.Search(criteria)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to fetch email UIDs: %v", err))
