@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/csv"
 	"fmt"
 	"kori/internal/config"
@@ -45,7 +46,6 @@ func NewTrackingHandler(db *gorm.DB) *TrackingHandler {
 // @Failure 400 {object} map[string]string "Validation error or email not found"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/v1/t [post]
-
 func (h *TrackingHandler) createTrackingEntry(c echo.Context, emailID string, event models.EmailTrackingEvent, url string) (*models.EmailTracking, error) {
 	// Get email details
 	var email models.Email
@@ -132,17 +132,22 @@ func (h *TrackingHandler) HandleEmailClick(c echo.Context) error {
 	}
 
 	// Get the original URL from the path
-	originalURL := strings.TrimPrefix(c.Request().URL.Path, "/track/click/")
+	originalURL := strings.TrimPrefix(c.Request().URL.Path, "/t/click/")
+
+	decodedURL, err := base64.StdEncoding.DecodeString(originalURL)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid URL")
+	}
 
 	// Create tracking entry
-	_, err = h.createTrackingEntry(c, emailID, models.EmailTrackingEventClick, originalURL)
+	_, err = h.createTrackingEntry(c, emailID, models.EmailTrackingEventClick, string(decodedURL))
 	if err != nil {
 		trackingLog.Error("Failed to create click tracking entry", err)
 		// Still redirect even if tracking fails
 	}
 
 	// Redirect to original URL
-	return c.Redirect(http.StatusFound, originalURL)
+	return c.Redirect(http.StatusFound, string(decodedURL))
 }
 
 // 👁️ HandleOpen handles open tracking
