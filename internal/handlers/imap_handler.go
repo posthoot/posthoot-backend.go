@@ -173,7 +173,9 @@ func (h *IMAPHandler) GetEmails(c echo.Context) error {
 	}
 
 	// Connect to IMAP server
-	im, err := client.DialTLS(fmt.Sprintf("%s:%d", imapConfig.Host, imapConfig.Port), nil)
+	im, err := client.DialTLS(fmt.Sprintf("%s:%d", imapConfig.Host, imapConfig.Port), &tls.Config{
+		InsecureSkipVerify: true,
+	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to connect to IMAP server: %v", err))
 	}
@@ -272,7 +274,14 @@ func (h *IMAPHandler) GetEmails(c echo.Context) error {
 	emails := make(chan *imap.Message, pagination.Limit)
 
 	// Fetch emails with RFC822 (full message content)
-	err = im.Fetch(seqset, []imap.FetchItem{imap.FetchRFC822}, emails)
+
+	fetchItems := []imap.FetchItem{imap.FetchRFC822Text, imap.FetchRFC822Header}
+
+	if imapConfig.Host == "imap.gmail.com" {
+		fetchItems = []imap.FetchItem{imap.FetchRFC822}
+	}
+
+	err = im.Fetch(seqset, fetchItems, emails)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to fetch emails: %v", err))
 	}
@@ -310,17 +319,23 @@ func (h *IMAPHandler) GetEmails(c echo.Context) error {
 				}
 
 				for _, literal := range email.Body {
+					if literal == nil {
+						continue
+					}
+
 					b := make([]byte, literal.Len())
+
 					if _, err := io.ReadFull(literal, b); err != nil {
 						errChan <- fmt.Errorf("failed to read message body: %v", err)
 						return
 					}
 
 					emailReader := strings.NewReader(string(b))
+
 					parsedMail, err := utils.ParseEmail(emailReader)
+
 					if err != nil {
-						errChan <- fmt.Errorf("failed to parse email: %v", err)
-						return
+						continue
 					}
 
 					selectedBody := parsedMail.BodyText
