@@ -195,10 +195,11 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	}
 
 	authtransaction := &models.AuthTransaction{
-		UserID:  user.ID,
-		TeamID:  user.TeamID,
-		Token:   token,
-		Refresh: refreshToken,
+		UserID:    user.ID,
+		TeamID:    user.TeamID,
+		Token:     token,
+		Refresh:   refreshToken,
+		ExpiresAt: time.Now().Add(time.Hour * 24 * 30),
 	}
 
 	if err := h.db.Create(authtransaction).Error; err != nil {
@@ -915,10 +916,11 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 
 	// Create auth transaction
 	authtransaction := &models.AuthTransaction{
-		UserID:  user.ID,
-		TeamID:  user.TeamID,
-		Token:   jwtToken,
-		Refresh: refreshToken,
+		UserID:    user.ID,
+		TeamID:    user.TeamID,
+		Token:     jwtToken,
+		Refresh:   refreshToken,
+		ExpiresAt: time.Now().Add(time.Hour * 24 * 30), // 30 days
 	}
 
 	if err := h.db.Create(authtransaction).Error; err != nil {

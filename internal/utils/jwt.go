@@ -32,7 +32,7 @@ func GenerateJWT(user models.User) (string, error) {
 		Role:        string(user.Role),
 		Permissions: permissions,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // 1 day
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
@@ -64,7 +64,7 @@ func GenerateRefreshToken(user models.User) (string, error) {
 	claims := Claims{
 		UserID: user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 7 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 30 * time.Hour)), // 30 days
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
