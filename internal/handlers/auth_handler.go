@@ -502,7 +502,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 
 	// check in db if refresh token is valid
 	var authTransaction models.AuthTransaction
-	if err := h.db.Where("token = ? AND expires_at > ?", refreshToken, time.Now()).First(&authTransaction).Error; err != nil {
+	if err := h.db.Where("refresh = ? AND expires_at > ?", refreshToken, time.Now()).First(&authTransaction).Error; err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid refresh token"})
 	}
 
