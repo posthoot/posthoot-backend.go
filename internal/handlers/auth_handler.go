@@ -83,7 +83,11 @@ func (h *AuthHandler) Register(c echo.Context) error {
 
 	// check if user already exists
 	if err := h.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "User already exists"})
+		if err == gorm.ErrRecordNotFound {
+			createTeam = true
+		} else {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "User already exists"})
+		}
 	}
 
 	// check if user is already invited
