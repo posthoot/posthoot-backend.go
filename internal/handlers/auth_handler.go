@@ -92,10 +92,12 @@ func (h *AuthHandler) Register(c echo.Context) error {
 
 	// check if user is already invited
 	var invite models.TeamInvite
-	if err := h.db.Where("email = ? AND status = ? AND expires_at > ?", req.Email, models.InviteStatusPending, time.Now()).First(&invite).Error; err != nil {
+	if err := h.db.Where("email = ? AND status = ? AND expires_at > ?", req.Email, models.InviteStatusPending, time.Now()).First(&invite).Error; err == nil {
 		// accept invite
 		invite.Status = models.InviteStatusAccepted
-		h.db.Save(&invite)
+		if err := h.db.Save(&invite).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to accept invite"})
+		}
 		createTeam = false
 	}
 
