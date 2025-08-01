@@ -20,6 +20,7 @@ type Config struct {
 	Crypto   CryptoConfig
 	SMTP     SMTPConfig
 	Monitor  MonitorConfig
+	Airley   AirleyConfig
 }
 
 type CryptoConfig struct {
@@ -82,6 +83,10 @@ type RedisConfig struct {
 
 type MonitorConfig struct {
 	DiscordWebhookURL string
+}
+
+type AirleyConfig struct {
+	Enabled bool
 }
 
 var (
@@ -152,6 +157,9 @@ func Load() (*Config, error) {
 		Monitor: MonitorConfig{
 			DiscordWebhookURL: getEnv("DISCORD_WEBHOOK_URL", ""),
 		},
+		Airley: AirleyConfig{
+			Enabled: getEnvAsBool("AIRLEY_ENABLED", false),
+		},
 	}
 
 	return cfg, nil
@@ -169,6 +177,13 @@ func getEnvAsInt(key string, defaultValue int) int {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
 		}
+	}
+	return defaultValue
+}
+
+func getEnvAsBool(key string, defaultValue bool) bool {
+	if value, exists := os.LookupEnv(key); exists {
+		return value == "true"
 	}
 	return defaultValue
 }

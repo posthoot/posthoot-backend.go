@@ -141,6 +141,7 @@ func main() {
 			cfg.Storage.S3.AccessKey,
 			cfg.Storage.S3.SecretKey,
 		)
+
 		if err != nil {
 			log.Fatalf("Failed to initialize S3 service: %v", err)
 		}
@@ -149,13 +150,14 @@ func main() {
 		models.RegisterFileURLGenerator(s3Service)
 		handlers.RegisterStorageHandler(s3Service)
 
-		// Seed Airley templates
-		if err := airley.LoadAirleyTemplates(db_instance); err != nil {
-			logger.Error("Warning: Failed to seed Airley templates: %v", err)
-		} else {
-			logger.Success("Successfully seeded Airley templates")
+		if cfg.Airley.Enabled {
+			// Seed Airley templates
+			if err := airley.LoadAirleyTemplates(db_instance); err != nil {
+				logger.Error("Warning: Failed to seed Airley templates: %v", err)
+			} else {
+				logger.Success("Successfully seeded Airley templates")
+			}
 		}
-
 		logger.Success("API server started")
 
 		// Swagger documentation
