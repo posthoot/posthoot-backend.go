@@ -1,4 +1,4 @@
-# 🐦 Kori Backend
+# 🐦 Posthoot Backend
 
 > 🚀 A robust Go-based backend service for email campaign management with advanced authentication and permission systems.
 
@@ -173,7 +173,7 @@ SUPERADMIN_NAME=Admin
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/kori.git
+git clone https://github.com/posthoot/posthoot-backend.go.git kori
 cd kori
 ```
 
@@ -187,13 +187,7 @@ go mod download
 cp .env.example .env
 # Edit .env with your configuration
 ```
-
-4. Run migrations:
-```bash
-go run cmd/migrate/main.go
-```
-
-5. Start the server:
+4. Start the server:
 ```bash
 go run cmd/server/main.go
 ```
