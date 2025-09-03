@@ -28,6 +28,8 @@ WORKDIR /app
 # Copy the binary from builder
 COPY --chmod=755 --from=builder /app/build/posthoot .
 COPY --chmod=755 --from=builder /app/build/helper .
+COPY --chmod=755 --from=builder /app/openapi.json .
+COPY --chmod=755 --from=builder /app/public/build-info.txt /app/public/build-info.txt
 
 # Copy template seeder data for Airley templates
 # Source: /app/internal/models/seeder/airley/templates.json
