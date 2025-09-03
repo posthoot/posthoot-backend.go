@@ -5,7 +5,7 @@ import requests
 def generate_release_notes():
     try:
         data = {
-            "model": "meta-llama/llama-4-maverick",
+            "model": "meta-llama/llama-4-maverick:free",
             "messages": [
                 {
                     "role": "system", 
