@@ -43,7 +43,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/internal_handlers.AudienceInsights"
+                  "$ref": "#/components/schemas/internal_handlers.AudienceInsights"
                 }
               }
             }
@@ -100,7 +100,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/internal_handlers.EmailAnalytics"
+                  "$ref": "#/components/schemas/internal_handlers.EmailAnalytics"
                 }
               }
             }
@@ -159,7 +159,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": {
-                    "$ref": "#/definitions/internal_handlers.EmailAnalytics"
+                    "$ref": "#/components/schemas/internal_handlers.EmailAnalytics"
                   }
                 }
               }
@@ -217,7 +217,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/internal_handlers.EmailAnalytics"
+                  "$ref": "#/components/schemas/internal_handlers.EmailAnalytics"
                 }
               }
             }
@@ -405,7 +405,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/internal_handlers.HeatmapData"
+                  "$ref": "#/components/schemas/internal_handlers.HeatmapData"
                 }
               }
             }
@@ -462,7 +462,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/internal_handlers.TeamOverview"
+                  "$ref": "#/components/schemas/internal_handlers.TeamOverview"
                 }
               }
             }
@@ -521,7 +521,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/definitions/internal_handlers.trendPoint"
+                    "$ref": "#/components/schemas/internal_handlers.trendPoint"
                   }
                 }
               }
@@ -561,18 +561,10 @@
       "post": {
         "summary": "Upload a file",
         "description": "Upload a file to the server",
-        "tags": [],
-        "parameters": [
-          {
-            "name": "file",
-            "in": "formData",
-            "description": "File to upload",
-            "required": true,
-            "schema": {
-              "type": "file"
-            }
-          }
+        "tags": [
+          "Files"
         ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "File uploaded successfully",
@@ -580,9 +572,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
+                  "additionalProperties": true
                 }
               }
             }
@@ -614,7 +604,31 @@
             }
           }
         },
-        "security": []
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File to upload"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/t": {
@@ -657,7 +671,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/kori_internal_models.EmailTracking"
+                  "$ref": "#/components/schemas/kori_internal_models.EmailTracking"
                 }
               }
             }
@@ -714,7 +728,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/kori_internal_models.EmailTracking"
+                  "$ref": "#/components/schemas/kori_internal_models.EmailTracking"
                 }
               }
             }
@@ -784,7 +798,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/kori_internal_models.EmailTracking"
+                  "$ref": "#/components/schemas/kori_internal_models.EmailTracking"
                 }
               }
             }
@@ -839,17 +853,7 @@
         "tags": [
           "auth"
         ],
-        "parameters": [
-          {
-            "name": "request",
-            "in": "body",
-            "description": "Google ID token",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/internal_handlers.GoogleAuthRequest"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "JWT token",
@@ -904,7 +908,17 @@
             }
           }
         },
-        "security": []
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/internal_handlers.GoogleAuthRequest"
+              }
+            }
+          }
+        }
       }
     },
     "/auth/invite": {
@@ -914,17 +928,7 @@
         "tags": [
           "auth"
         ],
-        "parameters": [
-          {
-            "name": "request",
-            "in": "body",
-            "description": "Invitation details",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/internal_handlers.InviteUserRequest"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "201": {
             "description": "Invitation sent successfully",
@@ -966,7 +970,17 @@
             }
           }
         },
-        "security": []
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/internal_handlers.InviteUserRequest"
+              }
+            }
+          }
+        }
       }
     },
     "/auth/invite/{id}": {
@@ -1038,17 +1052,7 @@
         "tags": [
           "auth"
         ],
-        "parameters": [
-          {
-            "name": "request",
-            "in": "body",
-            "description": "Login credentials",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/internal_handlers.LoginRequest"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "JWT token",
@@ -1103,7 +1107,17 @@
             }
           }
         },
-        "security": []
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/internal_handlers.LoginRequest"
+              }
+            }
+          }
+        }
       }
     },
     "/auth/me": {
@@ -1120,7 +1134,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/kori_internal_models.User"
+                  "$ref": "#/components/schemas/kori_internal_models.User"
                 }
               }
             }
@@ -1136,17 +1150,7 @@
         "tags": [
           "auth"
         ],
-        "parameters": [
-          {
-            "name": "request",
-            "in": "body",
-            "description": "Email for password reset",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/internal_handlers.ResetPasswordRequest"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "Reset code sent if email exists",
@@ -1188,7 +1192,17 @@
             }
           }
         },
-        "security": []
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/internal_handlers.ResetPasswordRequest"
+              }
+            }
+          }
+        }
       }
     },
     "/auth/password-reset/verify": {
@@ -1198,17 +1212,7 @@
         "tags": [
           "auth"
         ],
-        "parameters": [
-          {
-            "name": "request",
-            "in": "body",
-            "description": "Reset code verification and new password",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/internal_handlers.VerifyResetCodeRequest"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "Password reset successful",
@@ -1250,7 +1254,17 @@
             }
           }
         },
-        "security": []
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/internal_handlers.VerifyResetCodeRequest"
+              }
+            }
+          }
+        }
       }
     },
     "/auth/refresh": {
@@ -1260,17 +1274,7 @@
         "tags": [
           "auth"
         ],
-        "parameters": [
-          {
-            "name": "refresh_token",
-            "in": "body",
-            "description": "Refresh token",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "New access token",
@@ -1325,7 +1329,17 @@
             }
           }
         },
-        "security": []
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        }
       }
     },
     "/auth/register": {
@@ -1335,17 +1349,7 @@
         "tags": [
           "auth"
         ],
-        "parameters": [
-          {
-            "name": "request",
-            "in": "body",
-            "description": "Registration details",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/internal_handlers.RegisterRequest"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "201": {
             "description": "User registered successfully",
@@ -1387,7 +1391,17 @@
             }
           }
         },
-        "security": []
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/internal_handlers.RegisterRequest"
+              }
+            }
+          }
+        }
       }
     },
     "/auth/users": {
@@ -1406,7 +1420,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/definitions/kori_internal_models.User"
+                    "$ref": "#/components/schemas/kori_internal_models.User"
                   }
                 }
               }
@@ -1466,7 +1480,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/kori_internal_models.User"
+                  "$ref": "#/components/schemas/kori_internal_models.User"
                 }
               }
             }
@@ -1528,15 +1542,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "user",
-            "in": "body",
-            "description": "Updated user details",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/kori_internal_models.User"
-            }
           }
         ],
         "responses": {
@@ -1545,7 +1550,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/kori_internal_models.User"
+                  "$ref": "#/components/schemas/kori_internal_models.User"
                 }
               }
             }
@@ -1603,7 +1608,17 @@
             }
           }
         },
-        "security": []
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/kori_internal_models.User"
+              }
+            }
+          }
+        }
       },
       "delete": {
         "summary": "Delete user",
@@ -1686,17 +1701,7 @@
         "tags": [
           "Email"
         ],
-        "parameters": [
-          {
-            "name": "request",
-            "in": "body",
-            "description": "Email request",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/internal_handlers.SendEmailRequest"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "OK",
@@ -1716,7 +1721,17 @@
           {
             "BearerAuth": []
           }
-        ]
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/internal_handlers.SendEmailRequest"
+              }
+            }
+          }
+        }
       }
     },
     "/plans": {
@@ -1733,7 +1748,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/internal_handlers.GetPlansResponse"
+                  "$ref": "#/components/schemas/internal_handlers.GetPlansResponse"
                 }
               }
             }
@@ -1756,7 +1771,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/definitions/kori_internal_models.Subscription"
+                  "$ref": "#/components/schemas/kori_internal_models.Subscription"
                 }
               }
             }
@@ -1783,17 +1798,7 @@
         "tags": [
           "subscriptions"
         ],
-        "parameters": [
-          {
-            "name": "request",
-            "in": "body",
-            "description": "Subscription details",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/internal_handlers.CreateSubscriptionRequest"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "Payment URL",
@@ -1835,7 +1840,17 @@
             }
           }
         },
-        "security": []
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/internal_handlers.CreateSubscriptionRequest"
+              }
+            }
+          }
+        }
       }
     },
     "/subscriptions/features": {
@@ -1963,7 +1978,7 @@
           "behaviors": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "#/definitions/internal_handlers.BehaviorMetrics"
+              "$ref": "#/components/schemas/internal_handlers.BehaviorMetrics"
             }
           },
           "demographics": {
@@ -1975,13 +1990,13 @@
           "preferences": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "#/definitions/internal_handlers.PreferenceMetrics"
+              "$ref": "#/components/schemas/internal_handlers.PreferenceMetrics"
             }
           },
           "segments": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/internal_handlers.AudienceSegment"
+              "$ref": "#/components/schemas/internal_handlers.AudienceSegment"
             }
           }
         }
@@ -2090,7 +2105,7 @@
             "description": "Average time between open and click",
             "allOf": [
               {
-                "$ref": "#/definitions/time.Duration"
+                "$ref": "#/components/schemas/time.Duration"
               }
             ]
           },
@@ -2119,7 +2134,7 @@
             "description": "🔗 Link Analytics",
             "type": "array",
             "items": {
-              "$ref": "#/definitions/internal_handlers.LinkAnalytics"
+              "$ref": "#/components/schemas/internal_handlers.LinkAnalytics"
             }
           },
           "complaintCount": {
@@ -2147,7 +2162,7 @@
             "description": "Time to first open",
             "allOf": [
               {
-                "$ref": "#/definitions/time.Duration"
+                "$ref": "#/components/schemas/time.Duration"
               }
             ]
           },
@@ -2203,7 +2218,7 @@
             "description": "⏰ Time-based Analytics",
             "type": "array",
             "items": {
-              "$ref": "#/definitions/internal_handlers.TimelineDataPoint"
+              "$ref": "#/components/schemas/internal_handlers.TimelineDataPoint"
             }
           },
           "uniqueClicks": {
@@ -2220,7 +2235,7 @@
           "plans": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Product"
+              "$ref": "#/components/schemas/kori_internal_models.Product"
             }
           }
         }
@@ -2242,13 +2257,13 @@
           "clicks": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/internal_handlers.ClickPoint"
+              "$ref": "#/components/schemas/internal_handlers.ClickPoint"
             }
           },
           "segments": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/internal_handlers.ClickSegment"
+              "$ref": "#/components/schemas/internal_handlers.ClickSegment"
             }
           },
           "url": {
@@ -2287,7 +2302,7 @@
         "type": "object",
         "properties": {
           "averageTimeToClick": {
-            "$ref": "#/definitions/time.Duration"
+            "$ref": "#/components/schemas/time.Duration"
           },
           "clickCount": {
             "type": "integer"
@@ -2489,19 +2504,19 @@
           "monthlyStats": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/internal_handlers.MonthlyEngagement"
+              "$ref": "#/components/schemas/internal_handlers.MonthlyEngagement"
             }
           },
           "topCampaigns": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/internal_handlers.CampaignSummary"
+              "$ref": "#/components/schemas/internal_handlers.CampaignSummary"
             }
           },
           "topPerformers": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/internal_handlers.PerformerMetrics"
+              "$ref": "#/components/schemas/internal_handlers.PerformerMetrics"
             }
           },
           "totalClicks": {
@@ -2575,7 +2590,7 @@
           "events": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.EmailTracking"
+              "$ref": "#/components/schemas/kori_internal_models.EmailTracking"
             }
           },
           "growth": {
@@ -2626,11 +2641,11 @@
           "permissions": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.APIKeyPermission"
+              "$ref": "#/components/schemas/kori_internal_models.APIKeyPermission"
             }
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -2654,13 +2669,13 @@
             "default": false
           },
           "key": {
-            "$ref": "#/definitions/kori_internal_models.APIKey"
+            "$ref": "#/components/schemas/kori_internal_models.APIKey"
           },
           "keyId": {
             "type": "string"
           },
           "resourcePermission": {
-            "$ref": "#/definitions/kori_internal_models.ResourcePermission"
+            "$ref": "#/components/schemas/kori_internal_models.ResourcePermission"
           },
           "resourcePermissionId": {
             "type": "string"
@@ -2682,7 +2697,7 @@
           "edges": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.AutomationNodeEdge"
+              "$ref": "#/components/schemas/kori_internal_models.AutomationNodeEdge"
             }
           },
           "id": {
@@ -2701,11 +2716,11 @@
           "nodes": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.AutomationNode"
+              "$ref": "#/components/schemas/kori_internal_models.AutomationNode"
             }
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -2723,7 +2738,7 @@
         ],
         "properties": {
           "automation": {
-            "$ref": "#/definitions/kori_internal_models.Automation"
+            "$ref": "#/components/schemas/kori_internal_models.Automation"
           },
           "automationId": {
             "type": "string"
@@ -2740,13 +2755,13 @@
           "edgesFrom": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.AutomationNodeEdge"
+              "$ref": "#/components/schemas/kori_internal_models.AutomationNodeEdge"
             }
           },
           "edgesTo": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.AutomationNodeEdge"
+              "$ref": "#/components/schemas/kori_internal_models.AutomationNodeEdge"
             }
           },
           "id": {
@@ -2762,7 +2777,7 @@
             ],
             "allOf": [
               {
-                "$ref": "#/definitions/kori_internal_models.NodeType"
+                "$ref": "#/components/schemas/kori_internal_models.NodeType"
               }
             ]
           },
@@ -2778,7 +2793,7 @@
             "type": "boolean"
           },
           "automation": {
-            "$ref": "#/definitions/kori_internal_models.Automation"
+            "$ref": "#/components/schemas/kori_internal_models.Automation"
           },
           "automationId": {
             "type": "string"
@@ -2797,13 +2812,13 @@
             "type": "string"
           },
           "source": {
-            "$ref": "#/definitions/kori_internal_models.AutomationNode"
+            "$ref": "#/components/schemas/kori_internal_models.AutomationNode"
           },
           "sourceId": {
             "type": "string"
           },
           "target": {
-            "$ref": "#/definitions/kori_internal_models.AutomationNode"
+            "$ref": "#/components/schemas/kori_internal_models.AutomationNode"
           },
           "targetId": {
             "type": "string"
@@ -2843,14 +2858,14 @@
           "analytics": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.EmailTracking"
+              "$ref": "#/components/schemas/kori_internal_models.EmailTracking"
             }
           },
           "batchDelay": {
             "description": "1 hour delay between batches",
             "allOf": [
               {
-                "$ref": "#/definitions/time.Duration"
+                "$ref": "#/components/schemas/time.Duration"
               }
             ]
           },
@@ -2874,7 +2889,7 @@
             "default": false
           },
           "list": {
-            "$ref": "#/definitions/kori_internal_models.MailingList"
+            "$ref": "#/components/schemas/kori_internal_models.MailingList"
           },
           "listId": {
             "type": "string"
@@ -2886,10 +2901,10 @@
             "type": "integer"
           },
           "recurringSchedule": {
-            "$ref": "#/definitions/kori_internal_models.CampaignRecurringSchedule"
+            "$ref": "#/components/schemas/kori_internal_models.CampaignRecurringSchedule"
           },
           "schedule": {
-            "$ref": "#/definitions/kori_internal_models.CampaignSchedule"
+            "$ref": "#/components/schemas/kori_internal_models.CampaignSchedule"
           },
           "scheduledFor": {
             "type": "string"
@@ -2897,26 +2912,26 @@
           "sentEmails": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Email"
+              "$ref": "#/components/schemas/kori_internal_models.Email"
             }
           },
           "smtpConfig": {
-            "$ref": "#/definitions/kori_internal_models.SMTPConfig"
+            "$ref": "#/components/schemas/kori_internal_models.SMTPConfig"
           },
           "smtpConfigId": {
             "type": "string"
           },
           "status": {
-            "$ref": "#/definitions/kori_internal_models.CampaignStatus"
+            "$ref": "#/components/schemas/kori_internal_models.CampaignStatus"
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
           },
           "template": {
-            "$ref": "#/definitions/kori_internal_models.Template"
+            "$ref": "#/components/schemas/kori_internal_models.Template"
           },
           "templateId": {
             "type": "string"
@@ -3012,7 +3027,7 @@
             "type": "string"
           },
           "import": {
-            "$ref": "#/definitions/kori_internal_models.ContactImport"
+            "$ref": "#/components/schemas/kori_internal_models.ContactImport"
           },
           "importId": {
             "type": "string"
@@ -3032,7 +3047,7 @@
             "type": "string"
           },
           "list": {
-            "$ref": "#/definitions/kori_internal_models.MailingList"
+            "$ref": "#/components/schemas/kori_internal_models.MailingList"
           },
           "listId": {
             "type": "string"
@@ -3058,14 +3073,14 @@
             ],
             "allOf": [
               {
-                "$ref": "#/definitions/kori_internal_models.SubscriberStatus"
+                "$ref": "#/components/schemas/kori_internal_models.SubscriberStatus"
               }
             ]
           },
           "tags": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Tag"
+              "$ref": "#/components/schemas/kori_internal_models.Tag"
             }
           },
           "teamId": {
@@ -3094,7 +3109,7 @@
           "contacts": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Contact"
+              "$ref": "#/components/schemas/kori_internal_models.Contact"
             }
           },
           "createdAt": {
@@ -3107,7 +3122,7 @@
             }
           },
           "file": {
-            "$ref": "#/definitions/kori_internal_models.File"
+            "$ref": "#/components/schemas/kori_internal_models.File"
           },
           "fileId": {
             "type": "string"
@@ -3120,7 +3135,7 @@
             "default": false
           },
           "list": {
-            "$ref": "#/definitions/kori_internal_models.MailingList"
+            "$ref": "#/components/schemas/kori_internal_models.MailingList"
           },
           "listId": {
             "type": "string"
@@ -3134,12 +3149,12 @@
             ],
             "allOf": [
               {
-                "$ref": "#/definitions/kori_internal_models.ContactImportStatus"
+                "$ref": "#/components/schemas/kori_internal_models.ContactImportStatus"
               }
             ]
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -3278,13 +3293,13 @@
             "type": "string"
           },
           "campaign": {
-            "$ref": "#/definitions/kori_internal_models.Campaign"
+            "$ref": "#/components/schemas/kori_internal_models.Campaign"
           },
           "campaignId": {
             "type": "string"
           },
           "category": {
-            "$ref": "#/definitions/kori_internal_models.EmailCategory"
+            "$ref": "#/components/schemas/kori_internal_models.EmailCategory"
           },
           "categoryId": {
             "type": "string"
@@ -3293,7 +3308,7 @@
             "type": "string"
           },
           "contact": {
-            "$ref": "#/definitions/kori_internal_models.Contact"
+            "$ref": "#/components/schemas/kori_internal_models.Contact"
           },
           "contactId": {
             "type": "string"
@@ -3330,7 +3345,7 @@
             "type": "string"
           },
           "smtpConfig": {
-            "$ref": "#/definitions/kori_internal_models.SMTPConfig"
+            "$ref": "#/components/schemas/kori_internal_models.SMTPConfig"
           },
           "smtpConfigId": {
             "type": "string"
@@ -3345,7 +3360,7 @@
             ],
             "allOf": [
               {
-                "$ref": "#/definitions/kori_internal_models.EmailStatus"
+                "$ref": "#/components/schemas/kori_internal_models.EmailStatus"
               }
             ]
           },
@@ -3353,13 +3368,13 @@
             "type": "string"
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
           },
           "template": {
-            "$ref": "#/definitions/kori_internal_models.Template"
+            "$ref": "#/components/schemas/kori_internal_models.Template"
           },
           "templateId": {
             "type": "string"
@@ -3391,7 +3406,7 @@
           "emails": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Email"
+              "$ref": "#/components/schemas/kori_internal_models.Email"
             }
           },
           "id": {
@@ -3406,7 +3421,7 @@
             "minLength": 2
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -3414,7 +3429,7 @@
           "templates": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Template"
+              "$ref": "#/components/schemas/kori_internal_models.Template"
             }
           },
           "updatedAt": {
@@ -3453,7 +3468,7 @@
             "type": "string"
           },
           "campaign": {
-            "$ref": "#/definitions/kori_internal_models.Campaign"
+            "$ref": "#/components/schemas/kori_internal_models.Campaign"
           },
           "campaignId": {
             "type": "string"
@@ -3462,7 +3477,7 @@
             "type": "string"
           },
           "contact": {
-            "$ref": "#/definitions/kori_internal_models.Contact"
+            "$ref": "#/components/schemas/kori_internal_models.Contact"
           },
           "contactId": {
             "type": "string"
@@ -3483,7 +3498,7 @@
             ]
           },
           "email": {
-            "$ref": "#/definitions/kori_internal_models.Email"
+            "$ref": "#/components/schemas/kori_internal_models.Email"
           },
           "emailId": {
             "type": "string"
@@ -3498,7 +3513,7 @@
             ],
             "allOf": [
               {
-                "$ref": "#/definitions/kori_internal_models.EmailTrackingEvent"
+                "$ref": "#/components/schemas/kori_internal_models.EmailTrackingEvent"
               }
             ]
           },
@@ -3595,7 +3610,7 @@
             "minimum": 1
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -3607,7 +3622,7 @@
             "type": "string"
           },
           "user": {
-            "$ref": "#/definitions/kori_internal_models.User"
+            "$ref": "#/components/schemas/kori_internal_models.User"
           },
           "userId": {
             "type": "string"
@@ -3637,13 +3652,13 @@
           "contactImports": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.ContactImport"
+              "$ref": "#/components/schemas/kori_internal_models.ContactImport"
             }
           },
           "contacts": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Contact"
+              "$ref": "#/components/schemas/kori_internal_models.Contact"
             }
           },
           "createdAt": {
@@ -3664,7 +3679,7 @@
             "minLength": 2
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -3697,7 +3712,7 @@
             "type": "string"
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -3758,7 +3773,7 @@
           "features": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.ProductFeatureConfig"
+              "$ref": "#/components/schemas/kori_internal_models.ProductFeatureConfig"
             }
           },
           "id": {
@@ -3816,7 +3831,7 @@
             "type": "boolean"
           },
           "feature": {
-            "$ref": "#/definitions/kori_internal_models.ProductFeature"
+            "$ref": "#/components/schemas/kori_internal_models.ProductFeature"
           },
           "id": {
             "type": "string"
@@ -3877,7 +3892,7 @@
             "default": false
           },
           "resource": {
-            "$ref": "#/definitions/kori_internal_models.Resource"
+            "$ref": "#/components/schemas/kori_internal_models.Resource"
           },
           "resourceId": {
             "type": "string"
@@ -4019,16 +4034,16 @@
             }
           },
           "product": {
-            "$ref": "#/definitions/kori_internal_models.Product"
+            "$ref": "#/components/schemas/kori_internal_models.Product"
           },
           "product_id": {
             "type": "string"
           },
           "status": {
-            "$ref": "#/definitions/kori_internal_models.SubscriptionStatus"
+            "$ref": "#/components/schemas/kori_internal_models.SubscriptionStatus"
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "team_id": {
             "type": "string"
@@ -4095,19 +4110,19 @@
           "apiKeys": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.APIKey"
+              "$ref": "#/components/schemas/kori_internal_models.APIKey"
             }
           },
           "automations": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Automation"
+              "$ref": "#/components/schemas/kori_internal_models.Automation"
             }
           },
           "campaigns": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Campaign"
+              "$ref": "#/components/schemas/kori_internal_models.Campaign"
             }
           },
           "createdAt": {
@@ -4116,13 +4131,13 @@
           "domains": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Domain"
+              "$ref": "#/components/schemas/kori_internal_models.Domain"
             }
           },
           "emailCategories": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.EmailCategory"
+              "$ref": "#/components/schemas/kori_internal_models.EmailCategory"
             }
           },
           "id": {
@@ -4131,7 +4146,7 @@
           "invites": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.TeamInvite"
+              "$ref": "#/components/schemas/kori_internal_models.TeamInvite"
             }
           },
           "isDeleted": {
@@ -4141,13 +4156,13 @@
           "mailingLists": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.MailingList"
+              "$ref": "#/components/schemas/kori_internal_models.MailingList"
             }
           },
           "models": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Model"
+              "$ref": "#/components/schemas/kori_internal_models.Model"
             }
           },
           "name": {
@@ -4157,13 +4172,13 @@
           "settings": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.TeamSettings"
+              "$ref": "#/components/schemas/kori_internal_models.TeamSettings"
             }
           },
           "smtpConfigs": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.SMTPConfig"
+              "$ref": "#/components/schemas/kori_internal_models.SMTPConfig"
             }
           },
           "updatedAt": {
@@ -4172,13 +4187,13 @@
           "users": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.User"
+              "$ref": "#/components/schemas/kori_internal_models.User"
             }
           },
           "webhooks": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Webhook"
+              "$ref": "#/components/schemas/kori_internal_models.Webhook"
             }
           }
         }
@@ -4211,7 +4226,7 @@
             "type": "string"
           },
           "inviter": {
-            "$ref": "#/definitions/kori_internal_models.User"
+            "$ref": "#/components/schemas/kori_internal_models.User"
           },
           "inviterId": {
             "type": "string"
@@ -4231,7 +4246,7 @@
             ],
             "allOf": [
               {
-                "$ref": "#/definitions/kori_internal_models.UserRole"
+                "$ref": "#/components/schemas/kori_internal_models.UserRole"
               }
             ]
           },
@@ -4243,12 +4258,12 @@
             ],
             "allOf": [
               {
-                "$ref": "#/definitions/kori_internal_models.InviteStatus"
+                "$ref": "#/components/schemas/kori_internal_models.InviteStatus"
               }
             ]
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -4262,7 +4277,7 @@
         "type": "object",
         "properties": {
           "branding": {
-            "$ref": "#/definitions/kori_internal_models.BrandingSettings"
+            "$ref": "#/components/schemas/kori_internal_models.BrandingSettings"
           },
           "brandingSettingsId": {
             "type": "string"
@@ -4301,7 +4316,7 @@
         ],
         "properties": {
           "category": {
-            "$ref": "#/definitions/kori_internal_models.EmailCategory"
+            "$ref": "#/components/schemas/kori_internal_models.EmailCategory"
           },
           "categoryId": {
             "type": "string"
@@ -4315,11 +4330,11 @@
           "emails": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Email"
+              "$ref": "#/components/schemas/kori_internal_models.Email"
             }
           },
           "htmlFile": {
-            "$ref": "#/definitions/kori_internal_models.File"
+            "$ref": "#/components/schemas/kori_internal_models.File"
           },
           "htmlFileId": {
             "type": "string"
@@ -4339,7 +4354,7 @@
             "type": "string"
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -4367,7 +4382,7 @@
           "files": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.File"
+              "$ref": "#/components/schemas/kori_internal_models.File"
             }
           },
           "firstName": {
@@ -4379,7 +4394,7 @@
           "invites": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.TeamInvite"
+              "$ref": "#/components/schemas/kori_internal_models.TeamInvite"
             }
           },
           "isDeleted": {
@@ -4392,11 +4407,11 @@
           "permissions": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.UserPermission"
+              "$ref": "#/components/schemas/kori_internal_models.UserPermission"
             }
           },
           "profilePicture": {
-            "$ref": "#/definitions/kori_internal_models.File"
+            "$ref": "#/components/schemas/kori_internal_models.File"
           },
           "profilePictureId": {
             "type": "string"
@@ -4417,10 +4432,10 @@
             "type": "string"
           },
           "role": {
-            "$ref": "#/definitions/kori_internal_models.UserRole"
+            "$ref": "#/components/schemas/kori_internal_models.UserRole"
           },
           "team": {
-            "$ref": "#/definitions/kori_internal_models.Team"
+            "$ref": "#/components/schemas/kori_internal_models.Team"
           },
           "teamId": {
             "type": "string"
@@ -4444,7 +4459,7 @@
             "default": false
           },
           "resourcePermission": {
-            "$ref": "#/definitions/kori_internal_models.ResourcePermission"
+            "$ref": "#/components/schemas/kori_internal_models.ResourcePermission"
           },
           "resourcePermissionId": {
             "type": "string"
@@ -4453,7 +4468,7 @@
             "type": "string"
           },
           "user": {
-            "$ref": "#/definitions/kori_internal_models.User"
+            "$ref": "#/components/schemas/kori_internal_models.User"
           },
           "userId": {
             "type": "string"
@@ -4489,7 +4504,7 @@
           "deliveries": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/kori_internal_models.Delivery"
+              "$ref": "#/components/schemas/kori_internal_models.Delivery"
             }
           },
           "events": {

@@ -35,10 +35,12 @@ func NewUploadHandler(acl types.ObjectCannedACL) *UploadHandler {
 // @Accept multipart/form-data
 // @Produce json
 // @Param file formData file true "File to upload"
-// @Success 200 {object} map[string]string "File uploaded successfully"
+// @Success 200 {object} map[string]interface{} "File uploaded successfully"
 // @Failure 400 {object} map[string]string "Validation error or file not found"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/v1/files/upload [post]
+// @Tags Files
+// @Security BearerAuth
 func (h *UploadHandler) UploadFile(c echo.Context) error {
 
 	contentType := c.Request().Header.Get("Content-Type")

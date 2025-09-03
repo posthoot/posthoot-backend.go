@@ -31,11 +31,13 @@ print_header() {
 
 # Function to check if required tools are installed
 check_dependencies() {
+    gobin = $(go env GOPATH)/bin
+    export PATH=$PATH:$gobin
     # Check for swag
     if ! command -v swag &> /dev/null; then
         print_error "swag CLI tool not found. Installing..."
         go install github.com/swaggo/swag/cmd/swag@latest
-        export PATH=$PATH:$(go env GOPATH)/bin
+        export PATH=$PATH:$gobin
     fi
     
     # Check for redocly
@@ -54,7 +56,7 @@ generate_openapi() {
     rm -rf docs/swagger/*
     
     print_status "Generating Swagger 2.0 specification..."
-    export PATH=$PATH:$(go env GOPATH)/bin
+    export PATH=$PATH:$gobin
     swag init -g cmd/main.go -o docs/swagger --parseDependency --parseInternal
     
     print_status "Converting Swagger 2.0 to OpenAPI 3.0..."
@@ -73,7 +75,7 @@ const swaggerContent = fs.readFileSync(swaggerPath, 'utf8');
 const swagger = JSON.parse(swaggerContent);
 
 // Convert to OpenAPI 3.0 format
-const openapi = {
+let openapi = {
     openapi: "3.0.3",
     info: {
         title: swagger.info.title || "Posthoot API",
@@ -146,7 +148,22 @@ for (const [path, methods] of Object.entries(swagger.paths)) {
         
         // Convert parameters
         if (operation.parameters) {
+            const formDataParams = [];
+            const bodyParams = [];
+            
             for (const param of operation.parameters) {
+                // Handle formData parameters (convert to requestBody for OpenAPI 3.0)
+                if (param.in === 'formData') {
+                    formDataParams.push(param);
+                    continue;
+                }
+                
+                // Handle body parameters (convert to requestBody for OpenAPI 3.0)
+                if (param.in === 'body') {
+                    bodyParams.push(param);
+                    continue;
+                }
+                
                 const openapiParam = {
                     name: param.name,
                     in: param.in,
@@ -161,6 +178,51 @@ for (const [path, methods] of Object.entries(swagger.paths)) {
                 }
                 
                 openapiOperation.parameters.push(openapiParam);
+            }
+            
+            // Convert formData parameters to requestBody
+            if (formDataParams.length > 0) {
+                const requestBody = {
+                    required: formDataParams.some(p => p.required),
+                    content: {
+                        "multipart/form-data": {
+                            schema: {
+                                type: "object",
+                                properties: {},
+                                required: []
+                            }
+                        }
+                    }
+                };
+                
+                for (const param of formDataParams) {
+                    requestBody.content["multipart/form-data"].schema.properties[param.name] = {
+                        type: param.type === "file" ? "string" : "string",
+                        format: param.type === "file" ? "binary" : undefined,
+                        description: param.description || ""
+                    };
+                    
+                    if (param.required) {
+                        requestBody.content["multipart/form-data"].schema.required.push(param.name);
+                    }
+                }
+                
+                openapiOperation.requestBody = requestBody;
+            }
+            
+            // Convert body parameters to requestBody
+            if (bodyParams.length > 0) {
+                const bodyParam = bodyParams[0]; // Usually only one body parameter
+                const requestBody = {
+                    required: bodyParam.required || false,
+                    content: {
+                        "application/json": {
+                            schema: bodyParam.schema || {}
+                        }
+                    }
+                };
+                
+                openapiOperation.requestBody = requestBody;
             }
         }
         
@@ -191,6 +253,30 @@ if (swagger.definitions) {
         openapi.components.schemas[name] = schema;
     }
 }
+
+// Fix reference paths from #/definitions/ to #/components/schemas/
+function fixReferences(obj) {
+    if (typeof obj !== 'object' || obj === null) {
+        return obj;
+    }
+    
+    if (Array.isArray(obj)) {
+        return obj.map(fixReferences);
+    }
+    
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (key === '$ref' && typeof value === 'string' && value.startsWith('#/definitions/')) {
+            result[key] = value.replace('#/definitions/', '#/components/schemas/');
+        } else {
+            result[key] = fixReferences(value);
+        }
+    }
+    return result;
+}
+
+// Apply reference fixes to the entire OpenAPI object
+openapi = fixReferences(openapi);
 
 // Write the OpenAPI 3.0 specification
 const openapiPath = path.join(currentDir, 'openapi.json');

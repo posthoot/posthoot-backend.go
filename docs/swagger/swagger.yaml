@@ -2105,8 +2105,7 @@ paths:
         "200":
           description: File uploaded successfully
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
         "400":
           description: Validation error or file not found
@@ -2120,7 +2119,11 @@ paths:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: Upload a file
+      tags:
+      - Files
   /api/v1/t:
     post:
       consumes:

@@ -461,12 +461,20 @@ const docTemplate = `{
         },
         "/api/v1/files/upload": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Upload a file to the server",
                 "consumes": [
                     "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
+                ],
+                "tags": [
+                    "Files"
                 ],
                 "summary": "Upload a file",
                 "parameters": [
@@ -483,9 +491,7 @@ const docTemplate = `{
                         "description": "File uploaded successfully",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     },
                     "400": {
