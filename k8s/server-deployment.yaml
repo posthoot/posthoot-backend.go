@@ -1,0 +1,157 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: posthoot-server
+  namespace: posthoot-server
+  labels:
+    app: posthoot-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: posthoot-server
+  template:
+    metadata:
+      labels:
+        app: posthoot-server
+    spec:
+      containers:
+      - name: posthoot-server
+        image: posthoot-server:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9001
+        env:
+        # Server configuration
+        - name: SERVER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: SERVER_HOST
+        - name: SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: SERVER_PORT
+        # Database configuration
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: DB_PORT
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: DB_NAME
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: DB_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: POSTGRES_DB
+        # Redis configuration
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: REDIS_PASSWORD
+        # JWT Secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: JWT_SECRET
+        # Environment
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: ENVIRONMENT
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: LOG_LEVEL
+        # AWS credentials (if needed)
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: AWS_SECRET_ACCESS_KEY
+        # SMTP credentials (if needed)
+        - name: SMTP_HOST
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: SMTP_HOST
+        - name: SMTP_PORT
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: SMTP_PORT
+        - name: SMTP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: SMTP_USERNAME
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: SMTP_PASSWORD
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3

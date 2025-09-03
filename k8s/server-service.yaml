@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: posthoot-server
+  namespace: posthoot-server
+  labels:
+    app: posthoot-server
+spec:
+  selector:
+    app: posthoot-server
+  ports:
+  - name: http
+    port: 80
+    targetPort: 9001
+  - name: https
+    port: 443
+    targetPort: 9001
+  type: ClusterIP

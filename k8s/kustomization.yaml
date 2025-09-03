@@ -1,0 +1,44 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: posthoot-server
+
+resources:
+  # Core infrastructure
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  
+  # Storage
+  - postgres-pvc.yaml
+  - redis-pvc.yaml
+  
+  # Database
+  - postgres-configmap.yaml
+  - postgres-deployment.yaml
+  - postgres-service.yaml
+  
+  # Cache
+  - redis-deployment.yaml
+  - redis-service.yaml
+  
+  # Application
+  - server-deployment.yaml
+  - server-service.yaml
+  
+  # Monitoring
+  - asynqmon-deployment.yaml
+  - asynqmon-service.yaml
+  
+  # Networking
+  - ingress.yaml
+  
+  # Scaling
+  - hpa.yaml
+  
+  # Security
+  - network-policy.yaml
+
+commonLabels:
+  app: posthoot
+  version: v1.0.0

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: posthoot-asynqmon
+  namespace: posthoot-server
+  labels:
+    app: posthoot-asynqmon
+spec:
+  selector:
+    app: posthoot-asynqmon
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

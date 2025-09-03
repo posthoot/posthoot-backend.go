@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: posthoot-postgres
+  namespace: posthoot-server
+  labels:
+    app: posthoot-postgres
+spec:
+  selector:
+    app: posthoot-postgres
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
+  type: ClusterIP

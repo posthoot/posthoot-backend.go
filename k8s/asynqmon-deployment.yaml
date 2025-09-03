@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: posthoot-asynqmon
+  namespace: posthoot-server
+  labels:
+    app: posthoot-asynqmon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: posthoot-asynqmon
+  template:
+    metadata:
+      labels:
+        app: posthoot-asynqmon
+    spec:
+      containers:
+      - name: asynqmon
+        image: hibiken/asynqmon:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: REDIS_ADDR
+          value: "posthoot-redis:6379"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
