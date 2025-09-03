@@ -23,6 +23,7 @@ jobs:
       - name: Create a requirements.txt file
         run: |
           echo "names_generator" > requirements.txt
+          echo "requests" >> requirements.txt
 
       - name: Set up Python
         uses: actions/setup-python@v5
