@@ -104,7 +104,7 @@ jobs:
         shell: sh
         run: |
           echo "🏗️ Build Information\n\
-          ------------------\n\
+          -------------------\n\
           🕒 Build Date: $(date)\n\
           🔄 Git Commit: $(git rev-parse HEAD)\n\
           🌿 Git Branch: $(git rev-parse --abbrev-ref HEAD)\n\
