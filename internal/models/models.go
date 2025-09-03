@@ -336,6 +336,7 @@ type Email struct {
 	SMTPConfigID string         `gorm:"type:uuid;not null" json:"smtpConfigId" validate:"required,uuid"`
 	SMTPConfig   *SMTPConfig    `json:"smtpConfig,omitempty"`
 	SentAt       time.Time      `json:"sentAt" validate:"omitempty"`
+	SendAt       time.Time      `json:"sendAt" validate:"omitempty"`
 	CategoryID   string         `gorm:"type:uuid;not null" json:"categoryId" validate:"required,uuid"`
 	Category     *EmailCategory `json:"category,omitempty"`
 	CampaignID   string         `gorm:"type:uuid;default:NULL" json:"campaignId" validate:"omitempty,uuid"`

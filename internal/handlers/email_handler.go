@@ -5,6 +5,7 @@ import (
 	"kori/internal/events"
 	"kori/internal/models"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/datatypes"
@@ -21,6 +22,7 @@ type SendEmailRequest struct {
 	BCC                string         `json:"bcc"`
 	ReplyTo            string         `json:"replyTo"`
 	Test               bool           `json:"test"`
+	SendAt             time.Time      `json:"scheduleAt"`
 }
 
 // SendEmail sends an email using the provided template and variables
@@ -63,6 +65,7 @@ func SendEmail(c echo.Context) error {
 		BCC:          req.BCC,
 		ReplyTo:      req.ReplyTo,
 		Test:         req.Test,
+		SendAt:       req.SendAt,
 	}
 
 	events.Emit("email.send", &email)

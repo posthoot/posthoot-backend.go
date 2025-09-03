@@ -13,6 +13,7 @@ import (
 	"kori/internal/utils/base64"
 	"kori/internal/utils/logger"
 	"os"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -38,6 +39,7 @@ type sendEmailHandlerBody struct {
 	bcc          string
 	replyTo      string
 	testMail     bool
+	sendAt       time.Time
 }
 
 func init() {
@@ -70,6 +72,7 @@ func init() {
 			AttemptNum:   1,
 			SMTPConfigID: email.SMTPConfigID,
 			MaxSendRate:  email.SMTPConfig.MaxSendRate,
+			SendAt:       email.SendAt,
 		}
 
 		log.Info("Enqueueing email task for %s", task.EmailID)
@@ -172,6 +175,7 @@ func init() {
 			bcc:          email.BCC,
 			replyTo:      email.ReplyTo,
 			testMail:     email.Test,
+			sendAt:       email.SendAt,
 		}
 
 		if err := sendEmail(handler); err != nil {
@@ -504,6 +508,7 @@ func sendEmail(
 		CC:           handler.cc,
 		BCC:          handler.bcc,
 		ReplyTo:      handler.replyTo,
+		SendAt:       handler.sendAt,
 	}
 
 	email.ID = definedID.String()

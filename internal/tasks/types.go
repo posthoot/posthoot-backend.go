@@ -69,6 +69,7 @@ type EmailTask struct {
 	Error        string    `json:"error,omitempty"`
 	SMTPConfigID string    `json:"smtp_config_id"`
 	MaxSendRate  int       `json:"max_send_rate"`
+	SendAt       time.Time `json:"send_at,omitempty"`
 }
 
 type CampaignTask struct {

@@ -112,6 +112,7 @@ func (c *TaskClient) EnqueueEmailTask(ctx context.Context, task EmailTask) error
 		asynq.MaxRetry(RetryDefault),
 		asynq.Unique(24*time.Hour),
 		asynq.TaskID(task.EmailID),
+		asynq.ProcessAt(task.SendAt),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue email task: %w", err)
