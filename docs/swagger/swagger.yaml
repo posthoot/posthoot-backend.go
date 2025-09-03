@@ -75,12 +75,9 @@ definitions:
     type: object
   internal_handlers.CreateSubscriptionRequest:
     properties:
-      email:
-        type: string
       product_id:
         type: string
     required:
-    - email
     - product_id
     type: object
   internal_handlers.EmailAnalytics:
@@ -172,12 +169,19 @@ definitions:
       uniqueOpens:
         type: integer
     type: object
+  internal_handlers.GetPlansResponse:
+    properties:
+      plans:
+        items:
+          $ref: '#/definitions/kori_internal_models.Product'
+        type: array
+    type: object
   internal_handlers.GoogleAuthRequest:
     properties:
-      idToken:
+      access_token:
         type: string
     required:
-    - idToken
+    - access_token
     type: object
   internal_handlers.HeatmapData:
     properties:
@@ -319,6 +323,8 @@ definitions:
         - AMAZON
         type: string
       replyTo:
+        type: string
+      scheduleAt:
         type: string
       subject:
         type: string
@@ -907,6 +913,8 @@ definitions:
         type: boolean
       replyTo:
         type: string
+      sendAt:
+        type: string
       sentAt:
         type: string
       smtpConfig:
@@ -1215,6 +1223,75 @@ definitions:
     - NodeTypeUnsubscribe
     - NodeTypeCustomCode
     - NodeTypeExit
+  kori_internal_models.Product:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      dodo_id:
+        description: ID from Dodo Payments
+        type: string
+      features:
+        items:
+          $ref: '#/definitions/kori_internal_models.ProductFeatureConfig'
+        type: array
+      id:
+        type: string
+      interval:
+        description: monthly, yearly
+        type: string
+      isDeleted:
+        default: false
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  kori_internal_models.ProductFeature:
+    enum:
+    - email_campaigns
+    - template_library
+    - advanced_analytics
+    - custom_domain
+    - api_access
+    - team_collaboration
+    - automation
+    - segmentation
+    type: string
+    x-enum-varnames:
+    - FeatureEmailCampaigns
+    - FeatureTemplateLibrary
+    - FeatureAdvancedAnalytics
+    - FeatureCustomDomain
+    - FeatureAPIAccess
+    - FeatureTeamCollaboration
+    - FeatureAutomation
+    - FeatureSegmentation
+  kori_internal_models.ProductFeatureConfig:
+    properties:
+      createdAt:
+        type: string
+      enabled:
+        type: boolean
+      feature:
+        $ref: '#/definitions/kori_internal_models.ProductFeature'
+      id:
+        type: string
+      isDeleted:
+        default: false
+        type: boolean
+      limit:
+        description: Optional limit for the feature (e.g., number of campaigns)
+        type: integer
+      product_id:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   kori_internal_models.Resource:
     properties:
       action:
@@ -1318,6 +1395,61 @@ definitions:
     - SubscriberStatusUnsubscribed
     - SubscriberStatusBounced
     - SubscriberStatusComplained
+  kori_internal_models.Subscription:
+    properties:
+      canceled_at:
+        type: string
+      createdAt:
+        type: string
+      current_period_end:
+        type: string
+      current_period_start:
+        type: string
+      dodo_customer_id:
+        type: string
+      dodo_subscription_id:
+        type: string
+      email:
+        description: Email used during purchase
+        type: string
+      id:
+        type: string
+      isDeleted:
+        default: false
+        type: boolean
+      metadata:
+        items:
+          type: integer
+        type: array
+      product:
+        $ref: '#/definitions/kori_internal_models.Product'
+      product_id:
+        type: string
+      status:
+        $ref: '#/definitions/kori_internal_models.SubscriptionStatus'
+      team:
+        $ref: '#/definitions/kori_internal_models.Team'
+      team_id:
+        type: string
+      trial_end:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  kori_internal_models.SubscriptionStatus:
+    enum:
+    - pending
+    - active
+    - canceled
+    - paused
+    - failed
+    type: string
+    x-enum-varnames:
+    - SubscriptionStatusPending
+    - SubscriptionStatusActive
+    - SubscriptionStatusCanceled
+    - SubscriptionStatusPaused
+    - SubscriptionStatusFailed
   kori_internal_models.Tag:
     properties:
       createdAt:
@@ -1648,11 +1780,7 @@ definitions:
     - 1000000000
     - 60000000000
     - 3600000000000
-    - 1
-    - 1000
-    - 1000000
-    - 1000000000
-    - 60000000000
+    format: int64
     type: integer
     x-enum-varnames:
     - minDuration
@@ -1663,11 +1791,6 @@ definitions:
     - Second
     - Minute
     - Hour
-    - Nanosecond
-    - Microsecond
-    - Millisecond
-    - Second
-    - Minute
 info:
   contact: {}
 paths:
@@ -1815,6 +1938,7 @@ paths:
           description: Exported campaign analytics
           schema:
             items:
+              format: int32
               type: integer
             type: array
         "400":
@@ -1848,6 +1972,7 @@ paths:
           description: Exported email analytics
           schema:
             items:
+              format: int32
               type: integer
             type: array
         "400":
@@ -1872,6 +1997,11 @@ paths:
       - description: Email ID
         in: query
         name: emailId
+        required: true
+        type: string
+      - description: Campaign ID
+        in: query
+        name: campaignId
         required: true
         type: string
       produces:
@@ -1991,6 +2121,47 @@ paths:
               type: string
             type: object
       summary: Upload a file
+  /api/v1/t:
+    post:
+      consumes:
+      - application/json
+      description: Create a new tracking entry with device and location info
+      parameters:
+      - description: Email ID
+        in: path
+        name: emailID
+        required: true
+        type: string
+      - description: Event
+        in: path
+        name: event
+        required: true
+        type: string
+      - description: URL
+        in: path
+        name: url
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tracking entry created successfully
+          schema:
+            $ref: '#/definitions/kori_internal_models.EmailTracking'
+        "400":
+          description: Validation error or email not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new tracking entry
   /api/v1/t/click:
     get:
       consumes:
@@ -2065,8 +2236,8 @@ paths:
               type: string
             type: object
       summary: Handle open tracking
-  /auth/google:
-    post:
+  /auth/google/callback:
+    get:
       consumes:
       - application/json
       description: Authenticate user using Google OAuth ID token
@@ -2087,7 +2258,13 @@ paths:
               type: string
             type: object
         "400":
-          description: Invalid token
+          description: Failed to parse user data from Google
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Failed to get user data from Google
           schema:
             additionalProperties:
               type: string
@@ -2563,7 +2740,42 @@ paths:
       summary: Send an email
       tags:
       - Email
+  /plans:
+    get:
+      consumes:
+      - application/json
+      description: Get all available plans
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Plans
+          schema:
+            $ref: '#/definitions/internal_handlers.GetPlansResponse'
+      summary: Get all plans
+      tags:
+      - plans
   /subscriptions:
+    get:
+      consumes:
+      - application/json
+      description: Get the current subscription for the team
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Subscription
+          schema:
+            $ref: '#/definitions/kori_internal_models.Subscription'
+        "403":
+          description: Not authorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get current subscription
+      tags:
+      - subscriptions
     post:
       consumes:
       - application/json

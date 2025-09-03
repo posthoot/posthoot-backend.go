@@ -11,7 +11,7 @@ BINARY_UNIX=$(BINARY_NAME)_unix
 BUILD_DIR=build
 MAIN_PATH=cmd/main.go
 
-.PHONY: all build test clean run deps dev
+.PHONY: all build test clean run deps dev docs docs-serve docs-clean openapi
 
 all: test build
 
@@ -33,10 +33,27 @@ deps:
 	$(GOMOD) download
 	$(GOMOD) verify
 
+# Swagger/OpenAPI documentation commands
 docs:
-	@echo "Generating docs..."
-	@swag init -g internal/*
-	
+	@echo "Generating OpenAPI/Swagger documentation..."
+	@export PATH=$$PATH:$$(go env GOPATH)/bin && swag init -g cmd/main.go -o docs/swagger --parseDependency --parseInternal
+	@echo "✅ Documentation generated successfully!"
+
+docs-serve:
+	@echo "Starting Swagger UI server..."
+	@export PATH=$$PATH:$$(go env GOPATH)/bin && swag serve -F=swagger docs/swagger/swagger.json
+
+docs-clean:
+	@echo "Cleaning generated documentation..."
+	@rm -rf docs/swagger/*
+	@echo "✅ Documentation cleaned!"
+
+# OpenAPI 3.0 specification
+openapi:
+	@echo "Generating OpenAPI 3.0 specification..."
+	@./scripts/generate-openapi.sh generate
+	@echo "✅ OpenAPI 3.0 specification generated as openapi.json!"
+
 # Cross compilation
 build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_UNIX) -v $(MAIN_PATH)

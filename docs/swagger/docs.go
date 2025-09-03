@@ -231,7 +231,8 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "integer"
+                                "type": "integer",
+                                "format": "int32"
                             }
                         }
                     },
@@ -281,7 +282,8 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "integer"
+                                "type": "integer",
+                                "format": "int32"
                             }
                         }
                     },
@@ -321,6 +323,13 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Email ID",
                         "name": "emailId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Campaign ID",
+                        "name": "campaignId",
                         "in": "query",
                         "required": true
                     }
@@ -500,6 +509,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/t": {
+            "post": {
+                "description": "Create a new tracking entry with device and location info",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Create a new tracking entry",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email ID",
+                        "name": "emailID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Event",
+                        "name": "event",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "URL",
+                        "name": "url",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tracking entry created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/kori_internal_models.EmailTracking"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or email not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/t/click": {
             "get": {
                 "description": "Handle click tracking",
@@ -612,8 +682,8 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/google": {
-            "post": {
+        "/auth/google/callback": {
+            "get": {
                 "description": "Authenticate user using Google OAuth ID token",
                 "consumes": [
                     "application/json"
@@ -647,7 +717,16 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid token",
+                        "description": "Failed to parse user data from Google",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Failed to get user data from Google",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1371,7 +1450,60 @@ const docTemplate = `{
                 }
             }
         },
+        "/plans": {
+            "get": {
+                "description": "Get all available plans",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plans"
+                ],
+                "summary": "Get all plans",
+                "responses": {
+                    "200": {
+                        "description": "Plans",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.GetPlansResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/subscriptions": {
+            "get": {
+                "description": "Get the current subscription for the team",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Get current subscription",
+                "responses": {
+                    "200": {
+                        "description": "Subscription",
+                        "schema": {
+                            "$ref": "#/definitions/kori_internal_models.Subscription"
+                        }
+                    },
+                    "403": {
+                        "description": "Not authorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Create a pending subscription and redirect to payment",
                 "consumes": [
@@ -1636,13 +1768,9 @@ const docTemplate = `{
         "internal_handlers.CreateSubscriptionRequest": {
             "type": "object",
             "required": [
-                "email",
                 "product_id"
             ],
             "properties": {
-                "email": {
-                    "type": "string"
-                },
                 "product_id": {
                     "type": "string"
                 }
@@ -1780,13 +1908,24 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handlers.GetPlansResponse": {
+            "type": "object",
+            "properties": {
+                "plans": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/kori_internal_models.Product"
+                    }
+                }
+            }
+        },
         "internal_handlers.GoogleAuthRequest": {
             "type": "object",
             "required": [
-                "idToken"
+                "access_token"
             ],
             "properties": {
-                "idToken": {
+                "access_token": {
                     "type": "string"
                 }
             }
@@ -2001,6 +2140,9 @@ const docTemplate = `{
                     ]
                 },
                 "replyTo": {
+                    "type": "string"
+                },
+                "scheduleAt": {
                     "type": "string"
                 },
                 "subject": {
@@ -2875,6 +3017,9 @@ const docTemplate = `{
                 "replyTo": {
                     "type": "string"
                 },
+                "sendAt": {
+                    "type": "string"
+                },
                 "sentAt": {
                     "type": "string"
                 },
@@ -3291,6 +3436,101 @@ const docTemplate = `{
                 "NodeTypeExit"
             ]
         },
+        "kori_internal_models.Product": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dodo_id": {
+                    "description": "ID from Dodo Payments",
+                    "type": "string"
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/kori_internal_models.ProductFeatureConfig"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval": {
+                    "description": "monthly, yearly",
+                    "type": "string"
+                },
+                "isDeleted": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "kori_internal_models.ProductFeature": {
+            "type": "string",
+            "enum": [
+                "email_campaigns",
+                "template_library",
+                "advanced_analytics",
+                "custom_domain",
+                "api_access",
+                "team_collaboration",
+                "automation",
+                "segmentation"
+            ],
+            "x-enum-varnames": [
+                "FeatureEmailCampaigns",
+                "FeatureTemplateLibrary",
+                "FeatureAdvancedAnalytics",
+                "FeatureCustomDomain",
+                "FeatureAPIAccess",
+                "FeatureTeamCollaboration",
+                "FeatureAutomation",
+                "FeatureSegmentation"
+            ]
+        },
+        "kori_internal_models.ProductFeatureConfig": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "feature": {
+                    "$ref": "#/definitions/kori_internal_models.ProductFeature"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDeleted": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "limit": {
+                    "description": "Optional limit for the feature (e.g., number of campaigns)",
+                    "type": "integer"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "kori_internal_models.Resource": {
             "type": "object",
             "properties": {
@@ -3432,6 +3672,84 @@ const docTemplate = `{
                 "SubscriberStatusUnsubscribed",
                 "SubscriberStatusBounced",
                 "SubscriberStatusComplained"
+            ]
+        },
+        "kori_internal_models.Subscription": {
+            "type": "object",
+            "properties": {
+                "canceled_at": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "current_period_end": {
+                    "type": "string"
+                },
+                "current_period_start": {
+                    "type": "string"
+                },
+                "dodo_customer_id": {
+                    "type": "string"
+                },
+                "dodo_subscription_id": {
+                    "type": "string"
+                },
+                "email": {
+                    "description": "Email used during purchase",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDeleted": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "metadata": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "product": {
+                    "$ref": "#/definitions/kori_internal_models.Product"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/kori_internal_models.SubscriptionStatus"
+                },
+                "team": {
+                    "$ref": "#/definitions/kori_internal_models.Team"
+                },
+                "team_id": {
+                    "type": "string"
+                },
+                "trial_end": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "kori_internal_models.SubscriptionStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "active",
+                "canceled",
+                "paused",
+                "failed"
+            ],
+            "x-enum-varnames": [
+                "SubscriptionStatusPending",
+                "SubscriptionStatusActive",
+                "SubscriptionStatusCanceled",
+                "SubscriptionStatusPaused",
+                "SubscriptionStatusFailed"
             ]
         },
         "kori_internal_models.Tag": {
@@ -3906,6 +4224,7 @@ const docTemplate = `{
         },
         "time.Duration": {
             "type": "integer",
+            "format": "int64",
             "enum": [
                 -9223372036854775808,
                 9223372036854775807,
@@ -3914,12 +4233,7 @@ const docTemplate = `{
                 1000000,
                 1000000000,
                 60000000000,
-                3600000000000,
-                1,
-                1000,
-                1000000,
-                1000000000,
-                60000000000
+                3600000000000
             ],
             "x-enum-varnames": [
                 "minDuration",
@@ -3929,12 +4243,7 @@ const docTemplate = `{
                 "Millisecond",
                 "Second",
                 "Minute",
-                "Hour",
-                "Nanosecond",
-                "Microsecond",
-                "Millisecond",
-                "Second",
-                "Minute"
+                "Hour"
             ]
         }
     },

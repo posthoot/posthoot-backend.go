@@ -194,10 +194,60 @@ go run cmd/server/main.go
 
 ### 📚 API Documentation
 
-The API is documented using Swagger/OpenAPI. Access the documentation at:
+The API is documented using Swagger/OpenAPI specification. The documentation provides comprehensive coverage of all endpoints, request/response models, and authentication methods.
+
+#### 🚀 Quick Access
+
+- **Swagger UI**: `http://localhost:8080/swagger/index.html`
+- **OpenAPI 3.0 JSON**: `openapi.json` (generated file)
+- **Swagger 2.0 JSON**: `http://localhost:8080/swagger/doc.json`
+- **Swagger 2.0 YAML**: `http://localhost:8080/swagger/doc.yaml`
+
+#### 🛠️ Documentation Management
+
+Generate or update the API documentation:
+
+```bash
+# Generate Swagger 2.0 documentation
+make docs
+
+# Generate OpenAPI 3.0 specification (openapi.json)
+make openapi
+
+# Using the scripts
+./scripts/swagger.sh generate
+./scripts/generate-openapi.sh generate
+
+# Serve documentation locally
+./scripts/swagger.sh serve
 ```
-http://localhost:8080/swagger/index.html
-```
+
+#### 📖 Documentation Features
+
+- **Interactive Testing**: Test API endpoints directly from the browser
+- **Request/Response Examples**: Pre-filled examples for all endpoints
+- **Authentication Support**: Built-in JWT and API key authentication
+- **Model Schemas**: Complete request/response model definitions
+- **Error Responses**: Detailed error response documentation
+- **Tagged Organization**: Endpoints organized by functional areas
+
+#### 🏷️ Available API Categories
+
+- **Authentication** - User registration, login, and token management
+- **Teams** - Team management and collaboration features
+- **Campaigns** - Email campaign creation, management, and tracking
+- **Analytics** - Campaign analytics, audience insights, and performance metrics
+- **Contacts** - Contact management and mailing list operations
+- **Templates** - Email template management and customization
+- **Automations** - Email automation workflows and triggers
+- **SMTP** - SMTP configuration and email delivery settings
+- **IMAP** - IMAP configuration for email inbox management
+- **Webhooks** - Webhook management for real-time event notifications
+- **Files** - File upload and management for attachments and media
+- **Domains** - Domain management for email authentication
+- **API Keys** - API key management for programmatic access
+
+For detailed documentation management, see [`docs/README.md`](docs/README.md).
 
 ## 🔐 Authentication
 
