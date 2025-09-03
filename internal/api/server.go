@@ -11,16 +11,18 @@ import (
 	adminecho "github.com/go-advanced-admin/web-echo"
 	"golang.org/x/time/rate"
 
+	"kori/internal/api/middleware"
 	"kori/internal/api/validator"
 	"kori/internal/config"
 	"kori/internal/handlers"
 	"kori/internal/models"
 	"kori/internal/routes"
+	"kori/internal/utils"
 
 	console "kori/internal/utils/logger"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"gorm.io/gorm"
 )
 
@@ -44,22 +46,22 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	e.Validator = validator.NewValidator()
 
 	// Configure middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+	e.Use(echomiddleware.Logger())
+	e.Use(echomiddleware.Recover())
+	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderContentLength},
 	}))
-	e.Use(middleware.RequestID())
-	e.Use(middleware.Secure())
-	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+	e.Use(echomiddleware.RequestID())
+	e.Use(echomiddleware.Secure())
+	e.Use(echomiddleware.TimeoutWithConfig(echomiddleware.TimeoutConfig{
 		Timeout: 30 * time.Second,
 	}))
-	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+	e.Use(echomiddleware.GzipWithConfig(echomiddleware.GzipConfig{
 		Level: 5,
 	}))
-	e.Use(middleware.BodyLimit("10M"))
+	e.Use(echomiddleware.BodyLimit("10M"))
 
 	// Custom error handler
 	e.HTTPErrorHandler = customHTTPErrorHandler
@@ -84,7 +86,18 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		log.Success("Successfully created super admin")
 	}
 
-	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
+	// Initialize Redis client for rate limiting
+	redisClient, redisErr := utils.NewRedisClient(cfg)
+	if redisErr != nil {
+		log.Warn("Warning: Failed to initialize Redis client for rate limiting: %v", redisErr)
+		// Fall back to basic rate limiting without Redis
+		e.Use(echomiddleware.RateLimiter(echomiddleware.NewRateLimiterMemoryStore(rate.Limit(20))))
+	} else {
+		// Configure advanced rate limiting with Redis
+		rateLimitConfig := middleware.CreateDefaultRateLimitConfig(redisClient.Client)
+		e.Use(middleware.RateLimiter(rateLimitConfig))
+		log.Success("Successfully configured rate limiting with Redis")
+	}
 
 	// Create a new GORM integrator
 	gormIntegrator := admingorm.NewIntegrator(db)
