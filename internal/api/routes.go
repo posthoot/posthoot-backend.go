@@ -25,6 +25,12 @@ func (s *Server) registerRoutes() {
 	// @Router /health [get]
 	s.echo.GET("/health", s.healthCheck)
 	s.echo.GET("/swagger/*", echoSwagger.WrapHandler)
+	s.echo.GET("/openapi.json", func(c echo.Context) error {
+		return c.File("openapi.json")
+	})
+	s.echo.GET("/build-info", func(c echo.Context) error {
+		return c.File("public/build-info.txt")
+	})
 
 	// API v1 group
 	api := s.echo.Group("/api/v1")
