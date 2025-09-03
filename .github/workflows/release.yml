@@ -19,6 +19,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions-ecosystem/action-release-label@v1
+        id: release-label
+        if: ${{ github.event.pull_request.merged == true }}
+
+      - uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
+
+      - uses: actions-ecosystem/action-bump-semver@v1
+        id: bump-semver
+        with:
+          current_version: ${{ steps.get-latest-tag.outputs.tag }}
+          level: patch
 
       - name: Create a requirements.txt file
         run: |
@@ -41,27 +56,12 @@ jobs:
           DOCKERLIKE_RELEASE_NAME=$(python -c "from names_generator import generate_name; print(generate_name())")
           echo "DOCKERLIKE_RELEASE_NAME=${DOCKERLIKE_RELEASE_NAME}" >> $GITHUB_ENV
 
-      - name: Get latest version
-        id: get_version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Get the latest version tag
-          LATEST_TAG=$(git tag --sort=-version:refname | head -n1 || echo "v0.0.1")
-          # Increment patch version
-          MAJOR=$(echo $LATEST_TAG | cut -d. -f1)
-          MINOR=$(echo $LATEST_TAG | cut -d. -f2)
-          PATCH=$(echo $LATEST_TAG | cut -d. -f3)
-          NEW_PATCH=$((PATCH + 1))
-          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
-          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
-
       - name: Get commits
         id: get_commits
         shell: sh
         run: |
           git fetch --tags
-          LAST_TAG=$(git tag --sort=-version:refname | head -n1 || echo "v0.0.1")
+          LAST_TAG=${{ steps.get-latest-tag.outputs.tag }}
           COMMITS=$(git log --oneline --no-merges --pretty=format:"%s" ${LAST_TAG}..HEAD)
           COMMITS=$(echo "$COMMITS" | tr '\n' ';')
           echo "ALL_COMMITS=$COMMITS" >> $GITHUB_ENV
@@ -72,7 +72,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           DOCKERLIKE_RELEASE_NAME: ${{ env.DOCKERLIKE_RELEASE_NAME }}
-          NEW_VERSION: ${{ env.NEW_VERSION }}
+          NEW_VERSION: ${{ steps.bump-semver.outputs.new_version }}
           COMMITS: ${{ env.ALL_COMMITS }}
         run: |
           echo "Generating release notes..."
@@ -85,8 +85,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           name: ${{ env.DOCKERLIKE_RELEASE_NAME }}
-          notes: ${{ env.COMMITS }}
-          tag_name: ${{ env.NEW_VERSION }}
+          tag_name: ${{ steps.bump-semver.outputs.new_version }}
           body_path: release_notes.md
 
   build-and-push:
