@@ -5,7 +5,7 @@ import requests
 def generate_release_notes():
     try:
         data = {
-            "model": "openai/gpt-oss-20b:free",
+            "model": "meta-llama/llama-4-maverick",
             "messages": [
                 {
                     "role": "system", 
