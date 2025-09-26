@@ -193,8 +193,8 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		variables := make(map[string]string)
 		maps.Copy(variables, defaultVariables)
 
-		parsedBody := utils.ReplaceVariables(htmlFromTemplate, variables, campaign.ID, cfg, true)
-		parsedSubject := utils.ReplaceVariables(campaign.Template.Subject, variables, campaign.ID, cfg, false)
+		parsedBody := utils.ReplaceVariables(htmlFromTemplate, variables, campaign.ID, cfg, true, campaign.Template.Category.Name == "Marketing")
+		parsedSubject := utils.ReplaceVariables(campaign.Template.Subject, variables, campaign.ID, cfg, false, false)
 
 		parsedSubject, err = base64.DecodeFromBase64(parsedSubject)
 		if err != nil {

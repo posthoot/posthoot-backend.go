@@ -473,10 +473,10 @@ func sendEmail(
 		return log.Error("failed to get html from template ❌", errors.New("body is empty"))
 	}
 
-	parsedBody := utils.ReplaceVariables(htmlFromTemplate, handler.variables, definedID.String(), cfg, true)
+	parsedBody := utils.ReplaceVariables(htmlFromTemplate, handler.variables, definedID.String(), cfg, true, category.Name == "Marketing")
 	parsedSubject := handler.subject
 	if handler.subject == "" {
-		parsedSubject = utils.ReplaceVariables(template.Subject, handler.variables, definedID.String(), cfg, false)
+		parsedSubject = utils.ReplaceVariables(template.Subject, handler.variables, definedID.String(), cfg, false, false)
 		parsedSubject, err = base64.DecodeFromBase64(parsedSubject)
 		if err != nil {
 			tx.Rollback()

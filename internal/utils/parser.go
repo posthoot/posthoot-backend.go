@@ -34,13 +34,13 @@ func ParseVariables(html string) (map[string]string, error) {
 
 // ReplaceVariables input is html text with variables in the form of {{variable}} or {{ variable.subvariable }} or {{ varible }}
 // output is a string with the variables replaced by their values
-func ReplaceVariables(input string, variables map[string]string, mailId string, cfg *config.Config, trackLinks bool) string {
+func ReplaceVariables(input string, variables map[string]string, mailId string, cfg *config.Config, trackLinks bool, isMarketing bool) string {
 	for variable, value := range variables {
 		re := regexp.MustCompile(`{{\s*` + regexp.QuoteMeta(variable) + `(?:\.\w+)*\s*}}`)
 		input = re.ReplaceAllString(input, value)
 	}
 	if trackLinks {
-		input = ReplaceLinksWithRedirect(input, mailId, cfg)
+		input = ReplaceLinksWithRedirect(input, mailId, cfg, isMarketing)
 	}
 
 	return base64.EncodeToBase64(input)
@@ -67,7 +67,7 @@ func MapToJSON(data map[string]string) (datatypes.JSON, error) {
 
 // ReplaceLinksWithRedirect usecase is to replace all the links in the html with our redirect url
 // so we can track the number of clicks
-func ReplaceLinksWithRedirect(html string, mailId string, cfg *config.Config) string {
+func ReplaceLinksWithRedirect(html string, mailId string, cfg *config.Config, isMarketing bool) string {
 	// Replace anchor href links with tracking URL to track clicks
 	hrefRe := regexp.MustCompile(`<a[^>]+href="([^"]+)"`)
 
@@ -95,8 +95,12 @@ func ReplaceLinksWithRedirect(html string, mailId string, cfg *config.Config) st
 	// Add tracking pixel at bottom of email to track opens
 	html = html + fmt.Sprintf(`<img src="%s/t/open?token=%s" style="display:none" width="1" height="1">`, cfg.Server.PublicURL, tokenString)
 
-	// add unsubcribe link to the input this needs to go before the closing body tag
-	html = strings.Replace(html, "</body>", fmt.Sprintf(`<table><tr><td><a style="color: #888888; font-size: 14px; text-align: center;" href="%s/t/unsubscribe?token=%s">Unsubscribe from this list</a></td></tr></table></body>`, cfg.Server.PublicURL, tokenString), 1)
+	if isMarketing {
+		// add unsubscribe link to the input this needs to go before the closing body tag
+		html = strings.Replace(html, "</body>", fmt.Sprintf(`<table style="font-family:helvetica,sans-serif;" cellpadding="0" cellspacing="0" width="100%%" border="0">
+  <tbody>
+    <tr><td><a style="color: #888888; font-size: 14px; text-align: center;" href="%s/t/unsubscribe?token=%s">Unsubscribe from this list</a></td></tr></table></body>`, cfg.Server.PublicURL, tokenString), 1)
+	}
 
 	return html
 }
