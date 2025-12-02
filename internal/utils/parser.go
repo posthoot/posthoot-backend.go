@@ -39,6 +39,7 @@ func ReplaceVariables(input string, variables map[string]string, mailId string, 
 		re := regexp.MustCompile(`{{\s*` + regexp.QuoteMeta(variable) + `(?:\.\w+)*\s*}}`)
 		input = re.ReplaceAllString(input, value)
 	}
+
 	if trackLinks {
 		input = ReplaceLinksWithRedirect(input, mailId, cfg, isMarketing)
 	}
