@@ -1,77 +1,44 @@
-# 🐦 Xem Backend
+# Xem Backend
 
-> 🚀 A robust Go-based backend service for email campaign management with advanced authentication and permission systems.
+A Go-based backend service for email campaign management with authentication and permission systems.
 
-## ✨ Features
+## Features
 
-### 🔐 Authentication System
-- 🎯 JWT-based authentication with refresh tokens
-- 👥 Role-based access control (RBAC)
-- 🔑 Password reset functionality with time-limited codes
-- 🔒 Support for API keys with granular permissions
-- 👑 Super admin creation on first run
+### Authentication System
 
-### 🛡️ Permission System
-- 📊 Granular resource-based permissions
-- 🏗️ Module-based organization
-- 👤 Role-based default permissions
-- 🌟 Support for wildcard permissions (e.g., "campaigns:*")
+The auth system covers the basics you'd expect - JWT tokens with refresh capability, role-based access control, password resets with timed codes, and API keys with specific permissions. When you first run the app, it'll create a super admin account automatically.
 
-### 🎯 Supported Modules
+### Permission System
 
-#### 1. 📨 Campaign Management
-   - 📝 Create, read, update, delete campaigns
-   - ⏰ Campaign scheduling and automation
+Permissions work at the resource level and are organized by module. Each role gets its own set of default permissions, and you can use wildcards like "campaigns:*" to grant broad access when needed.
 
-#### 2. 📋 Template Management
-   - 🎨 Email template creation and management
-   - 💻 HTML template support
+### What's Included
 
-#### 3. 👥 Contact Management
-   - 📚 Mailing list management
-   - 📥 Contact import/export
-   - 🏷️ Contact tagging
+The backend handles ten main areas:
 
-#### 4. 🏢 Team Management
-   - 🌐 Multi-team support
-   - ✉️ Team invitations
-   - ⚙️ Team settings
+**Campaign Management** - Create and schedule email campaigns with automation support.
 
-#### 5. 👤 User Management
-   - 👑 User roles (Super Admin, Admin, Member)
-   - 🔑 Permission management
-   - 👤 Profile management
+**Template Management** - Build and store HTML email templates.
 
-#### 6. 🔑 API Key Management
-   - 🎯 Generate and manage API keys
-   - 🔒 Granular API permissions
-   - 📊 Usage tracking
+**Contact Management** - Manage mailing lists, import/export contacts, and organize them with tags.
 
-#### 7. 🤖 Automation
-   - ⚡ Email automation workflows
-   - 🎯 Trigger-based actions
-   - 🧩 Custom automation nodes
+**Team Management** - Support for multiple teams with invitations and custom settings.
 
-#### 8. 📧 SMTP Configuration
-   - 🔌 Multiple SMTP provider support
-   - ✅ SMTP testing and validation
-   - ⚡ Send rate management
+**User Management** - Three user roles (Super Admin, Admin, Member) with granular permission controls.
 
-#### 9. 🌐 Domain Management
-   - ✅ Domain verification
-   - 🔧 DNS record management
-   - 🌍 Multiple domain support
+**API Key Management** - Generate keys with specific permissions and track their usage.
 
-#### 10. 🔌 Webhook Management
-    - 🎯 Custom webhook endpoints
-    - ⚡ Event-based triggers
-    - 📊 Delivery tracking
+**Automation** - Set up email workflows with trigger-based actions and custom nodes.
 
-### 🚌 Event Bus System
-- 🎯 Decoupled service communication
-- ⚡ Asynchronous event handling
-- 🔌 Service hooks integration
-- 🛡️ Panic recovery in event handlers
+**SMTP Configuration** - Connect multiple SMTP providers, test connections, and manage send rates.
+
+**Domain Management** - Verify domains and handle DNS records for multiple domains.
+
+**Webhook Management** - Create custom webhook endpoints with event triggers and delivery tracking.
+
+### Event Bus System
+
+Services communicate through an event bus, which keeps things decoupled and handles events asynchronously. It includes panic recovery so one failing handler won't bring everything down.
 
 ```mermaid
 graph LR
@@ -87,7 +54,7 @@ graph LR
     style E fill:#bfb,stroke:#333,stroke-width:2px
 ```
 
-#### Event Flow Architecture
+### Event Flow Architecture
 
 ```mermaid
 sequenceDiagram
@@ -105,7 +72,8 @@ sequenceDiagram
     deactivate E
 ```
 
-#### Available Events
+### Available Events
+
 | Event Name | Description | Payload |
 |------------|-------------|---------|
 | email.sent | Triggered when email is sent | EmailData |
@@ -114,7 +82,8 @@ sequenceDiagram
 | user.registered | Triggered on new registration | UserData |
 | team.created | Triggered when a new team is created | TeamData |
 
-#### Example Usage
+Here's how you use it:
+
 ```go
 // Register event handler
 events.On("email.sent", func(data interface{}) {
@@ -125,20 +94,20 @@ events.On("email.sent", func(data interface{}) {
 events.Emit("email.sent", emailData)
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
-### 📋 Prerequisites
-- 🔧 Go 1.21 or higher
-- 🗄️ PostgreSQL 14 or higher
-- ⚡ Redis (for rate limiting and caching)
+### Prerequisites
 
-### 🔧 Environment Variables
+You'll need Go 1.21+, PostgreSQL 14+, and Redis for rate limiting and caching.
+
+### Environment Variables
+
 ```env
-# 🖥️ Server Configuration
+# Server Configuration
 SERVER_HOST=localhost
 SERVER_PORT=8080
 
-# 🗄️ Database Configuration
+# Database Configuration
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=kori_user
@@ -146,66 +115,62 @@ POSTGRES_PASSWORD=kori_password
 POSTGRES_DB=kori
 POSTGRES_SSLMODE=disable
 
-# 🔒 JWT Configuration
+# JWT Configuration
 JWT_SECRET=your_secure_jwt_secret
 
-# 📁 Storage Configuration
+# Storage Configuration
 STORAGE_PROVIDER=local
 STORAGE_BASE_PATH=./storage
 
-# ⚙️ Worker Configuration
+# Worker Configuration
 WORKER_CONCURRENCY=5
 WORKER_QUEUE_SIZE=100
 
-# 🔄 Redis Configuration
+# Redis Configuration
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=kori_password
 REDIS_DB=0
 
-# 👑 Super Admin Configuration (First Run)
+# Super Admin Configuration (First Run)
 SUPERADMIN_EMAIL=admin@example.com
 SUPERADMIN_PASSWORD=secure_password
 SUPERADMIN_NAME=Admin
 ```
 
-### 📥 Installation
+### Installation
 
-1. Clone the repository:
+Clone the repo and install dependencies:
+
 ```bash
 git clone https://github.com/mailexem/Xem.go.git xem
 cd xem
-```
-
-2. Install dependencies:
-```bash
 go mod download
 ```
 
-3. Set up the environment:
+Set up your environment:
+
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
 ```
-4. Start the server:
+
+Start the server:
+
 ```bash
 go run cmd/server/main.go
 ```
 
-### 📚 API Documentation
+### API Documentation
 
-The API is documented using Swagger/OpenAPI specification. The documentation provides comprehensive coverage of all endpoints, request/response models, and authentication methods.
-
-#### 🚀 Quick Access
+The API docs use Swagger/OpenAPI. You can access them at:
 
 - **Swagger UI**: `http://localhost:8080/swagger/index.html`
 - **OpenAPI 3.0 JSON**: `openapi.json` (generated file)
 - **Swagger 2.0 JSON**: `http://localhost:8080/swagger/doc.json`
 - **Swagger 2.0 YAML**: `http://localhost:8080/swagger/doc.yaml`
 
-#### 🛠️ Documentation Management
-
-Generate or update the API documentation:
+Generate or update docs:
 
 ```bash
 # Generate Swagger 2.0 documentation
@@ -222,36 +187,30 @@ make openapi
 ./scripts/swagger.sh serve
 ```
 
-#### 📖 Documentation Features
+The docs let you test endpoints right in the browser, with pre-filled examples and full authentication support. Everything's organized by functional area with complete model schemas and error responses.
 
-- **Interactive Testing**: Test API endpoints directly from the browser
-- **Request/Response Examples**: Pre-filled examples for all endpoints
-- **Authentication Support**: Built-in JWT and API key authentication
-- **Model Schemas**: Complete request/response model definitions
-- **Error Responses**: Detailed error response documentation
-- **Tagged Organization**: Endpoints organized by functional areas
+### API Categories
 
-#### 🏷️ Available API Categories
+- **Authentication** - Registration, login, token management
+- **Teams** - Team management and collaboration
+- **Campaigns** - Campaign creation, management, tracking
+- **Analytics** - Performance metrics and insights
+- **Contacts** - Contact and mailing list operations
+- **Templates** - Email template customization
+- **Automations** - Workflow automation and triggers
+- **SMTP** - Email delivery settings
+- **IMAP** - Inbox management configuration
+- **Webhooks** - Real-time event notifications
+- **Files** - Upload and manage attachments
+- **Domains** - Email authentication setup
+- **API Keys** - Programmatic access management
 
-- **Authentication** - User registration, login, and token management
-- **Teams** - Team management and collaboration features
-- **Campaigns** - Email campaign creation, management, and tracking
-- **Analytics** - Campaign analytics, audience insights, and performance metrics
-- **Contacts** - Contact management and mailing list operations
-- **Templates** - Email template management and customization
-- **Automations** - Email automation workflows and triggers
-- **SMTP** - SMTP configuration and email delivery settings
-- **IMAP** - IMAP configuration for email inbox management
-- **Webhooks** - Webhook management for real-time event notifications
-- **Files** - File upload and management for attachments and media
-- **Domains** - Domain management for email authentication
-- **API Keys** - API key management for programmatic access
+Check `docs/README.md` for more details on documentation management.
 
-For detailed documentation management, see [`docs/README.md`](docs/README.md).
+## Authentication
 
-## 🔐 Authentication
+### Registration
 
-### 📝 Registration
 ```http
 POST /api/v1/auth/register
 {
@@ -262,7 +221,8 @@ POST /api/v1/auth/register
 }
 ```
 
-### 🔑 Login
+### Login
+
 ```http
 POST /api/v1/auth/login
 {
@@ -271,7 +231,8 @@ POST /api/v1/auth/login
 }
 ```
 
-### 🔄 Password Reset
+### Password Reset
+
 ```http
 POST /api/v1/auth/password-reset
 {
@@ -279,9 +240,9 @@ POST /api/v1/auth/password-reset
 }
 ```
 
-### 🔒 Authentication System Architecture
+### Authentication System Architecture
 
-The authentication system supports both traditional email/password authentication and Google OAuth, integrated with JWT-based session management.
+The system supports email/password auth and Google OAuth, both integrated with JWT session management.
 
 ```mermaid
 graph TD
@@ -348,35 +309,19 @@ graph TD
     end
 ```
 
-#### Key Components:
+### Key Components
 
-1. **🔐 Authentication Methods**
-   - 📧 Traditional Email/Password
-   - 🔑 Google OAuth via Firebase
-   - 📨 Team Invitations
+**Authentication Methods** - Email/password, Google OAuth via Firebase, and team invitations.
 
-2. **🎟️ Token Management**
-   - 🔒 JWT Access Tokens (24h validity)
-   - 🔄 Refresh Tokens (7 days validity)
-   - 📝 Auth Transaction Tracking
+**Token Management** - JWT access tokens valid for 24 hours, refresh tokens for 7 days, with full transaction tracking.
 
-3. **👥 User Management**
-   - 🏢 Automatic Team Creation
-   - 👑 Role Assignment
-   - 🔑 Permission Management
+**User Management** - Automatic team creation, role assignment, and permission management.
 
-4. **🔒 Security Features**
-   - 🔐 Bcrypt Password Hashing
-   - ⏰ Time-Limited Reset Codes
-   - 🔍 Firebase Token Verification
-   - 📊 Transaction-based Operations
+**Security Features** - Bcrypt password hashing, time-limited reset codes, Firebase token verification, and transaction-based operations.
 
-5. **🤝 Integration Points**
-   - 🔌 Firebase Authentication
-   - 📨 Email Service for Notifications
-   - 📝 Event System for Tracking
+**Integration Points** - Firebase Authentication, email service for notifications, and event system for tracking.
 
-#### Authentication Endpoints:
+### Authentication Endpoints
 
 ```http
 # Traditional Authentication
@@ -396,9 +341,9 @@ POST /api/v1/auth/invite       # Send Team Invite
 POST /api/v1/auth/accept/:code # Accept Invite
 ```
 
-### 💳 Subscription System
+## Subscription System
 
-The subscription system integrates with Dodo Payments to provide flexible subscription management with feature-based access control.
+The subscription system uses Dodo Payments for flexible subscription management with feature-based access control.
 
 ```mermaid
 sequenceDiagram
@@ -434,62 +379,52 @@ sequenceDiagram
     F->>D: Redirect to Portal
 ```
 
-#### 🎯 Key Components
+### Key Components
 
-1. **📦 Products & Features**
-   ```go
-   type Product struct {
-       Name        string
-       Description string
-       Price       float64
-       Interval    string    // monthly, yearly
-       Features    []ProductFeatureConfig
-   }
+Products define their features and pricing:
 
-   type ProductFeature string
-   const (
-       FeatureEmailCampaigns    ProductFeature = "email_campaigns"
-       FeatureTemplateLibrary   ProductFeature = "template_library"
-       FeatureAdvancedAnalytics ProductFeature = "advanced_analytics"
-       // ... more features
-   )
-   ```
+```go
+type Product struct {
+    Name        string
+    Description string
+    Price       float64
+    Interval    string    // monthly, yearly
+    Features    []ProductFeatureConfig
+}
 
-2. **🔄 Subscription States**
-   ```go
-   type SubscriptionStatus string
-   const (
-       SubscriptionStatusPending  SubscriptionStatus = "pending"
-       SubscriptionStatusActive   SubscriptionStatus = "active"
-       SubscriptionStatusCanceled SubscriptionStatus = "canceled"
-       SubscriptionStatusPaused   SubscriptionStatus = "paused"
-       SubscriptionStatusFailed   SubscriptionStatus = "failed"
-   )
-   ```
+type ProductFeature string
+const (
+    FeatureEmailCampaigns    ProductFeature = "email_campaigns"
+    FeatureTemplateLibrary   ProductFeature = "template_library"
+    FeatureAdvancedAnalytics ProductFeature = "advanced_analytics"
+    // ... more features
+)
+```
 
-#### 🛣️ Subscription Flow
+Subscriptions can be in different states:
 
-1. **💰 Pre-Purchase**
-   - User selects a plan
-   - Backend creates pending subscription
-   - User is redirected to Dodo Payments
+```go
+type SubscriptionStatus string
+const (
+    SubscriptionStatusPending  SubscriptionStatus = "pending"
+    SubscriptionStatusActive   SubscriptionStatus = "active"
+    SubscriptionStatusCanceled SubscriptionStatus = "canceled"
+    SubscriptionStatusPaused   SubscriptionStatus = "paused"
+    SubscriptionStatusFailed   SubscriptionStatus = "failed"
+)
+```
 
-2. **👤 Account Creation**
-   - User registers/logs in after payment
-   - System matches email with pending subscription
-   - Subscription is linked to user's team
+### Subscription Flow
 
-3. **✨ Feature Access**
-   - Each product defines enabled features
-   - System checks feature access via `HasFeature()`
-   - Optional limits per feature (e.g., email campaign limits)
+**Pre-Purchase** - User picks a plan, backend creates pending subscription, redirects to Dodo Payments.
 
-4. **⚙️ Management**
-   - Team admins can access subscription portal
-   - Portal allows plan changes, cancellation
-   - Webhooks handle subscription updates
+**Account Creation** - After payment, user registers or logs in. System matches email with pending subscription and links it to the team.
 
-#### 🔌 API Endpoints
+**Feature Access** - Products define enabled features. System checks access via `HasFeature()` with optional limits per feature.
+
+**Management** - Team admins access the subscription portal to change plans or cancel. Webhooks handle updates automatically.
+
+### API Endpoints
 
 ```http
 # Public Endpoints
@@ -501,24 +436,15 @@ GET    /api/v1/subscriptions/portal   # Get management portal URL
 GET    /api/v1/subscriptions/features # Get enabled features
 ```
 
-#### 🔐 Security Features
+### Security Features
 
-1. **👥 Access Control**
-   - Only team admins can manage subscriptions
-   - Feature checks on all protected endpoints
-   - Webhook signature verification
+**Access Control** - Only team admins can manage subscriptions. Feature checks on protected endpoints and webhook signature verification.
 
-2. **💾 Data Integrity**
-   - Transaction-based subscription updates
-   - Email verification for subscription linking
-   - Secure portal access via Dodo Payments
+**Data Integrity** - Transaction-based updates, email verification for linking, and secure portal access through Dodo Payments.
 
-3. **🔄 State Management**
-   - Automatic status updates via webhooks
-   - Period tracking for billing cycles
-   - Trial period support
+**State Management** - Automatic status updates via webhooks, period tracking for billing cycles, and trial period support.
 
-#### ⚙️ Configuration
+### Configuration
 
 ```env
 # Dodo Payments Configuration
@@ -527,64 +453,45 @@ DODO_WEBHOOK_SECRET=your_dodo_webhook_secret
 APP_ENV=development # or production
 ```
 
-## 🛡️ Security Features
+## Security Features
 
-1. **⚡ Rate Limiting**
-   - 🔒 Request rate limiting per IP
-   - 🔑 API key rate limiting
-   - ⚙️ Configurable limits
+**Rate Limiting** - Request limits per IP, API key rate limiting, and configurable thresholds.
 
-2. **🔒 JWT Security**
-   - ⏱️ Short-lived access tokens (24 hours)
-   - 🔄 Refresh token support (7 days)
-   - 🎯 Permission claims in tokens
+**JWT Security** - Short-lived access tokens (24 hours), refresh token support (7 days), and permission claims in tokens.
 
-3. **🔐 Password Security**
-   - 🔒 Bcrypt password hashing
-   - ✅ Minimum password requirements
-   - 🛡️ Secure password reset flow
+**Password Security** - Bcrypt hashing, minimum requirements, and secure reset flow.
 
-4. **🔒 API Security**
-   - 🌐 CORS protection
-   - 📦 Request size limiting
-   - 🛡️ Secure headers
-   - 🗜️ GZIP compression
+**API Security** - CORS protection, request size limiting, secure headers, and GZIP compression.
 
-## 👨‍💻 Development
+## Development
 
-### 📁 Project Structure
+### Project Structure
+
 ```
-📦 xem
- ┣ 📂 cmd                     # Application entry points
- ┣ 📂 internal               
- ┃ ┣ 📂 api                  # API layer
- ┃ ┃ ┣ 📂 middleware         # Custom middlewares
- ┃ ┃ ┣ 📂 validator          # Request validators
- ┃ ┃ ┗ 📜 server.go          # Server setup
- ┃ ┣ 📂 config               # Configuration
- ┃ ┣ 📂 events               # Event bus system
- ┃ ┣ 📂 handlers             # Request handlers
- ┃ ┣ 📂 models               # Database models
- ┃ ┣ 📂 routes               # Route definitions
- ┃ ┣ 📂 services             # Business logic
- ┃ ┗ 📂 utils                # Utility functions
- ┣ 📂 migrations             # Database migrations
- ┗ 📂 storage                # Local storage
+xem
+├── cmd                     # Application entry points
+├── internal               
+│   ├── api                  # API layer
+│   │   ├── middleware         # Custom middlewares
+│   │   ├── validator          # Request validators
+│   │   └── server.go          # Server setup
+│   ├── config               # Configuration
+│   ├── events               # Event bus system
+│   ├── handlers             # Request handlers
+│   ├── models               # Database models
+│   ├── routes               # Route definitions
+│   ├── services             # Business logic
+│   └── utils                # Utility functions
+├── migrations             # Database migrations
+└── storage                # Local storage
 ```
 
-### ✨ Adding New Features
+### Adding New Features
 
-1. **📦 New Resource**
-   - 📝 Add model in `internal/models/`
-   - 🔑 Add permissions in `internal/models/seed.go`
-   - 🎯 Create handler in `internal/handlers/`
-   - 🔌 Add routes in `internal/routes/`
+For a new resource, add the model in `internal/models/`, add permissions in `internal/models/seed.go`, create a handler in `internal/handlers/`, and add routes in `internal/routes/`.
 
-2. **🔑 New Permission**
-   - 📝 Add resource in `defaultResources`
-   - 👥 Add permissions in `rolePermissions`
-   - 🔄 Run server to auto-seed
+For new permissions, add the resource in `defaultResources`, add permissions in `rolePermissions`, then run the server to auto-seed.
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
