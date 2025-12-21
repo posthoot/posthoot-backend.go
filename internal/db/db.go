@@ -2,12 +2,17 @@ package db
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
+	"cloud.google.com/go/cloudsqlconn"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -20,6 +25,7 @@ import (
 var DB *gorm.DB
 var log = console.New("DB")
 var discordWebhookURL string
+var cloudSQLDialer *cloudsqlconn.Dialer
 
 // SetDiscordWebhook sets the Discord webhook URL for monitoring
 func SetDiscordWebhook(webhookURL string) {
@@ -73,6 +79,35 @@ func sendToDiscord(stats sql.DBStats) error {
 }
 
 func Connect(cfg *config.Config) error {
+	log.Info("Connecting to database...")
+	maxRetries := 5
+	gormCfg := &gorm.Config{
+		Logger:                                   logger.Default.LogMode(logger.Info),
+		DisableForeignKeyConstraintWhenMigrating: true,
+		PrepareStmt:                              true,
+		AllowGlobalUpdate:                        false,
+	}
+
+	var err error
+	for i := 0; i < maxRetries; i++ {
+		if cfg.Database.InstanceConnectionName != "" {
+			err = connectWithCloudSQL(cfg, gormCfg)
+		} else {
+			err = connectWithDSN(cfg, gormCfg)
+		}
+
+		if err == nil {
+			log.Success("Connected to database")
+			return nil
+		}
+
+		log.Warn("Failed to connect to database (attempt %d/%d): %v", i+1, maxRetries, err)
+		time.Sleep(time.Second * 5)
+	}
+	return log.Error("failed to connect to database after %d attempts", fmt.Errorf("failed to connect to database after %d attempts", maxRetries))
+}
+
+func connectWithDSN(cfg *config.Config, gormCfg *gorm.Config) error {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
 		cfg.Database.Host,
 		cfg.Database.User,
@@ -82,45 +117,101 @@ func Connect(cfg *config.Config) error {
 		cfg.Database.SSLMode,
 	)
 
-	log.Info("Connecting to database...")
-	maxRetries := 5
-	var err error
-	for i := 0; i < maxRetries; i++ {
-		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-			Logger:                                   logger.Default.LogMode(logger.Info),
-			DisableForeignKeyConstraintWhenMigrating: true,
-			PrepareStmt:                              true,
-			AllowGlobalUpdate:                        false,
-		})
-		if err == nil {
-			log.Info("DSN: %s", dsn)
-			log.Success("Connected to database")
+	log.Info("Using direct Postgres connection with DSN")
 
-			// Configure connection pool
-			sqlDB, err := DB.DB()
-			if err != nil {
-				return log.Error("Failed to get underlying *sql.DB instance", err)
-			}
-
-			// Set connection pool settings
-			sqlDB.SetMaxOpenConns(100)                 // Maximum number of open connections to the database
-			sqlDB.SetMaxIdleConns(10)                  // Maximum number of idle connections in the pool
-			sqlDB.SetConnMaxLifetime(time.Hour)        // Maximum amount of time a connection may be reused
-			sqlDB.SetConnMaxIdleTime(time.Minute * 30) // Maximum amount of time a connection may be idle
-
-			// Run migrations
-			if err := runMigrations(); err != nil {
-				return log.Error("Failed to run migrations", err)
-			}
-
-			log.Success("Migrations completed")
-
-			return nil
-		}
-		log.Warn("Failed to connect to database (attempt %d/%d): %v", i+1, maxRetries, err)
-		time.Sleep(time.Second * 5)
+	gormDB, err := gorm.Open(postgres.Open(dsn), gormCfg)
+	if err != nil {
+		return err
 	}
-	return log.Error("failed to connect to database after %d attempts", fmt.Errorf("failed to connect to database after %d attempts", maxRetries))
+
+	DB = gormDB
+	if err := finalizeConnection(); err != nil {
+		sqlDB, dbErr := DB.DB()
+		if dbErr == nil {
+			sqlDB.Close()
+		}
+		return err
+	}
+
+	return nil
+}
+
+func connectWithCloudSQL(cfg *config.Config, gormCfg *gorm.Config) error {
+	ctx := context.Background()
+	opts := []cloudsqlconn.Option{}
+	if cfg.Database.UseIAMAuth {
+		opts = append(opts, cloudsqlconn.WithIAMAuthN())
+	}
+
+	dialer, err := cloudsqlconn.NewDialer(ctx, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to create Cloud SQL dialer: %w", err)
+	}
+
+	dsn := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
+		cfg.Database.User,
+		cfg.Database.Password,
+		cfg.Database.Name,
+	)
+	if cfg.Database.UseIAMAuth {
+		dsn = fmt.Sprintf("user=%s dbname=%s sslmode=disable",
+			cfg.Database.User,
+			cfg.Database.Name,
+		)
+	}
+
+	log.Info("Using Cloud SQL Connector for instance %s (IAM auth: %t)", cfg.Database.InstanceConnectionName, cfg.Database.UseIAMAuth)
+
+	pgxConfig, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		dialer.Close()
+		return fmt.Errorf("failed to parse pgx config: %w", err)
+	}
+
+	pgxConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return dialer.Dial(ctx, cfg.Database.InstanceConnectionName)
+	}
+
+	sqlDB := stdlib.OpenDB(*pgxConfig)
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), gormCfg)
+	if err != nil {
+		dialer.Close()
+		sqlDB.Close()
+		return fmt.Errorf("failed to open gorm connection via Cloud SQL: %w", err)
+	}
+
+	DB = gormDB
+	cloudSQLDialer = dialer
+
+	if err := finalizeConnection(); err != nil {
+		sqlDB.Close()
+		dialer.Close()
+		cloudSQLDialer = nil
+		return err
+	}
+
+	return nil
+}
+
+func finalizeConnection() error {
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return log.Error("Failed to get underlying *sql.DB instance", err)
+	}
+
+	// Set connection pool settings
+	sqlDB.SetMaxOpenConns(100)                 // Maximum number of open connections to the database
+	sqlDB.SetMaxIdleConns(10)                  // Maximum number of idle connections in the pool
+	sqlDB.SetConnMaxLifetime(time.Hour)        // Maximum amount of time a connection may be reused
+	sqlDB.SetConnMaxIdleTime(time.Minute * 30) // Maximum amount of time a connection may be idle
+
+	// Run migrations
+	if err := runMigrations(); err != nil {
+		return log.Error("Failed to run migrations", err)
+	}
+
+	log.Success("Migrations completed")
+	return nil
 }
 
 func runMigrations() error {
@@ -199,11 +290,23 @@ func runMigrations() error {
 }
 
 func Close() error {
-	sqlDB, err := DB.DB()
-	if err != nil {
-		return err
+	var closeErr error
+
+	if DB != nil {
+		sqlDB, err := DB.DB()
+		if err != nil {
+			closeErr = err
+		} else if err := sqlDB.Close(); err != nil {
+			closeErr = err
+		}
 	}
-	return sqlDB.Close()
+
+	if cloudSQLDialer != nil {
+		cloudSQLDialer.Close()
+		cloudSQLDialer = nil
+	}
+
+	return closeErr
 }
 
 func GetDB() *gorm.DB {

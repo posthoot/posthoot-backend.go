@@ -34,12 +34,14 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Name     string
-	SSLMode  string
+	Host                   string
+	Port                   int
+	User                   string
+	Password               string
+	Name                   string
+	SSLMode                string
+	InstanceConnectionName string
+	UseIAMAuth             bool
 }
 
 type JWTConfig struct {
@@ -112,12 +114,14 @@ func Load() (*Config, error) {
 			PublicURL: getEnv("PUBLIC_URL", "http://localhost:8080"),
 		},
 		Database: DatabaseConfig{
-			Host:     getEnv("POSTGRES_HOST", "localhost"),
-			Port:     getEnvAsInt("POSTGRES_PORT", 5432),
-			User:     getEnv("POSTGRES_USER", "postgres"),
-			Password: getEnv("POSTGRES_PASSWORD", ""),
-			Name:     getEnv("POSTGRES_DB", "kori"),
-			SSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
+			Host:                   getEnv("POSTGRES_HOST", "localhost"),
+			Port:                   getEnvAsInt("POSTGRES_PORT", 5432),
+			User:                   getEnv("POSTGRES_USER", "postgres"),
+			Password:               getEnv("POSTGRES_PASSWORD", ""),
+			Name:                   getEnv("POSTGRES_DB", "kori"),
+			SSLMode:                getEnv("POSTGRES_SSLMODE", "disable"),
+			InstanceConnectionName: getEnv("INSTANCE_CONNECTION_NAME", ""),
+			UseIAMAuth:             getEnvAsBool("CLOUDSQL_IAM_AUTH", false),
 		},
 		JWT: JWTConfig{
 			Secret: getEnv("JWT_SECRET", "your-secret-key"),
