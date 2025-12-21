@@ -1,0 +1,37 @@
+# GCP Project Configuration
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+# Cluster Configuration
+cluster_name = "posthoot-cluster"
+namespace    = "posthoot"
+environment  = "prod"
+
+# Network Configuration
+network_name    = "default"
+subnetwork_name = "default"
+enable_private_cluster = false
+master_ipv4_cidr_block = "172.16.0.0/28"
+
+# Node Pool Configuration
+node_count          = 2
+min_node_count      = 1
+max_node_count      = 5
+machine_type        = "e2-medium"
+disk_size_gb        = 50
+disk_type           = "pd-standard"
+use_preemptible_nodes = false
+enable_vpa          = false
+
+# Container Image Configuration (GitHub Container Registry)
+image_registry = "ghcr.io"
+github_owner   = "your-github-username-or-org"  # e.g., "posthoot" or "theboringhumane"
+image_name     = "posthoot"  # Repository name (e.g., "posthoot/server")
+image_tag      = "latest"
+
+# Image Pull Secret (only needed for private images)
+# For public images on ghcr.io, set image_pull_secret_enabled = false
+image_pull_secret_enabled = false
+image_pull_secret_username = ""  # GitHub username (only if image is private)
+image_pull_secret_password = ""   # GitHub Personal Access Token (only if image is private)
+

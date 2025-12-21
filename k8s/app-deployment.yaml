@@ -1,0 +1,219 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: posthoot
+  namespace: posthoot
+  labels:
+    app: posthoot
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: posthoot
+  template:
+    metadata:
+      labels:
+        app: posthoot
+    spec:
+      containers:
+      - name: posthoot
+        image: gcr.io/YOUR_PROJECT_ID/posthoot:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9001
+          name: http
+        env:
+        - name: SERVER_HOST
+          value: "0.0.0.0"
+        - name: SERVER_PORT
+          value: "9001"
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        # Database configuration (adjust as needed)
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: postgres-host
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: postgres-password
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: postgres-db
+        - name: POSTGRES_SSLMODE
+          value: "require"
+        # JWT Configuration
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: jwt-secret
+        # Public URL
+        - name: PUBLIC_URL
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: public-url
+        # Storage Configuration
+        - name: STORAGE_PROVIDER
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: storage-provider
+        - name: STORAGE_BASE_PATH
+          value: "/app/storage"
+        # S3 Configuration (if using S3)
+        - name: S3_BUCKET_NAME
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: s3-bucket-name
+              optional: true
+        - name: S3_REGION
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: s3-region
+              optional: true
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: s3-access-key
+              optional: true
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: s3-secret-key
+              optional: true
+        - name: S3_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: s3-endpoint
+              optional: true
+        # SMTP Configuration
+        - name: SMTP_HOST
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: smtp-host
+              optional: true
+        - name: SMTP_PORT
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: smtp-port
+              optional: true
+        - name: SMTP_USER
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: smtp-user
+              optional: true
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: smtp-password
+              optional: true
+        - name: SMTP_FROM_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: smtp-from-email
+              optional: true
+        - name: SMTP_PROVIDER
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: smtp-provider
+              optional: true
+        # Worker Configuration
+        - name: WORKER_CONCURRENCY
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: worker-concurrency
+        - name: WORKER_QUEUE_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: worker-queue-size
+        # Crypto Configuration
+        - name: PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: private-key
+              optional: true
+        # Monitor Configuration
+        - name: DISCORD_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: posthoot-secrets
+              key: discord-webhook-url
+              optional: true
+        # Airley Configuration
+        - name: AIRLEY_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: posthoot-config
+              key: airley-enabled
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+      imagePullSecrets:
+      - name: gcr-json-key
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: posthoot
+  namespace: posthoot
+  labels:
+    app: posthoot
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 9001
+    protocol: TCP
+    name: http
+  selector:
+    app: posthoot
+

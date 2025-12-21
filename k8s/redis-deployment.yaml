@@ -1,34 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: posthoot-redis
-  namespace: posthoot-server
+  name: redis
+  namespace: posthoot
   labels:
-    app: posthoot-redis
+    app: redis
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: posthoot-redis
+      app: redis
   template:
     metadata:
       labels:
-        app: posthoot-redis
+        app: redis
     spec:
       containers:
       - name: redis
         image: redis:7-alpine
         ports:
         - containerPort: 6379
+          name: redis
         command:
         - redis-server
         - --appendonly
-        - yes
-        - --requirepass
-        - ""
-        volumeMounts:
-        - name: redis-storage
-          mountPath: /data
+        - "yes"
         resources:
           requests:
             memory: "128Mi"
@@ -36,6 +32,9 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "200m"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
         livenessProbe:
           exec:
             command:
@@ -43,6 +42,7 @@ spec:
             - ping
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
           exec:
             command:
@@ -50,7 +50,26 @@ spec:
             - ping
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 3
       volumes:
-      - name: redis-storage
-        persistentVolumeClaim:
-          claimName: redis-pvc
+      - name: redis-data
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: posthoot
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    protocol: TCP
+    name: redis
+  selector:
+    app: redis
+
