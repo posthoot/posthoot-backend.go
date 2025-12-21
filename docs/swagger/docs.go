@@ -1419,6 +1419,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "Send an email using the provided template and variables",
@@ -1441,6 +1444,20 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/internal_handlers.SendEmailRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "API Key",
+                        "name": "X-API-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {

@@ -31,7 +31,7 @@ print_header() {
 
 # Function to check if required tools are installed
 check_dependencies() {
-    gobin = $(go env GOPATH)/bin
+    gobin=$(go env GOPATH)/bin
     export PATH=$PATH:$gobin
     # Check for swag
     if ! command -v swag &> /dev/null; then
@@ -78,9 +78,9 @@ const swagger = JSON.parse(swaggerContent);
 let openapi = {
     openapi: "3.0.3",
     info: {
-        title: swagger.info.title || "Posthoot API",
+        title: swagger.info.title || "Xem API",
         version: swagger.info.version || "1.0",
-        description: swagger.info.description || "Comprehensive API server for Posthoot email marketing platform",
+        description: swagger.info.description || "Comprehensive API server for Xem email marketing platform",
         contact: swagger.info.contact || {},
         license: swagger.info.license || {
             name: "MIT",
@@ -89,7 +89,7 @@ let openapi = {
     },
     servers: [
         {
-            url: "https://backyard.posthoot.com/api/v1",
+            url: "https://api.xem.email/api/v1",
             description: "Production server"
         },
         {

@@ -1,18 +1,18 @@
 package docs
 
-// @title Posthoot API
+// @title Xem API
 // @version 1.0
-// @description Comprehensive API server for Posthoot email marketing platform. Provides endpoints for email campaigns, analytics, user management, team collaboration, and automation workflows.
-// @termsOfService https://posthoot.com/terms
+// @description Comprehensive API server for Xem email marketing platform. Provides endpoints for email campaigns, analytics, user management, team collaboration, and automation workflows.
+// @termsOfService https://xem.email/terms
 
-// @contact.name Posthoot API Support
-// @contact.url https://posthoot.com/support
-// @contact.email api-support@posthoot.com
+// @contact.name Xem API Support
+// @contact.url https://xem.email/support
+// @contact.email api-support@xem.email
 
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 
-// @host backyard.posthoot.com
+// @host api.xem.email
 // @BasePath /api/v1
 // @schemes https
 

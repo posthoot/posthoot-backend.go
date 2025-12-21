@@ -94,8 +94,8 @@ var defaultEndpointLimits = map[string]EndpointLimit{
 
 	// Email sending - moderate limits
 	"POST:/email": {
-		Limit:  50.0 / 60.0, // 50 requests per minute
-		Burst:  25,
+		Limit:  100.0 / 60.0, // 100 requests per minute
+		Burst:  50,
 		Window: time.Minute,
 	},
 

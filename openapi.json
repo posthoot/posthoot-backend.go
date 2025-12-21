@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Posthoot API",
+    "title": "Xem API",
     "version": "1.0",
-    "description": "Comprehensive API server for Posthoot email marketing platform",
+    "description": "Comprehensive API server for Xem email marketing platform",
     "contact": {},
     "license": {
       "name": "MIT",
@@ -12,7 +12,7 @@
   },
   "servers": [
     {
-      "url": "https://backyard.posthoot.com/api/v1",
+      "url": "https://api.xem.email/api/v1",
       "description": "Production server"
     },
     {
@@ -1701,7 +1701,26 @@
         "tags": [
           "Email"
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "description": "API Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "Bearer Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1720,6 +1739,9 @@
         "security": [
           {
             "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
           }
         ],
         "requestBody": {

@@ -26,10 +26,10 @@ import (
 // 🚀 Main function
 // @Summary Main function
 // @Description Main function
-// @title Posthoot API
+// @title Xem API
 // @version 1.0
-// @description API documentation for Posthoot application
-// @host backyard.posthoot.com
+// @description API documentation for Xem API
+// @host api.xem.email
 // @BasePath /
 // @schemes https
 
@@ -40,7 +40,6 @@ import (
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name X-API-KEY
-
 func main() {
 
 	logger := logger.New("kori")

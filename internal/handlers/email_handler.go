@@ -33,6 +33,9 @@ type SendEmailRequest struct {
 // @Produce json
 // @Param request body SendEmailRequest true "Email request"
 // @Security BearerAuth
+// @Security ApiKeyAuth
+// @Param X-API-Key header string true "API Key"
+// @Param Authorization header string true "Bearer Token"
 // @Success 200 {object} map[string]string
 // @Router /email [post]
 func SendEmail(c echo.Context) error {

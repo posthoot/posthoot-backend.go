@@ -2729,6 +2729,16 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/internal_handlers.SendEmailRequest'
+      - description: API Key
+        in: header
+        name: X-API-Key
+        required: true
+        type: string
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -2740,6 +2750,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
+      - ApiKeyAuth: []
       summary: Send an email
       tags:
       - Email
