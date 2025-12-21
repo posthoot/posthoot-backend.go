@@ -1,4 +1,4 @@
-# 🐦 Posthoot Backend
+# 🐦 Xem Backend
 
 > 🚀 A robust Go-based backend service for email campaign management with advanced authentication and permission systems.
 
@@ -173,8 +173,8 @@ SUPERADMIN_NAME=Admin
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/posthoot/posthoot-backend.go.git kori
-cd kori
+git clone https://github.com/mailexem/Xem.go.git xem
+cd xem
 ```
 
 2. Install dependencies:
@@ -554,7 +554,7 @@ APP_ENV=development # or production
 
 ### 📁 Project Structure
 ```
-📦 kori
+📦 xem
  ┣ 📂 cmd                     # Application entry points
  ┣ 📂 internal               
  ┃ ┣ 📂 api                  # API layer
