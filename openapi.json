@@ -1701,26 +1701,7 @@
         "tags": [
           "Email"
         ],
-        "parameters": [
-          {
-            "name": "X-API-Key",
-            "in": "header",
-            "description": "API Key",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "description": "Bearer Token",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "OK",
