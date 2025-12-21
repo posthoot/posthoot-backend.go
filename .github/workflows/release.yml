@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - sudo
+    paths-ignore:
+      - '**/*.md'
+      - .gitignore
+      - .github/workflows/release.yml
+  workflow_dispatch:
 
 env:
   REGISTRY: docker.io
