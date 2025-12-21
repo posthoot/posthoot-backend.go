@@ -71,6 +71,7 @@ jobs:
         shell: sh
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAPI_BASE_URL: ${{ secrets.OPENAPI_BASE_URL }}
           DOCKERLIKE_RELEASE_NAME: ${{ env.DOCKERLIKE_RELEASE_NAME }}
           NEW_VERSION: ${{ steps.bump-semver.outputs.new_version }}
           COMMITS: ${{ env.ALL_COMMITS }}
