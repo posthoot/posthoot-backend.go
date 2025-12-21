@@ -5,7 +5,7 @@ import requests
 def generate_release_notes():
     try:
         data = {
-            "model": "meta-llama/llama-4-maverick:free",
+            "model": "gpt-4o",
             "messages": [
                 {
                     "role": "system", 
@@ -37,7 +37,7 @@ def generate_release_notes():
         }
 
         response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
+            url=os.environ.get("OPENAI_BASE_URL"),
             headers={
                 "Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY')}",
                 "Content-Type": "application/json",
