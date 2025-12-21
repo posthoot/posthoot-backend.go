@@ -95,8 +95,8 @@ func main() {
 	// Initialize task server
 	taskServer := tasks.NewServer(
 		cfg.Redis.Addr,
-		cfg.Redis.Password,
 		cfg.Redis.Username,
+		cfg.Redis.Password,
 		cfg.Redis.DB,
 		taskHandler,
 		logger,
@@ -116,8 +116,8 @@ func main() {
 	// Initialize task scheduler
 	taskScheduler := tasks.NewScheduler(
 		cfg.Redis.Addr,
-		cfg.Redis.Password,
 		cfg.Redis.Username,
+		cfg.Redis.Password,
 		cfg.Redis.DB,
 		logger,
 	)
