@@ -37,7 +37,7 @@ def generate_release_notes():
         }
 
         response = requests.post(
-            url=os.environ.get("OPENAI_BASE_URL"),
+            url=os.environ.get("OPENAPI_BASE_URL"),
             headers={
                 "Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY')}",
                 "Content-Type": "application/json",
