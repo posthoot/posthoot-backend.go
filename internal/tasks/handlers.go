@@ -178,6 +178,9 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		defaultVariables["email"] = contact.Email
 		defaultVariables["first_name"] = contact.FirstName
 		defaultVariables["last_name"] = contact.LastName
+		fullName := fmt.Sprintf("%s %s", contact.FirstName, contact.LastName)
+		defaultVariables["name"] = fullName
+		defaultVariables["full_name"] = fullName
 		defaultVariables["company"] = contact.Company
 		defaultVariables["country"] = contact.Country
 		defaultVariables["city"] = contact.City
