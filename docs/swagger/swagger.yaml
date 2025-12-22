@@ -2879,6 +2879,72 @@ paths:
       summary: Handle subscription webhooks
       tags:
       - subscriptions
+  /t/resubscribe:
+    get:
+      consumes:
+      - application/json
+      description: Resubscribe to an email list
+      parameters:
+      - description: Resubscribe email
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Resubscribed successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Missing email
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid email
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Resubscribe to email list
+  /t/unsubscribe:
+    get:
+      consumes:
+      - application/json
+      description: Unsubscribe from an email list
+      parameters:
+      - description: Unsubscribe token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Unsubscribed successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Missing token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Unsubscribe from email list
 securityDefinitions:
   ApiKeyAuth:
     in: header
