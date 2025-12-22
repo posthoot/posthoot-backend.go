@@ -464,6 +464,7 @@ type Campaign struct {
 	Processed         int                       `gorm:"not null;default:0" json:"processed"`
 	BatchDelay        time.Duration             `gorm:"not null;default:3600" json:"batchDelay"` // 1 hour delay between batches
 	Timezone          string                    `gorm:"not null;default:'America/New_York'" json:"timezone"`
+	Data              datatypes.JSON            `gorm:"type:jsonb;default:'{}'" json:"data" validate:"omitempty,json"`
 }
 type RateLimit struct {
 	Base

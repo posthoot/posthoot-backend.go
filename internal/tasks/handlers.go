@@ -193,6 +193,13 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		variables := make(map[string]string)
 		maps.Copy(variables, defaultVariables)
 
+		// read data from campaign.Data
+		data, err := utils.JSONToMap(campaign.Data)
+		if err != nil {
+			return h.logger.Error("❌ failed to convert campaign data to map: %w", err)
+		}
+		maps.Copy(variables, data)
+
 		parsedBody := utils.ReplaceVariables(htmlFromTemplate, variables, campaign.ID, cfg, true, campaign.Template.Category.Name == "Marketing")
 		parsedSubject := utils.ReplaceVariables(campaign.Template.Subject, variables, campaign.ID, cfg, false, false)
 
