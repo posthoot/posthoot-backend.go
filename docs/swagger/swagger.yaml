@@ -600,6 +600,10 @@ definitions:
         type: string
       cronExpression:
         type: string
+      data:
+        items:
+          type: integer
+        type: array
       description:
         type: string
       id:

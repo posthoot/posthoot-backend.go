@@ -2566,6 +2566,12 @@ const docTemplate = `{
                 "cronExpression": {
                     "type": "string"
                 },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "description": {
                     "type": "string"
                 },
