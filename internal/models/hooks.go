@@ -62,3 +62,40 @@ func (c *Campaign) AfterCreate(tx *gorm.DB) error {
 	events.Emit("campaign.created", c)
 	return nil
 }
+
+func (c *Contact) AfterCreate(tx *gorm.DB) error {
+	log.Info("Contact created %v", c)
+	events.Emit("contact.created", c)
+	if err := SyncSubscribersCount(tx, c.List); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Contact) AfterDelete(tx *gorm.DB) error {
+	log.Info("Contact deleted %v", c)
+	events.Emit("contact.deleted", c)
+	if err := SyncSubscribersCount(tx, c.List); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Contact) AfterUpdate(tx *gorm.DB) error {
+	log.Info("Contact updated %v", c)
+	events.Emit("contact.updated", c)
+	if err := SyncSubscribersCount(tx, c.List); err != nil {
+		return err
+	}
+	return nil
+}
+
+func SyncSubscribersCount(tx *gorm.DB, mailingList *MailingList) error {
+	count := int64(0)
+	err := tx.Model(mailingList).Where("list_id = ?", mailingList.ID).Where("status = ?", SubscriberStatusActive).Find(&Contact{}).Count(&count)
+	if err != nil {
+		return err.Error
+	}
+	mailingList.SubscribersCount = count
+	return tx.Model(mailingList).Update("subscribers_count", count).Error
+}
