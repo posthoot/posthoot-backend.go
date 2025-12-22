@@ -548,7 +548,7 @@ func IsValidUserRole(role UserRole) bool {
 
 func GetEmailByID(id string, db *gorm.DB) (*Email, error) {
 	var email Email
-	if err := db.Where("id = ?", id).Preload("SMTPConfig").First(&email).Error; err != nil {
+	if err := db.Where("id = ?", id).Preload("SMTPConfig").Preload("Contact").First(&email).Error; err != nil {
 		return nil, err
 	}
 	return &email, nil

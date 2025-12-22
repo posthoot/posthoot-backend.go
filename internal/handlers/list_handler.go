@@ -49,6 +49,11 @@ func (h *TrackingHandler) HandleEmailUnsubscribe(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Failed to get email")
 	}
 
+	// Check if contact exists
+	if email.Contact == nil {
+		return c.String(http.StatusInternalServerError, "Contact not found for this email")
+	}
+
 	// update the contact status
 	contact := email.Contact
 	contact.Status = models.SubscriberStatusUnsubscribed
