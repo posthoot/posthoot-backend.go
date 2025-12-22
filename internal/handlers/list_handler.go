@@ -3,6 +3,7 @@ package handlers
 import (
 	"kori/internal/config"
 	"kori/internal/models"
+	"kori/internal/templates"
 	"net/http"
 
 	"github.com/golang-jwt/jwt"
@@ -19,7 +20,6 @@ import (
 // @Failure 400 {object} map[string]string "Missing token"
 // @Failure 401 {object} map[string]string "Invalid token"
 // @Router /t/unsubscribe [get]
-
 func (h *TrackingHandler) HandleEmailUnsubscribe(c echo.Context) error {
 	// Extract token from query params
 	token := c.QueryParam("token")
@@ -69,5 +69,44 @@ func (h *TrackingHandler) HandleEmailUnsubscribe(c echo.Context) error {
 	}
 
 	// Return success page
-	return c.HTML(http.StatusOK, "<h1>Successfully Unsubscribed</h1><p>You have been removed from our mailing list.</p>")
+	return c.HTML(http.StatusOK, templates.UnsubscribeTemplate(email.Contact.Email, emailID))
+}
+
+// HandleEmailResubscribe handles resubscribe requests from email links
+// @Summary Resubscribe to email list
+// @Description Resubscribe to an email list
+// @Accept json
+// @Produce json
+// @Param email query string true "Resubscribe email"
+// @Success 200 {object} map[string]string "Resubscribed successfully"
+// @Failure 400 {object} map[string]string "Missing email"
+// @Failure 401 {object} map[string]string "Invalid email"
+// @Router /t/resubscribe [get]
+func (h *TrackingHandler) HandleEmailResubscribe(c echo.Context) error {
+	// Extract email from query params
+	email := c.QueryParam("id")
+	if email == "" {
+		return c.String(http.StatusBadRequest, "Missing email")
+	}
+
+	// Get the email
+	emailModel, err := models.GetEmailByID(email, h.db)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Failed to get email")
+	}
+
+	// update the contact status
+	contact := emailModel.Contact
+	contact.Status = models.SubscriberStatusActive
+	if err := h.db.Save(contact).Error; err != nil {
+		return c.String(http.StatusInternalServerError, "Failed to update contact status")
+	}
+
+	// Delete the email tracking entry
+	if err := h.db.Delete(&models.EmailTracking{}, "email_id = ? and event = ?", emailModel.ID, models.EmailTrackingEventUnsubscribe).Error; err != nil {
+		return c.String(http.StatusInternalServerError, "Failed to delete email tracking entry")
+	}
+
+	// Return success page
+	return c.HTML(http.StatusOK, templates.ResubscribeTemplate(emailModel.Contact.Email))
 }
