@@ -66,7 +66,7 @@ func (c *Campaign) AfterCreate(tx *gorm.DB) error {
 func (c *Contact) AfterCreate(tx *gorm.DB) error {
 	log.Info("Contact created %v", c)
 	events.Emit("contact.created", c)
-	if err := SyncSubscribersCount(tx, c.List); err != nil {
+	if err := SyncSubscribersCountByID(tx, c.ListID); err != nil {
 		return err
 	}
 	return nil
@@ -75,7 +75,7 @@ func (c *Contact) AfterCreate(tx *gorm.DB) error {
 func (c *Contact) AfterDelete(tx *gorm.DB) error {
 	log.Info("Contact deleted %v", c)
 	events.Emit("contact.deleted", c)
-	if err := SyncSubscribersCount(tx, c.List); err != nil {
+	if err := SyncSubscribersCountByID(tx, c.ListID); err != nil {
 		return err
 	}
 	return nil
@@ -84,18 +84,24 @@ func (c *Contact) AfterDelete(tx *gorm.DB) error {
 func (c *Contact) AfterUpdate(tx *gorm.DB) error {
 	log.Info("Contact updated %v", c)
 	events.Emit("contact.updated", c)
-	if err := SyncSubscribersCount(tx, c.List); err != nil {
+	if err := SyncSubscribersCountByID(tx, c.ListID); err != nil {
 		return err
 	}
 	return nil
 }
 
 func SyncSubscribersCount(tx *gorm.DB, mailingList *MailingList) error {
+	if mailingList == nil {
+		return nil
+	}
+	return SyncSubscribersCountByID(tx, mailingList.ID)
+}
+
+func SyncSubscribersCountByID(tx *gorm.DB, listID string) error {
 	count := int64(0)
-	err := tx.Model(mailingList).Where("list_id = ?", mailingList.ID).Where("status = ?", SubscriberStatusActive).Find(&Contact{}).Count(&count)
-	if err != nil {
+	err := tx.Model(&Contact{}).Where("list_id = ?", listID).Where("status = ?", SubscriberStatusActive).Count(&count)
+	if err.Error != nil {
 		return err.Error
 	}
-	mailingList.SubscribersCount = count
-	return tx.Model(mailingList).Update("subscribers_count", count).Error
+	return tx.Model(&MailingList{}).Where("id = ?", listID).Update("subscribers_count", count).Error
 }
