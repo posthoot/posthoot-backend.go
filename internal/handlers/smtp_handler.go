@@ -48,8 +48,8 @@ func (h *SMTPHandler) TestSMTPConnection(c echo.Context) error {
 	} else {
 		m.SetHeader("To", req.From)
 	}
-	m.SetHeader("Subject", "Test Email from Posthoot")
-	m.SetBody("text/html", "Hello, this is a test email from Posthoot!")
+	m.SetHeader("Subject", "Test Email from Xem")
+	m.SetBody("text/html", "Hello, this is a test email from Xem!")
 
 	// Create dialer with TLS config
 	d := gomail.NewDialer(req.Host, req.Port, req.Username, req.Password)
