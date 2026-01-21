@@ -243,14 +243,14 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 
 	// Get team details
 	team := &models.Team{}
-	if err := tx.First(team, invite.TeamID).Error; err != nil {
+	if err := tx.First(team, "id = ?", invite.TeamID).Error; err != nil {
 		tx.Rollback()
 		return log.Error("failed to get team details", err)
 	}
 
 	// Get inviter details
 	inviter := &models.User{}
-	if err := tx.First(inviter, invite.InviterID).Error; err != nil {
+	if err := tx.First(inviter, "id = ?", invite.InviterID).Error; err != nil {
 		tx.Rollback()
 		return log.Error("failed to get inviter details", err)
 	}
