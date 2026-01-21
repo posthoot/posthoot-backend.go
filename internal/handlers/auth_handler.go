@@ -614,6 +614,54 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 	return c.JSON(http.StatusCreated, map[string]string{"message": "Invitation sent successfully"})
 }
 
+// ResendInvite handles resending an invitation to a user
+
+// @Summary Resend an invitation to a user
+// @Description Resend an invitation to a user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param code path string true "Invitation code"
+// @Success 200 {object} map[string]string "Invitation resent successfully"
+// @Failure 400 {object} map[string]string "Invalid invitation"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/invite/resend/{code} [post]
+func (h *AuthHandler) ResendInvite(c echo.Context) error {
+	code := c.Param("code")
+
+	// 🔍 Find invitation
+	var invite models.TeamInvite
+	if err := h.db.Where("code = ? AND status = ? AND expires_at > ?",
+		code, "pending", time.Now()).First(&invite).Error; err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid or expired invitation"})
+	}
+
+	// 🔒 Get current user ID from context
+	userID := c.Get("userID").(string)
+
+	// 🔍 Check if user is the inviter
+	if invite.InviterID != userID {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "You are not authorized to resend this invitation"})
+	}
+
+	// 🔒 Generate new invite code
+	newCode, err := utils.GenerateRandomString(32)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate new invite code"})
+	}
+
+	// 💾 Save new invitation
+	invite.Code = newCode
+	if err := h.db.Save(&invite).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save new invitation"})
+	}
+
+	// 🔔 Send new invitation email
+	events.Emit("invite.resend", &invite)
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Invitation resent successfully"})
+}
+
 // AcceptInvite handles accepting team invitations
 // @Summary Accept a team invitation
 // @Description Accept an invitation to join a team
