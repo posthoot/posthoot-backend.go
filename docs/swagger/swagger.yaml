@@ -1163,6 +1163,9 @@ definitions:
       name:
         minLength: 2
         type: string
+      subscribersCount:
+        minimum: 0
+        type: integer
       team:
         $ref: '#/definitions/kori_internal_models.Team'
       teamId:
@@ -1171,6 +1174,7 @@ definitions:
         type: string
     required:
     - name
+    - subscribersCount
     - teamId
     type: object
   kori_internal_models.Model:
@@ -2319,6 +2323,40 @@ paths:
               type: string
             type: object
       summary: Invite a user to join a team
+      tags:
+      - auth
+  /auth/invite/{code}:
+    get:
+      consumes:
+      - application/json
+      description: Check if an invitation code is valid and not expired
+      parameters:
+      - description: Invitation code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invitation details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid or expired invitation
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Check invitation validity
       tags:
       - auth
   /auth/invite/{id}:

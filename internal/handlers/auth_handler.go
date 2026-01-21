@@ -693,6 +693,44 @@ func (h *AuthHandler) AcceptInvite(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "Invitation accepted successfully"})
 }
 
+// CheckInvite handles checking if an invitation code is valid
+// @Summary Check invitation validity
+// @Description Check if an invitation code is valid and not expired
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param code path string true "Invitation code"
+// @Success 200 {object} map[string]interface{} "Invitation details"
+// @Failure 400 {object} map[string]string "Invalid or expired invitation"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/invite/{code} [get]
+func (h *AuthHandler) CheckInvite(c echo.Context) error {
+	code := c.Param("code")
+	if code == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invitation code is required"})
+	}
+
+	// 🔍 Find invitation by code
+	var invite models.TeamInvite
+	if err := h.db.Preload("Team").Where("code = ? AND status = ? AND expires_at > ?",
+		code, models.InviteStatusPending, time.Now()).First(&invite).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid or expired invitation"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to check invitation"})
+	}
+
+	// Return invitation details (excluding sensitive information)
+	return c.JSON(http.StatusOK, map[string]any{
+		"valid":      true,
+		"email":      invite.Email,
+		"name":       invite.Name,
+		"role":       invite.Role,
+		"team_name":  invite.Team.Name,
+		"expires_at": invite.ExpiresAt,
+	})
+}
+
 // DeleteInvite handles deleting team invitations
 // @Summary Delete a team invitation
 // @Description Delete a pending team invitation

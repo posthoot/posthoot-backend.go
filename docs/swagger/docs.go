@@ -807,6 +807,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/invite/{code}": {
+            "get": {
+                "description": "Check if an invitation code is valid and not expired",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Check invitation validity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invitation details",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or expired invitation",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/invite/{id}": {
             "delete": {
                 "description": "Delete a pending team invitation",
@@ -3440,6 +3491,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "name",
+                "subscribersCount",
                 "teamId"
             ],
             "properties": {
@@ -3471,6 +3523,10 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "minLength": 2
+                },
+                "subscribersCount": {
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "team": {
                     "$ref": "#/definitions/kori_internal_models.Team"

@@ -126,7 +126,6 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 
 	for _, field := range exclude {
 		excludeFields[field] = true
-
 	}
 	// we also need to sort the fields based on the fields in the entity and the order of the sort query parameter
 	sort := ctx.QueryParam("sort")

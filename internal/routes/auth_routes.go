@@ -23,6 +23,7 @@ func SetupAuthRoutes(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	auth.POST("/login", authHandler.Login)
 	auth.GET("/google/callback", authHandler.GoogleAuthCallback)
 
+	auth.GET("/invite/:code", authHandler.CheckInvite)
 	auth.POST("/accept/:code", authHandler.AcceptInvite)
 	auth.POST("/password-reset", authHandler.RequestPasswordReset)
 	auth.POST("/password-reset/verify", authHandler.VerifyResetCode)
