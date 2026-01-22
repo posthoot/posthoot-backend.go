@@ -797,8 +797,7 @@ func (h *AuthHandler) DeleteInvite(c echo.Context) error {
 
 	// 🔍 Find and validate invitation
 	var invite models.TeamInvite
-	if err := h.db.Where("id = ? AND (inviter_id = ? OR email = ?)",
-		inviteID, userID, userID).First(&invite).Error; err != nil {
+	if err := h.db.Where("id = ? AND inviter_id = ?", inviteID, userID).First(&invite).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invitation not found"})
 	}
 
