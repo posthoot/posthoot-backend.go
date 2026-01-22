@@ -2394,6 +2394,41 @@ paths:
       summary: Delete a team invitation
       tags:
       - auth
+  /auth/invite/resend/{code}:
+    post:
+      consumes:
+      - application/json
+      description: Resend an invitation to a user
+      parameters:
+      - description: Invitation code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invitation resent successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid invitation
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Resend an invitation to a user
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:

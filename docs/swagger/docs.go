@@ -807,6 +807,59 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/invite/resend/{code}": {
+            "post": {
+                "description": "Resend an invitation to a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Resend an invitation to a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invitation resent successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid invitation",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/invite/{code}": {
             "get": {
                 "description": "Check if an invitation code is valid and not expired",
