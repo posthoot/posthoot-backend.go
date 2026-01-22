@@ -36,8 +36,8 @@ func SetupAuthRoutes(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 
 	// Invite user route (require admin permissions)
 	protectedAuth.POST("/invite", authHandler.InviteUser)
+	protectedAuth.DELETE("/invite/:id", authHandler.DeleteInvite)
 	protectedAuth.POST("/invite/resend/:code", authHandler.ResendInvite)
-	protectedAuth.DELETE("/invite/:code", authHandler.DeleteInvite)
 
 	// User management routes (require admin permissions)
 	// userManagement := protectedAuth.Group("/users")
