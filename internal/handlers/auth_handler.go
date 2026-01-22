@@ -607,10 +607,16 @@ func (h *AuthHandler) InviteUser(c echo.Context) error {
 		Name:      request.Name,
 	}
 
+	// delete previous invitation
+	if err := h.db.Where("email = ? AND team_id = ? AND status = ?", request.Email, teamID, models.InviteStatusPending).Delete(&models.TeamInvite{}).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete previous invitation"})
+	}
+
 	// 💾 Save invitation
 	if err := h.db.Create(&invite).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create invitation"})
 	}
+
 	return c.JSON(http.StatusCreated, map[string]string{"message": "Invitation sent successfully"})
 }
 
