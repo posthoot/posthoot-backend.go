@@ -638,7 +638,7 @@ func (h *AuthHandler) ResendInvite(c echo.Context) error {
 	// 🔍 Find invitation
 	var invite models.TeamInvite
 	if err := h.db.Where("code = ? AND status = ? AND expires_at > ?",
-		code, "pending", time.Now()).First(&invite).Error; err != nil {
+		code, models.InviteStatusPending, time.Now()).First(&invite).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid or expired invitation"})
 	}
 
@@ -706,7 +706,7 @@ func (h *AuthHandler) AcceptInvite(c echo.Context) error {
 	// 🔍 Find invitation
 	var invite models.TeamInvite
 	if err := h.db.Where("code = ? AND status = ? AND expires_at > ?",
-		code, "pending", time.Now()).First(&invite).Error; err != nil {
+		code, models.InviteStatusPending, time.Now()).First(&invite).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid or expired invitation"})
 	}
 
@@ -791,19 +791,19 @@ func (h *AuthHandler) CheckInvite(c echo.Context) error {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param id path string true "Invitation ID"
+// @Param code path string true "Invitation code"
 // @Success 200 {object} map[string]string "Invitation deleted successfully"
 // @Failure 400 {object} map[string]string "Invalid invitation"
 // @Failure 500 {object} map[string]string "Internal server error"
-// @Router /auth/invite/{id} [delete]
+// @Router /auth/invite/{code} [delete]
 func (h *AuthHandler) DeleteInvite(c echo.Context) error {
 	// 🔒 Get current user ID from context
 	userID := c.Get("userID").(string)
-	inviteID := c.Param("id")
+	inviteCode := c.Param("code")
 
 	// 🔍 Find and validate invitation
 	var invite models.TeamInvite
-	if err := h.db.Where("id = ? AND inviter_id = ?", inviteID, userID).First(&invite).Error; err != nil {
+	if err := h.db.Where("code = ? AND inviter_id = ?", inviteCode, userID).First(&invite).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invitation not found"})
 	}
 
@@ -865,7 +865,7 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 			// Check for pending team invitation first
 			var invite models.TeamInvite
 			inviteErr := tx.Where("email = ? AND status = ? AND expires_at > ?",
-				userData["email"], "pending", time.Now()).First(&invite).Error
+				userData["email"], models.InviteStatusPending, time.Now()).First(&invite).Error
 
 			var teamID string
 			var userRole models.UserRole
@@ -876,7 +876,7 @@ func (h *AuthHandler) GoogleAuthCallback(c echo.Context) error {
 				userRole = invite.Role
 
 				// Mark invitation as accepted
-				invite.Status = "accepted"
+				invite.Status = models.InviteStatusAccepted
 				if err := tx.Save(&invite).Error; err != nil {
 					tx.Rollback()
 					return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update invitation"})
