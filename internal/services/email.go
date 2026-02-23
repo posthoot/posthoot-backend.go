@@ -241,9 +241,9 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		return log.Error("failed to begin transaction", tx.Error)
 	}
 
-	// Get team details
+	// Get team details with settings
 	team := &models.Team{}
-	if err := tx.First(team, "id = ?", invite.TeamID).Error; err != nil {
+	if err := tx.Preload("Settings").First(team, "id = ?", invite.TeamID).Error; err != nil {
 		tx.Rollback()
 		return log.Error("failed to get team details", err)
 	}
@@ -257,7 +257,12 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 
 	var template *models.Template
 
-	if team.Settings[0].InviteTemplateID == "" {
+	inviteTemplateID := ""
+	if len(team.Settings) > 0 {
+		inviteTemplateID = team.Settings[0].InviteTemplateID
+	}
+
+	if inviteTemplateID == "" {
 		// Get invite template
 		template = &models.Template{}
 		if err := tx.Where("name = ? AND team_id = ?", "PLATFORM INVITE", invite.TeamID).First(template).Error; err != nil {
@@ -266,7 +271,7 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 		}
 	} else {
 		template = &models.Template{}
-		if err := tx.Where("id = ? AND team_id = ?", team.Settings[0].InviteTemplateID, invite.TeamID).First(template).Error; err != nil {
+		if err := tx.Where("id = ? AND team_id = ?", inviteTemplateID, invite.TeamID).First(template).Error; err != nil {
 			tx.Rollback()
 			return log.Error("failed to get invite template", err)
 		}
@@ -357,9 +362,14 @@ func sendWelcomeEmail(user *models.User) error {
 		return log.Error("failed to get mailing list", err)
 	}
 
+	welcomeTemplateID := ""
+	if len(team.Settings) > 0 {
+		welcomeTemplateID = team.Settings[0].WelcomeTemplateID
+	}
+
 	handler := &sendEmailHandlerBody{
 		teamId:       user.TeamID,
-		templateId:   team.Settings[0].WelcomeTemplateID,
+		templateId:   welcomeTemplateID,
 		to:           user.Email,
 		SMTPProvider: smtpConfig.ID,
 		categoryId:   "",
