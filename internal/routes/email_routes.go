@@ -4,7 +4,6 @@ import (
 	"kori/internal/api/middleware"
 	"kori/internal/config"
 	"kori/internal/handlers"
-	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -13,7 +12,11 @@ import (
 func SetupEMAILRoutes(e *echo.Echo, config *config.Config, db *gorm.DB) {
 	// Redirect singular to plural for consistency
 	e.POST("/api/v1/email", func(c echo.Context) error {
-		return c.Redirect(http.StatusMovedPermanently, "/api/v1/emails")
+		// Forward the request body to the plural endpoint
+		req := c.Request()
+		req.URL.Path = "/api/v1/emails"
+		e.ServeHTTP(c.Response(), req)
+		return nil
 	})
 
 	// Create EMAIL routes group
