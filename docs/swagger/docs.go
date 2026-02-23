@@ -909,9 +909,7 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/auth/invite/{id}": {
+            },
             "delete": {
                 "description": "Delete a pending team invitation",
                 "consumes": [
@@ -927,8 +925,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Invitation ID",
-                        "name": "id",
+                        "description": "Invitation code",
+                        "name": "code",
                         "in": "path",
                         "required": true
                     }

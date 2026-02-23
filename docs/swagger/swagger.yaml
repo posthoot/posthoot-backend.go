@@ -2326,6 +2326,40 @@ paths:
       tags:
       - auth
   /auth/invite/{code}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a pending team invitation
+      parameters:
+      - description: Invitation code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invitation deleted successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid invitation
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a team invitation
+      tags:
+      - auth
     get:
       consumes:
       - application/json
@@ -2357,41 +2391,6 @@ paths:
               type: string
             type: object
       summary: Check invitation validity
-      tags:
-      - auth
-  /auth/invite/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a pending team invitation
-      parameters:
-      - description: Invitation ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Invitation deleted successfully
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Invalid invitation
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Delete a team invitation
       tags:
       - auth
   /auth/invite/resend/{code}:
