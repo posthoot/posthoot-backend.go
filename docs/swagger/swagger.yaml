@@ -2793,7 +2793,7 @@ paths:
       summary: Update user details
       tags:
       - users
-  /email:
+  /emails:
     post:
       consumes:
       - application/json

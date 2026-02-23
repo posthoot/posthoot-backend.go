@@ -35,7 +35,7 @@ type SendEmailRequest struct {
 // @Security BearerAuth
 // @Security ApiKeyAuth
 // @Success 200 {object} map[string]string
-// @Router /email [post]
+// @Router /emails [post]
 func SendEmail(c echo.Context) error {
 	var req SendEmailRequest
 	if err := c.Bind(&req); err != nil {

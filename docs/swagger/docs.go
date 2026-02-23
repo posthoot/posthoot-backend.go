@@ -1516,7 +1516,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/email": {
+        "/emails": {
             "post": {
                 "security": [
                     {

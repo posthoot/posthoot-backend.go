@@ -4,12 +4,18 @@ import (
 	"kori/internal/api/middleware"
 	"kori/internal/config"
 	"kori/internal/handlers"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
 
 func SetupEMAILRoutes(e *echo.Echo, config *config.Config, db *gorm.DB) {
+	// Redirect singular to plural for consistency
+	e.POST("/api/v1/email", func(c echo.Context) error {
+		return c.Redirect(http.StatusMovedPermanently, "/api/v1/emails")
+	})
+
 	// Create EMAIL routes group
 	email := e.Group("/api/v1/emails")
 
@@ -29,4 +35,5 @@ func SetupEMAILRoutes(e *echo.Echo, config *config.Config, db *gorm.DB) {
 	// @Failure 500 {object} map[string]string "Internal server error"
 	// @Router /api/v1/emails [post]
 	email.POST("", handlers.SendEmail)
+
 }

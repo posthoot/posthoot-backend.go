@@ -33,17 +33,6 @@ func ValidateAPIKeyPermissions(ctx context.Context, db *gorm.DB, apiKeyID string
 		return fmt.Errorf("failed to get permissions: %w", err)
 	}
 
-	log.Info("Found %d permissions for API key", len(permissions))
-	for i, perm := range permissions {
-		if perm.ResourcePermission != nil && perm.ResourcePermission.Resource != nil {
-			log.Info("Permission %d: Resource=%s, Action=%s, Scope=%s", 
-				i, 
-				perm.ResourcePermission.Resource.Name, 
-				perm.ResourcePermission.Resource.Action,
-				perm.ResourcePermission.Scope)
-		}
-	}
-
 	// Check each required permission
 	for _, required := range requiredPermissions {
 		hasPermission := false
@@ -64,9 +53,6 @@ func ValidateAPIKeyPermissions(ctx context.Context, db *gorm.DB, apiKeyID string
 
 			// Check if the permission matches
 			if resource.Name == requiredResource {
-				log.Info("Checking permission: resource=%s, action=%s, requiredScope=%s", 
-					resource.Name, resource.Action, requiredScope)
-				
 				switch resource.Action {
 				case ScopeAdmin:
 					hasPermission = true
@@ -75,9 +61,6 @@ func ValidateAPIKeyPermissions(ctx context.Context, db *gorm.DB, apiKeyID string
 				case ScopeRead:
 					hasPermission = requiredScope == ScopeRead
 				}
-				
-				log.Info("Permission check result: hasPermission=%v", hasPermission)
-				
 				if hasPermission {
 					break
 				}
@@ -85,7 +68,6 @@ func ValidateAPIKeyPermissions(ctx context.Context, db *gorm.DB, apiKeyID string
 		}
 
 		if !hasPermission {
-			log.Info("Missing required permission: %s", required)
 			return echo.NewHTTPError(http.StatusForbidden, fmt.Sprintf("missing required permission: %s", required))
 		}
 	}
