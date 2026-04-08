@@ -72,7 +72,7 @@ func sendToDiscord(stats sql.DBStats) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Discord API returned status code: %d for message: %s", resp.StatusCode)
+		return fmt.Errorf("Discord API returned status code: %d", resp.StatusCode)
 	}
 
 	return nil

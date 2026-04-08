@@ -23,9 +23,9 @@ func UnsubscribeTemplate(email string, emailID string) string {
   align-items:center;
   justify-content:center;
   background:
-    radial-gradient(circle at 10% 0%, #22c55e22 0, transparent 55%),
-    radial-gradient(circle at 90% 100%, #0ea5e922 0, transparent 55%),
-    radial-gradient(circle at 0% 100%, #f9731620 0, transparent 55%),
+    radial-gradient(circle at 10%% 0%%, #22c55e22 0, transparent 55%%),
+    radial-gradient(circle at 90%% 100%%, #0ea5e922 0, transparent 55%%),
+    radial-gradient(circle at 0%% 100%%, #f9731620 0, transparent 55%%),
     #050816;
   font-family:'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color:#e5e7eb;
@@ -33,7 +33,7 @@ func UnsubscribeTemplate(email string, emailID string) string {
 ">
   <main aria-labelledby="title" style="
       position:relative;
-      width:100%;
+      width:100%%;
       max-width:480px;
       padding:28px 26px 26px;
       border-radius:22px;
@@ -48,7 +48,7 @@ func UnsubscribeTemplate(email string, emailID string) string {
         position:absolute;
         inset:-1px;
         border-radius:22px;
-        background:radial-gradient(circle at 0 0, rgba(148,163,184,0.45), transparent 55%);
+        background:radial-gradient(circle at 0 0, rgba(148,163,184,0.45), transparent 55%%);
         mix-blend-mode:screen;
         opacity:0.6;
         pointer-events:none;
@@ -91,7 +91,7 @@ func UnsubscribeTemplate(email string, emailID string) string {
         width:72px;
         height:72px;
         border-radius:999px;
-        background:radial-gradient(circle at 30% 20%, #ffffff33, transparent 55%);
+        background:radial-gradient(circle at 30%% 20%%, #ffffff33, transparent 55%%);
         border:1px solid rgba(34,197,94,0.6);
         display:flex;
         align-items:center;
