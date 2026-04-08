@@ -200,7 +200,7 @@ func finalizeConnection() error {
 	}
 
 	// Set connection pool settings
-	sqlDB.SetMaxOpenConns(100)                 // Maximum number of open connections to the database
+	sqlDB.SetMaxOpenConns(150)                 // Maximum number of open connections to the database
 	sqlDB.SetMaxIdleConns(10)                  // Maximum number of idle connections in the pool
 	sqlDB.SetConnMaxLifetime(time.Hour)        // Maximum amount of time a connection may be reused
 	sqlDB.SetConnMaxIdleTime(time.Minute * 30) // Maximum amount of time a connection may be idle
@@ -272,7 +272,47 @@ func runMigrations() error {
 		&models.Automation{},
 		&models.AutomationNode{},
 		&models.AutomationNodeEdge{},
+		&models.AutomationExecution{},
+		&models.AIOptimization{},
 		&models.LLMEmailWriterJob{},
+
+		// Segmentation models
+		&models.Segment{},
+		&models.SegmentContact{},
+
+		// Lead scoring models
+		&models.LeadScore{},
+		&models.ScoreActivity{},
+		&models.ScoreRule{},
+
+		// A/B testing models
+		&models.ABTest{},
+		&models.TestVariant{},
+		&models.TestResult{},
+		&models.VariantAssignment{},
+
+		// Goal tracking models
+		&models.AutomationGoal{},
+		&models.GoalConversion{},
+
+		// Bounce management models
+		&models.EmailBounce{},
+		&models.SuppressionList{},
+		&models.ComplaintReport{},
+		&models.BounceRule{},
+
+		// Form & Landing Page models
+		&models.Form{},
+		&models.FormField{},
+		&models.FormSubmission{},
+		&models.LandingPage{},
+		&models.FormABTest{},
+
+		// Send Time Optimization models
+		&models.ContactEngagementPattern{},
+		&models.EmailOpenEvent{},
+		&models.TeamSendTimeDefaults{},
+		&models.SendTimeQueue{},
 
 		// Subscription models
 		&models.Subscription{},
