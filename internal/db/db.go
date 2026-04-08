@@ -200,10 +200,10 @@ func finalizeConnection() error {
 	}
 
 	// Set connection pool settings
-	sqlDB.SetMaxOpenConns(150)                 // Maximum number of open connections to the database
-	sqlDB.SetMaxIdleConns(10)                  // Maximum number of idle connections in the pool
+	sqlDB.SetMaxOpenConns(100)                 // Maximum number of open connections to the database
+	sqlDB.SetMaxIdleConns(5)                  // Maximum number of idle connections in the pool
 	sqlDB.SetConnMaxLifetime(time.Hour)        // Maximum amount of time a connection may be reused
-	sqlDB.SetConnMaxIdleTime(time.Minute * 30) // Maximum amount of time a connection may be idle
+	sqlDB.SetConnMaxIdleTime(time.Minute * 15) // Maximum amount of time a connection may be idle
 
 	// Run migrations
 	if err := runMigrations(); err != nil {
