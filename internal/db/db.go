@@ -201,7 +201,7 @@ func finalizeConnection() error {
 
 	// Set connection pool settings
 	sqlDB.SetMaxOpenConns(100)                 // Maximum number of open connections to the database
-	sqlDB.SetMaxIdleConns(5)                  // Maximum number of idle connections in the pool
+	sqlDB.SetMaxIdleConns(5)                   // Maximum number of idle connections in the pool
 	sqlDB.SetConnMaxLifetime(time.Hour)        // Maximum amount of time a connection may be reused
 	sqlDB.SetConnMaxIdleTime(time.Minute * 15) // Maximum amount of time a connection may be idle
 
@@ -275,9 +275,6 @@ func runMigrations() error {
 		&models.LLMEmailWriterJob{},
 
 		// Subscription models
-		&models.Subscription{},
-		&models.Product{},
-		&models.ProductFeatureConfig{},
 
 		// IMAP models
 		&models.IMAPConfig{},
