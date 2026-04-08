@@ -10,15 +10,28 @@ BINARY_UNIX=$(BINARY_NAME)_unix
 # Build parameters
 BUILD_DIR=build
 MAIN_PATH=cmd/main.go
+LDFLAGS=-s -w
+BUILD_FLAGS=-trimpath -ldflags="$(LDFLAGS)"
 
-.PHONY: all build test clean run deps dev docs docs-serve docs-clean openapi
+# Detect number of CPUs for parallel builds
+NPROCS := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+
+.PHONY: all build build-fast build-all build-linux test test-fast clean run deps dev docs docs-serve docs-clean openapi helper
 
 all: test build
 
 build:
+	@echo "Building with $(NPROCS) CPU cores..."
+	$(GOBUILD) $(BUILD_FLAGS) -p $(NPROCS) -o $(BUILD_DIR)/$(BINARY_NAME) -v $(MAIN_PATH)
+
+build-fast:
+	@echo "Fast build (no optimizations)..."
 	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) -v $(MAIN_PATH)
 
 test:
+	$(GOTEST) -v -race -coverprofile=coverage.out ./...
+
+test-fast:
 	$(GOTEST) -v ./...
 
 clean:
@@ -56,10 +69,18 @@ openapi:
 
 # Cross compilation
 build-linux:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_UNIX) -v $(MAIN_PATH)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) $(BUILD_FLAGS) -p $(NPROCS) -o $(BUILD_DIR)/$(BINARY_UNIX) -v $(MAIN_PATH)
+
+build-all:
+	@echo "Building all binaries in parallel..."
+	@mkdir -p $(BUILD_DIR)
+	@$(GOBUILD) $(BUILD_FLAGS) -p $(NPROCS) -o $(BUILD_DIR)/posthoot $(MAIN_PATH) & \
+	$(GOBUILD) $(BUILD_FLAGS) -p $(NPROCS) -o $(BUILD_DIR)/helper cmd/helper/main.go & \
+	wait
+	@echo "✅ All binaries built successfully!"
 
 dev:
 	nodemon
 
 helper:
-	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_UNIX) -v cmd/helper/main.go
+	$(GOBUILD) $(BUILD_FLAGS) -p $(NPROCS) -o $(BUILD_DIR)/helper -v cmd/helper/main.go

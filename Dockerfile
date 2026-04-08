@@ -7,17 +7,22 @@ WORKDIR /app
 # Copy go mod and sum files
 COPY go.mod go.sum ./
 
-# Download dependencies
-RUN go mod download && go mod verify
+# Download dependencies with caching
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download && go mod verify
 
 # Copy the source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o build/posthoot cmd/main.go
+# Build the application with build cache
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/posthoot cmd/main.go
 
-# Build helper binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o build/helper cmd/helper/main.go
+# Build helper binary with build cache
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/helper cmd/helper/main.go
 
 # Use a minimal alpine image for the final stage
 FROM gcr.io/distroless/static-debian12:nonroot
