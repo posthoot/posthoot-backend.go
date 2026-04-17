@@ -25,21 +25,22 @@ var (
 )
 
 type sendEmailHandlerBody struct {
-	teamId       string
-	templateId   string
-	to           string
-	SMTPProvider string
-	categoryId   string
-	variables    map[string]string
-	subject      string
-	listId       string
-	campaignId   string
-	body         string
-	cc           string
-	bcc          string
-	replyTo      string
-	testMail     bool
-	sendAt       time.Time
+	teamId         string
+	templateId     string
+	to             string
+	SMTPProvider   string
+	categoryId     string
+	variables      map[string]string
+	subject        string
+	listId         string
+	campaignId     string
+	body           string
+	cc             string
+	bcc            string
+	replyTo        string
+	testMail       bool
+	sendAt         time.Time
+	isWelcomeEmail bool
 }
 
 func init() {
@@ -49,6 +50,7 @@ func init() {
 		cfg.Redis.Username,
 		cfg.Redis.Password,
 		cfg.Redis.DB,
+		cfg.Redis.UseTLS,
 	)
 
 	// Register event handlers
@@ -320,7 +322,7 @@ func sendTeamInviteEmail(invite *models.TeamInvite) error {
 	}
 
 	handler := &sendEmailHandlerBody{
-		teamId:       invite.TeamID,
+		teamId:       team.ID,
 		templateId:   template.ID,
 		to:           invite.Email,
 		SMTPProvider: smtpConfig.ID,
@@ -349,7 +351,7 @@ func sendWelcomeEmail(user *models.User) error {
 
 	// Get default SMTP config
 	smtpConfig := &models.SMTPConfig{}
-	if err := tx.Where("team_id = ?", user.TeamID).First(smtpConfig).Error; err != nil {
+	if err := tx.Where("team_id = ?", team.ID).First(smtpConfig).Error; err != nil {
 		tx.Rollback()
 		return log.Error("failed to get default smtp config", err)
 	}
@@ -368,19 +370,20 @@ func sendWelcomeEmail(user *models.User) error {
 	}
 
 	handler := &sendEmailHandlerBody{
-		teamId:       user.TeamID,
-		templateId:   welcomeTemplateID,
-		to:           user.Email,
-		SMTPProvider: smtpConfig.ID,
-		categoryId:   "",
-		variables:    map[string]string{"name": user.FirstName},
-		subject:      "Hey {{ name }} 👋🏻! We're glad to have you onboard 🎉",
-		listId:       mailingList.ID,
-		campaignId:   "",
-		body:         "",
-		cc:           "",
-		bcc:          "",
-		replyTo:      "",
+		teamId:         user.TeamID,
+		templateId:     welcomeTemplateID,
+		to:             user.Email,
+		SMTPProvider:   smtpConfig.ID,
+		categoryId:     "",
+		variables:      map[string]string{"name": user.FirstName},
+		subject:        "Hey {{ name }} 👋🏻! We're glad to have you onboard 🎉",
+		listId:         mailingList.ID,
+		campaignId:     "",
+		body:           "",
+		cc:             "",
+		bcc:            "",
+		replyTo:        "",
+		isWelcomeEmail: true,
 	}
 
 	err := sendEmail(handler)

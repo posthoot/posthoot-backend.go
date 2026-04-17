@@ -13,10 +13,14 @@ import (
 	"syscall"
 	"time"
 
+	"kori/internal/ai"
 	"kori/internal/api"
+	"kori/internal/automation"
+	"kori/internal/automation/processors"
 	"kori/internal/config"
 	"kori/internal/db"
 	"kori/internal/models"
+	"kori/internal/routes"
 	"kori/internal/services"
 	"kori/internal/tasks"
 	"kori/internal/utils/logger"
@@ -98,12 +102,75 @@ func main() {
 	// Initialize task handlers
 	taskHandler := tasks.NewTaskHandler(db_instance)
 
+	// Initialize task client for automation engine
+	taskClient := tasks.NewTaskClient(cfg.Redis.Addr, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.UseTLS)
+
+	// Initialize AI client if enabled
+	var aiClient ai.AIClient
+	if cfg.AI.Enabled {
+		if cfg.AI.Provider == "anthropic" {
+			aiClient = ai.NewAnthropicClient(cfg.AI.AnthropicAPIKey, cfg.AI.Model)
+			logger.Success("Initialized Anthropic AI client with model: %s", cfg.AI.Model)
+		} else {
+			logger.Warn("Unknown AI provider: %s, AI features will be disabled", cfg.AI.Provider)
+		}
+	}
+
+	// Initialize automation engine
+	automationEngine := automation.NewEngine(db_instance, taskClient)
+
+	// Register node processors
+	automationEngine.RegisterProcessor(processors.NewStartProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewEmailProcessor(db_instance, taskClient, cfg))
+	automationEngine.RegisterProcessor(processors.NewExitProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewWaitProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewConditionProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewAddToListProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewTagProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewWebhookProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewUpdateSubscriberProcessor(db_instance))
+
+	// Register segment processors
+	automationEngine.RegisterProcessor(processors.NewSegmentFilterProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewAddToSegmentProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewRemoveFromSegmentProcessor(db_instance))
+	logger.Success("Registered segment processors")
+
+	// Register lead scoring processors
+	automationEngine.RegisterProcessor(processors.NewScoreChangeProcessor(db_instance))
+	automationEngine.RegisterProcessor(processors.NewScoreThresholdProcessor(db_instance))
+	logger.Success("Registered lead scoring processors")
+
+	// Register A/B testing processors
+	automationEngine.RegisterProcessor(processors.NewABSplitProcessor(db_instance))
+	logger.Success("Registered A/B testing processors")
+
+	// Register goal tracking processors
+	automationEngine.RegisterProcessor(processors.NewGoalTrackProcessor(db_instance))
+	logger.Success("Registered goal tracking processors")
+
+	// Register AI decision processor if AI is enabled
+	if cfg.AI.Enabled && aiClient != nil {
+		automationEngine.RegisterProcessor(processors.NewAIDecisionProcessor(db_instance, aiClient, cfg))
+		logger.Success("Registered AI decision processor")
+	}
+
+	// Connect engine to task handler
+	taskHandler.SetAutomationEngine(automationEngine)
+
+	// Initialize trigger manager for event-based automations
+	triggerManager := automation.NewTriggerManager(db_instance, taskClient)
+	if err := triggerManager.Initialize(context.Background()); err != nil {
+		log.Fatalf("Failed to initialize trigger manager: %v", err)
+	}
+
 	// Initialize task server
 	taskServer := tasks.NewServer(
 		cfg.Redis.Addr,
 		cfg.Redis.Username,
 		cfg.Redis.Password,
 		cfg.Redis.DB,
+		cfg.Redis.UseTLS,
 		taskHandler,
 		logger,
 	)
@@ -137,6 +204,32 @@ func main() {
 
 	// Initialize API server
 	apiServer := api.NewServer(cfg, db_instance)
+
+	// Register automation routes
+	routes.SetupAutomationRoutes(apiServer.GetEcho(), db_instance, cfg, taskClient)
+
+	// Register segment routes
+	routes.SetupSegmentRoutes(apiServer.GetEcho(), db_instance, cfg.JWT.Secret)
+	logger.Success("Registered segment routes")
+
+	// Register lead scoring routes
+	routes.SetupLeadScoringRoutes(apiServer.GetEcho(), db_instance, cfg.JWT.Secret)
+	logger.Success("Registered lead scoring routes")
+
+	// Register A/B testing routes
+	routes.SetupABTestingRoutes(apiServer.GetEcho(), db_instance, cfg.JWT.Secret)
+	logger.Success("Registered A/B testing routes")
+
+	// Register goal tracking routes
+	routes.SetupGoalTrackingRoutes(apiServer.GetEcho(), db_instance, cfg.JWT.Secret)
+	logger.Success("Registered goal tracking routes")
+
+	// Register AI routes if enabled
+	if cfg.AI.Enabled && aiClient != nil {
+		routes.SetupAIRoutes(apiServer.GetEcho(), db_instance, cfg, aiClient)
+		logger.Success("Registered AI routes")
+	}
+
 	go func() {
 
 		// Initialize S3 service

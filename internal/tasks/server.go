@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"kori/internal/utils/logger"
 
@@ -16,14 +17,23 @@ type Server struct {
 }
 
 // NewServer creates a new task processing server
-func NewServer(redisAddr, username, password string, db int, handler *TaskHandler, logger *logger.Logger) *Server {
+func NewServer(redisAddr, username, password string, db int, useTLS bool, handler *TaskHandler, logger *logger.Logger) *Server {
+	redisOpt := asynq.RedisClientOpt{
+		Addr:     redisAddr,
+		Username: username,
+		Password: password,
+		DB:       db,
+	}
+
+	// Enable TLS if configured
+	if useTLS {
+		redisOpt.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+	}
+
 	server := asynq.NewServer(
-		asynq.RedisClientOpt{
-			Addr:     redisAddr,
-			Username: username,
-			Password: password,
-			DB:       db,
-		},
+		redisOpt,
 		asynq.Config{
 			// Specify how many concurrent workers to use
 			Concurrency: 10,
@@ -60,6 +70,7 @@ func (s *Server) Start(ctx context.Context) error {
 	// mux.HandleFunc(TaskTypeDomainCheck, s.handler.HandleDomainVerification)
 	mux.HandleFunc(TaskTypeContactImport, s.handler.HandleContactImport)
 	// mux.HandleFunc(TaskTypeLLMEmailWriter, s.handler.HandleLLMEmailWriter)
+	mux.HandleFunc(TaskTypeAutomationExecute, s.handler.HandleAutomationExecute)
 
 	s.logger.Info("starting task processing server concurrency %d queues %v", 10, map[string]int{
 		QueueCritical: 6,

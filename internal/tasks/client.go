@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,7 +35,7 @@ func (c *TaskClient) GetClient() *asynq.Client {
 }
 
 // NewTaskClient creates a new TaskClient with the given Redis configuration
-func NewTaskClient(redisAddr, username, password string, db int) *TaskClient {
+func NewTaskClient(redisAddr, username, password string, db int, useTLS bool) *TaskClient {
 	redisOpt := asynq.RedisClientOpt{
 		Addr:     redisAddr,
 		Username: username,
@@ -42,25 +43,29 @@ func NewTaskClient(redisAddr, username, password string, db int) *TaskClient {
 		DB:       db,
 	}
 
-	redisClient := redis.NewClient(
-		&redis.Options{
-			Addr:     redisAddr,
-			Username: username,
-			Password: password,
-			DB:       db,
-		},
-	)
+	redisOptions := &redis.Options{
+		Addr:     redisAddr,
+		Username: username,
+		Password: password,
+		DB:       db,
+	}
+
+	// Enable TLS if configured
+	if useTLS {
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		redisOpt.TLSConfig = tlsConfig
+		redisOptions.TLSConfig = tlsConfig
+	}
+
+	redisClient := redis.NewClient(redisOptions)
 
 	return &TaskClient{
-		client: asynq.NewClient(redisOpt),
-		redisOptions: &redis.Options{
-			Addr:     redisAddr,
-			Username: username,
-			Password: password,
-			DB:       db,
-		},
-		redisClient: redisClient,
-		logger:      logger.New("TASKS"),
+		client:       asynq.NewClient(redisOpt),
+		redisOptions: redisOptions,
+		redisClient:  redisClient,
+		logger:       logger.New("TASKS"),
 	}
 }
 
@@ -297,5 +302,35 @@ func (c *TaskClient) EnqueueLLMEmailWriterTask(ctx context.Context, task LLMEmai
 
 	c.logger.Info("Enqueued LLM email writer task [%s] in queue %s for email %s, template %s and model %s",
 		info.ID, info.Queue, task.EmailID, task.TemplateID, task.ModelID)
+	return nil
+}
+
+// EnqueueAutomationTask enqueues an automation execution task
+func (c *TaskClient) EnqueueAutomationTask(ctx context.Context, task AutomationExecuteTask, processIn time.Duration) error {
+	payload, err := json.Marshal(task)
+	if err != nil {
+		return fmt.Errorf("failed to marshal automation task: %w", err)
+	}
+
+	opts := []asynq.Option{
+		asynq.Queue(QueueDefault),
+		asynq.Timeout(TimeoutLong),
+		asynq.MaxRetry(RetryDefault),
+	}
+
+	if processIn > 0 {
+		opts = append(opts, asynq.ProcessIn(processIn))
+	}
+
+	info, err := c.client.EnqueueContext(ctx,
+		asynq.NewTask(TaskTypeAutomationExecute, payload),
+		opts...,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue automation task: %w", err)
+	}
+
+	c.logger.Info("Enqueued automation task [%s] in queue %s for automation %s and contact %s",
+		info.ID, info.Queue, task.AutomationID, task.ContactID)
 	return nil
 }

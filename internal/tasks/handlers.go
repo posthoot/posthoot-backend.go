@@ -30,6 +30,7 @@ type TaskHandler struct {
 	mailHandler    *utils.EmailHandler
 	taskClient     *TaskClient
 	storageHandler *utils.StorageHandler
+	engine         interface{} // Will be set to *automation.Engine to avoid circular dependency
 }
 
 // NewTaskHandler creates a new TaskHandler
@@ -38,9 +39,14 @@ func NewTaskHandler(db *gorm.DB) *TaskHandler {
 		db:             db,
 		logger:         logger.New("task_handler"),
 		mailHandler:    utils.NewEmailHandler(5), // Rate limit of 5 emails per second
-		taskClient:     NewTaskClient(cfg.Redis.Addr, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB),
+		taskClient:     NewTaskClient(cfg.Redis.Addr, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.UseTLS),
 		storageHandler: utils.NewStorageHandler(),
 	}
+}
+
+// SetAutomationEngine sets the automation engine (called from main.go)
+func (h *TaskHandler) SetAutomationEngine(engine interface{}) {
+	h.engine = engine
 }
 
 // HandleEmailSend processes an email sending task
@@ -464,5 +470,36 @@ func (h *TaskHandler) HandleLLMEmailWriter(ctx context.Context, t *asynq.Task) e
 	h.logger.Info("processing LLM email writer task %s with template %s and model %s and attempt %d", task.EmailID, task.TemplateID, task.ModelID, task.AttemptNum)
 
 	// TODO: Implement LLM email generation logic
+	return nil
+}
+
+// HandleAutomationExecute processes an automation execution task
+func (h *TaskHandler) HandleAutomationExecute(ctx context.Context, t *asynq.Task) error {
+	var task AutomationExecuteTask
+	if err := json.Unmarshal(t.Payload(), &task); err != nil {
+		return fmt.Errorf("failed to unmarshal automation execute task: %w", asynq.SkipRetry)
+	}
+
+	h.logger.Info("🤖 Processing automation execution task for automation %s, contact %s", task.AutomationID, task.ContactID)
+
+	// Execute the automation using the engine
+	// The engine is set via SetAutomationEngine from main.go
+	if h.engine != nil {
+		// Type assert to get the Execute method
+		type AutomationEngine interface {
+			Execute(ctx context.Context, automationID, contactID string, triggerData map[string]interface{}, currentNodeID string) error
+		}
+
+		if engine, ok := h.engine.(AutomationEngine); ok {
+			if err := engine.Execute(ctx, task.AutomationID, task.ContactID, task.TriggerData, task.CurrentNodeID); err != nil {
+				h.logger.Error("❌ Automation execution failed: %v", err)
+				return fmt.Errorf("automation execution failed: %w", err)
+			}
+			h.logger.Success("✅ Automation execution completed successfully")
+			return nil
+		}
+	}
+
+	h.logger.Warn("⚠️  Automation engine not initialized, skipping execution")
 	return nil
 }

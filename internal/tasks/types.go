@@ -27,6 +27,10 @@ const (
 	// LLM related tasks
 	TaskTypeLLMEmailWriter = "llm:email_writer"
 
+	// Automation related tasks
+	TaskTypeAutomationExecute = "automation:execute"
+	TaskTypeAutomationNode    = "automation:node"
+
 	// Queue related tasks
 	TaskTypeQueueConfig = "queue:config"
 )
@@ -108,4 +112,11 @@ type LLMEmailWriterTask struct {
 	Parameters  map[string]interface{} `json:"parameters,omitempty"`
 	AttemptNum  int                    `json:"attempt_num"`
 	LastAttempt time.Time              `json:"last_attempt,omitempty"`
+}
+
+type AutomationExecuteTask struct {
+	AutomationID  string                 `json:"automation_id"`
+	ContactID     string                 `json:"contact_id"`
+	TriggerData   map[string]interface{} `json:"trigger_data"`
+	CurrentNodeID string                 `json:"current_node_id"` // For resuming from WAIT
 }
