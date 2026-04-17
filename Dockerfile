@@ -8,21 +8,16 @@ WORKDIR /app
 COPY go.mod go.sum ./
 
 # Download dependencies with caching
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download && go mod verify
+RUN go mod download && go mod verify
 
 # Copy the source code
 COPY . .
 
 # Build the application with build cache
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/posthoot cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/posthoot cmd/main.go
 
 # Build helper binary with build cache
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/helper cmd/helper/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/helper cmd/helper/main.go
 
 # Use a minimal alpine image for the final stage
 FROM gcr.io/distroless/static-debian12:nonroot
@@ -41,7 +36,7 @@ COPY --chmod=755 --from=builder /app/public/build-info.txt /app/public/build-inf
 # Destination: /app/internal/models/seeder/airley/templates.json
 COPY --chmod=755 --from=builder /app/internal/models/seeder/airley/templates.json /app/internal/models/seeder/airley/
 
-# Copy all initial setup seeder files for database initialization 
+# Copy all initial setup seeder files for database initialization
 # Source: /app/internal/models/seeder/initial-setup/*
 # Destination: /app/internal/models/seeder/initial-setup/
 COPY --chmod=755 --from=builder /app/internal/models/seeder/initial-setup/* /app/internal/models/seeder/initial-setup/
