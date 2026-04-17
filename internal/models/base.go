@@ -34,6 +34,7 @@ type SubscriberStatus string
 type TrackingType string
 type SMTPProvider string
 type NodeType string
+type ExecutionStatus string
 
 // Campaign status constants
 const (
@@ -118,6 +119,8 @@ const (
 	NodeTypeUnsubscribe      NodeType = "UNSUBSCRIBE"
 	NodeTypeCustomCode       NodeType = "CUSTOM_CODE"
 	NodeTypeExit             NodeType = "EXIT"
+	NodeTypeAIDecision       NodeType = "AI_DECISION"
+	NodeTypeAISuggest        NodeType = "AI_SUGGEST"
 )
 
 type UserRole string
@@ -169,4 +172,13 @@ const (
 	EmailTrackingEventBounce      EmailTrackingEvent = "bounce"
 	EmailTrackingEventComplaint   EmailTrackingEvent = "complaint"
 	EmailTrackingEventUnsubscribe EmailTrackingEvent = "unsubscribe"
+)
+
+// Execution status constants
+const (
+	ExecutionStatusRunning   ExecutionStatus = "RUNNING"
+	ExecutionStatusCompleted ExecutionStatus = "COMPLETED"
+	ExecutionStatusFailed    ExecutionStatus = "FAILED"
+	ExecutionStatusPaused    ExecutionStatus = "PAUSED"
+	ExecutionStatusWaiting   ExecutionStatus = "WAITING"
 )

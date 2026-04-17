@@ -1,7 +1,7 @@
-version: '3.8'
-
 services:
   posthoot_redis:
+    # Use Redis or Valkey (both supported - same protocol)
+    # For Valkey: image: valkey/valkey:7-alpine
     image: redis:7-alpine
     volumes:
       - posthoot_redis_data:/data
@@ -69,6 +69,9 @@ services:
     environment:
       - SERVER_HOST=0.0.0.0  # Ensure the service is reachable within Docker
       - SERVER_PORT=9001
+      - REDIS_HOST=posthoot_redis  # Override to use local Redis container
+      - REDIS_PASSWORD=  # Local Redis has no password
+      - REDIS_USERNAME=  # Local Redis has no username
     logging:
       driver: "json-file"
       options:
@@ -76,7 +79,9 @@ services:
         max-file: "3"
 
   asynqmon:
+    # Task queue monitoring - works with both Redis and Valkey
     image: hibiken/asynqmon
+    platform: linux/amd64  # Force amd64 for ARM64 compatibility
     environment:
       - REDIS_ADDR=posthoot_redis:6379
     networks:

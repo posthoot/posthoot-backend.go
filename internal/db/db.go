@@ -272,7 +272,47 @@ func runMigrations() error {
 		&models.Automation{},
 		&models.AutomationNode{},
 		&models.AutomationNodeEdge{},
+		&models.AutomationExecution{},
+		&models.AIOptimization{},
 		&models.LLMEmailWriterJob{},
+
+		// Segmentation models
+		&models.Segment{},
+		&models.SegmentContact{},
+
+		// Lead scoring models
+		&models.LeadScore{},
+		&models.ScoreActivity{},
+		&models.ScoreRule{},
+
+		// A/B testing models
+		&models.ABTest{},
+		&models.TestVariant{},
+		&models.TestResult{},
+		&models.VariantAssignment{},
+
+		// Goal tracking models
+		&models.AutomationGoal{},
+		&models.GoalConversion{},
+
+		// Bounce management models
+		&models.EmailBounce{},
+		&models.SuppressionList{},
+		&models.ComplaintReport{},
+		&models.BounceRule{},
+
+		// Form & Landing Page models
+		&models.Form{},
+		&models.FormField{},
+		&models.FormSubmission{},
+		&models.LandingPage{},
+		&models.FormABTest{},
+
+		// Send Time Optimization models
+		&models.ContactEngagementPattern{},
+		&models.EmailOpenEvent{},
+		&models.TeamSendTimeDefaults{},
+		&models.SendTimeQueue{},
 
 		// Subscription models
 

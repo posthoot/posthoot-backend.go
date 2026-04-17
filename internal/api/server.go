@@ -86,17 +86,17 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		log.Success("Successfully created super admin")
 	}
 
-	// Initialize Redis client for rate limiting
+	// Initialize Redis/Valkey client for rate limiting
 	redisClient, redisErr := utils.NewRedisClient(cfg)
 	if redisErr != nil {
-		log.Warn("Warning: Failed to initialize Redis client for rate limiting: %v", redisErr)
-		// Fall back to basic rate limiting without Redis
+		log.Warn("Warning: Failed to initialize Redis/Valkey client for rate limiting: %v", redisErr)
+		// Fall back to basic rate limiting without Redis/Valkey
 		e.Use(echomiddleware.RateLimiter(echomiddleware.NewRateLimiterMemoryStore(rate.Limit(20))))
 	} else {
-		// Configure advanced rate limiting with Redis
+		// Configure advanced rate limiting with Redis/Valkey
 		rateLimitConfig := middleware.CreateDefaultRateLimitConfig(redisClient.Client)
 		e.Use(middleware.RateLimiter(rateLimitConfig))
-		log.Success("Successfully configured rate limiting with Redis")
+		log.Success("Successfully configured rate limiting with %s", redisClient.Type)
 	}
 
 	// Create a new GORM integrator
@@ -156,6 +156,10 @@ func (s *Server) Start() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	return s.echo.Shutdown(ctx)
+}
+
+func (s *Server) GetEcho() *echo.Echo {
+	return s.echo
 }
 
 // Health check endpoint

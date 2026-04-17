@@ -98,7 +98,7 @@ events.Emit("email.sent", emailData)
 
 ### Prerequisites
 
-You'll need Go 1.21+, PostgreSQL 14+, and Redis for rate limiting and caching.
+You'll need Go 1.21+, PostgreSQL 14+, and Redis (or Valkey) for rate limiting and caching.
 
 ### Environment Variables
 
@@ -126,11 +126,12 @@ STORAGE_BASE_PATH=./storage
 WORKER_CONCURRENCY=5
 WORKER_QUEUE_SIZE=100
 
-# Redis Configuration
+# Redis/Valkey Configuration (both supported - same protocol)
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=kori_password
 REDIS_DB=0
+REDIS_TYPE=redis  # Optional: "redis" or "valkey" for logging
 
 # Super Admin Configuration (First Run)
 SUPERADMIN_EMAIL=admin@example.com

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"kori/internal/events"
 	"kori/internal/utils/crypto"
+	"os"
 	"strings"
 	"time"
 
@@ -60,9 +61,11 @@ func (t *Team) AfterCreate(tx *gorm.DB) error {
 		return err
 	}
 
-	// Load initial data
-	if err := LoadInitialData(tx, t.ID); err != nil {
-		return err
+	// Load initial data (skip in test mode)
+	if os.Getenv("TEST_MODE") != "true" {
+		if err := LoadInitialData(tx, t.ID); err != nil {
+			return err
+		}
 	}
 
 	// Emit team created event
@@ -535,6 +538,34 @@ type AutomationNodeEdge struct {
 	Target       *AutomationNode `json:"target,omitempty"`
 	Label        string          `json:"label"`
 	Animated     bool            `gorm:"not null;default:true" json:"animated"`
+}
+
+type AutomationExecution struct {
+	Base
+	AutomationID  string          `gorm:"type:uuid;not null" json:"automationId"`
+	Automation    *Automation     `json:"automation,omitempty"`
+	ContactID     string          `gorm:"type:uuid;not null" json:"contactId"`
+	Contact       *Contact        `json:"contact,omitempty"`
+	Status        ExecutionStatus `gorm:"not null;default:'RUNNING'" json:"status"`
+	CurrentNodeID string          `gorm:"type:uuid" json:"currentNodeId"`
+	CurrentNode   *AutomationNode `json:"currentNode,omitempty"`
+	ExecutionLog  datatypes.JSON  `gorm:"type:jsonb;default:'[]'" json:"executionLog"`
+	Variables     datatypes.JSON  `gorm:"type:jsonb;default:'{}'" json:"variables"`
+	StartedAt     time.Time       `json:"startedAt"`
+	CompletedAt   time.Time       `json:"completedAt"`
+	Error         string          `json:"error"`
+	TriggerType   string          `json:"triggerType"`
+	TriggerData   datatypes.JSON  `gorm:"type:jsonb;default:'{}'" json:"triggerData"`
+}
+
+type AIOptimization struct {
+	Base
+	AutomationID  string         `gorm:"type:uuid;not null" json:"automationId"`
+	Automation    *Automation    `json:"automation,omitempty"`
+	Suggestions   datatypes.JSON `gorm:"type:jsonb" json:"suggestions"`
+	Applied       bool           `gorm:"not null;default:false" json:"applied"`
+	AppliedAt     time.Time      `json:"appliedAt"`
+	ImpactMetrics datatypes.JSON `gorm:"type:jsonb" json:"impactMetrics"`
 }
 
 // IsValidUserRole checks if a given role is valid
