@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"strconv"
 	"time"
@@ -11,14 +12,22 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// RedisClient wraps the Redis client with additional functionality
+// RedisClient wraps the Redis/Valkey client with additional functionality
+// Works with both Redis and Valkey (Redis-compatible)
 type RedisClient struct {
 	*redis.Client
+	Type string // "redis" or "valkey"
 }
 
-// NewRedisClient creates a new Redis client
+// NewRedisClient creates a new Redis/Valkey client
+// Both Redis and Valkey use the same wire protocol and are fully compatible
 func NewRedisClient(cfg *config.Config) (*RedisClient, error) {
-	client := redis.NewClient(&redis.Options{
+	clientType := cfg.Redis.Type
+	if clientType == "" {
+		clientType = "redis" // default
+	}
+
+	opts := &redis.Options{
 		Addr:     cfg.Redis.Addr,
 		Password: cfg.Redis.Password,
 		Username: cfg.Redis.Username,
@@ -37,17 +46,29 @@ func NewRedisClient(cfg *config.Config) (*RedisClient, error) {
 		MaxRetries:      3,
 		MinRetryBackoff: 8 * time.Millisecond,
 		MaxRetryBackoff: 512 * time.Millisecond,
-	})
+	}
+
+	// Enable TLS if configured (required for ElastiCache Serverless)
+	if cfg.Redis.UseTLS {
+		opts.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+	}
+
+	client := redis.NewClient(opts)
 
 	// Test the connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+		return nil, fmt.Errorf("failed to connect to %s: %w", clientType, err)
 	}
 
-	return &RedisClient{Client: client}, nil
+	return &RedisClient{
+		Client: client,
+		Type:   clientType,
+	}, nil
 }
 
 // Close closes the Redis client

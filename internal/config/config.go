@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -19,8 +21,10 @@ type Config struct {
 	S3       S3Config
 	Crypto   CryptoConfig
 	SMTP     SMTPConfig
-	Monitor  MonitorConfig
-	Airley   AirleyConfig
+	Monitor    MonitorConfig
+	Airley     AirleyConfig
+	AI         AIConfig
+	Automation AutomationConfig
 }
 
 type CryptoConfig struct {
@@ -81,6 +85,8 @@ type RedisConfig struct {
 	Password string
 	Username string
 	DB       int
+	Type     string // "redis" or "valkey"
+	UseTLS   bool
 }
 
 type MonitorConfig struct {
@@ -89,6 +95,21 @@ type MonitorConfig struct {
 
 type AirleyConfig struct {
 	Enabled bool
+}
+
+type AIConfig struct {
+	Enabled         bool
+	Provider        string // "anthropic", "openai"
+	AnthropicAPIKey string
+	Model           string // "claude-4-opus", "claude-4-sonnet"
+	AutoOptimize    bool
+	MaxTokens       int
+}
+
+type AutomationConfig struct {
+	MaxExecutionsPerMinute int
+	ExecutionTimeout       int // in seconds
+	EnableEventTriggers    bool
 }
 
 var (
@@ -141,12 +162,7 @@ func Load() (*Config, error) {
 			Concurrency: getEnvAsInt("WORKER_CONCURRENCY", 5),
 			QueueSize:   getEnvAsInt("WORKER_QUEUE_SIZE", 100),
 		},
-		Redis: RedisConfig{
-			Addr:     fmt.Sprintf("%s:%d", getEnv("REDIS_HOST", "localhost"), getEnvAsInt("REDIS_PORT", 6379)),
-			Password: getEnv("REDIS_PASSWORD", ""),
-			Username: getEnv("REDIS_USERNAME", ""),
-			DB:       getEnvAsInt("REDIS_DB", 0),
-		},
+		Redis: parseRedisConfig(),
 		Crypto: CryptoConfig{
 			PrivateKey: getEnv("PRIVATE_KEY", ""),
 		},
@@ -163,6 +179,19 @@ func Load() (*Config, error) {
 		},
 		Airley: AirleyConfig{
 			Enabled: getEnvAsBool("AIRLEY_ENABLED", false),
+		},
+		AI: AIConfig{
+			Enabled:         getEnvAsBool("AI_ENABLED", false),
+			Provider:        getEnv("AI_PROVIDER", "anthropic"),
+			AnthropicAPIKey: getEnv("ANTHROPIC_API_KEY", ""),
+			Model:           getEnv("AI_MODEL", "claude-4-sonnet"),
+			AutoOptimize:    getEnvAsBool("AI_AUTO_OPTIMIZE", false),
+			MaxTokens:       getEnvAsInt("AI_MAX_TOKENS", 4096),
+		},
+		Automation: AutomationConfig{
+			MaxExecutionsPerMinute: getEnvAsInt("AUTOMATION_MAX_EXECUTIONS_PER_MINUTE", 100),
+			ExecutionTimeout:       getEnvAsInt("AUTOMATION_EXECUTION_TIMEOUT", 1800),
+			EnableEventTriggers:    getEnvAsBool("AUTOMATION_ENABLE_EVENT_TRIGGERS", true),
 		},
 	}
 
@@ -190,6 +219,66 @@ func getEnvAsBool(key string, defaultValue bool) bool {
 		return value == "true"
 	}
 	return defaultValue
+}
+
+// parseRedisConfig parses Redis configuration from REDIS_URL or individual env vars
+func parseRedisConfig() RedisConfig {
+	// Try REDIS_URL first (supports redis://, rediss://, valkey://, valkeys://)
+	if redisURL := getEnv("REDIS_URL", ""); redisURL != "" {
+		if parsed, err := url.Parse(redisURL); err == nil {
+			config := RedisConfig{
+				Type: "redis", // default
+			}
+
+			// Determine type and TLS from scheme
+			scheme := strings.ToLower(parsed.Scheme)
+			switch scheme {
+			case "rediss", "valkeys":
+				config.UseTLS = true
+				if scheme == "valkeys" {
+					config.Type = "valkey"
+				}
+			case "redis":
+				config.UseTLS = false
+			case "valkey":
+				config.UseTLS = false
+				config.Type = "valkey"
+			}
+
+			// Get host and port
+			config.Addr = parsed.Host
+			if parsed.Port() == "" {
+				config.Addr = fmt.Sprintf("%s:6379", parsed.Hostname())
+			}
+
+			// Get credentials
+			if parsed.User != nil {
+				config.Username = parsed.User.Username()
+				if password, ok := parsed.User.Password(); ok {
+					config.Password = password
+				}
+			}
+
+			// Get DB from path (e.g., /0, /1)
+			if parsed.Path != "" && len(parsed.Path) > 1 {
+				if db, err := strconv.Atoi(strings.TrimPrefix(parsed.Path, "/")); err == nil {
+					config.DB = db
+				}
+			}
+
+			return config
+		}
+	}
+
+	// Fall back to individual env vars
+	return RedisConfig{
+		Addr:     fmt.Sprintf("%s:%d", getEnv("REDIS_HOST", "localhost"), getEnvAsInt("REDIS_PORT", 6379)),
+		Password: getEnv("REDIS_PASSWORD", ""),
+		Username: getEnv("REDIS_USERNAME", ""),
+		DB:       getEnvAsInt("REDIS_DB", 0),
+		Type:     getEnv("REDIS_TYPE", "redis"),
+		UseTLS:   getEnvAsBool("REDIS_USE_TLS", false),
+	}
 }
 
 func (c *Config) Save(path string) error {
