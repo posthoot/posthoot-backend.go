@@ -4,6 +4,7 @@ import (
 	"context"
 	"kori/docs/swagger"
 	"kori/internal/handlers"
+	"kori/internal/keys"
 	"kori/internal/models/seeder/airley"
 	"kori/internal/utils/crypto"
 	"log"
@@ -52,6 +53,12 @@ func main() {
 		if err := godotenv.Load(); err != nil {
 			log.Fatalf("Failed to load environment variables: %v", err)
 		}
+	}
+
+	_, err := keys.NewInfisicalSecrets(true)
+
+	if err != nil {
+		log.Fatalf("Failed to initialize infisical secrets: %v", err)
 	}
 
 	// Load configuration
