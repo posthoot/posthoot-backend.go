@@ -59,11 +59,7 @@ func main() {
 		}
 	}
 
-	_, err := keys.NewInfisicalSecrets(os.Getenv("ENABLE_INFISICAL") == "true")
-
-	if err != nil {
-		log.Fatalf("Failed to initialize infisical secrets: %v", err)
-	}
+	_, err := keys.NewInfisicalSecrets(os.Getenv("INFISICAL_CLIENT_SECRET") != "")
 
 	// Load configuration
 	cfg, err := config.Load()
