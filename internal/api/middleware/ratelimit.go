@@ -134,6 +134,12 @@ func RateLimiter(config RateLimitConfig) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			// Skip rate limiting for health check endpoints
+			path := c.Request().URL.Path
+			if path == "/health" || path == "/api/v1/health" {
+				return next(c)
+			}
+
 			// Get client identifier (IP address or user ID)
 			clientID := getClientID(c)
 
