@@ -19,10 +19,6 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-var (
-	cfg, _ = config.Load()
-)
-
 // TaskHandler handles task processing with improved error handling and logging
 type TaskHandler struct {
 	db             *gorm.DB
@@ -30,17 +26,19 @@ type TaskHandler struct {
 	mailHandler    *utils.EmailHandler
 	taskClient     *TaskClient
 	storageHandler *utils.StorageHandler
+	cfg            *config.Config
 	engine         interface{} // Will be set to *automation.Engine to avoid circular dependency
 }
 
 // NewTaskHandler creates a new TaskHandler
-func NewTaskHandler(db *gorm.DB) *TaskHandler {
+func NewTaskHandler(db *gorm.DB, cfg *config.Config) *TaskHandler {
 	return &TaskHandler{
 		db:             db,
 		logger:         logger.New("task_handler"),
 		mailHandler:    utils.NewEmailHandler(5), // Rate limit of 5 emails per second
 		taskClient:     NewTaskClient(cfg.Redis.Addr, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.UseTLS),
 		storageHandler: utils.NewStorageHandler(),
+		cfg:            cfg,
 	}
 }
 
@@ -209,8 +207,8 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		}
 		maps.Copy(variables, data)
 
-		parsedBody := utils.ReplaceVariables(htmlFromTemplate, variables, campaign.ID, cfg, true, campaign.Template.Category.Name == "Marketing")
-		parsedSubject := utils.ReplaceVariables(campaign.Template.Subject, variables, campaign.ID, cfg, false, false)
+		parsedBody := utils.ReplaceVariables(htmlFromTemplate, variables, campaign.ID, h.cfg, true, campaign.Template.Category.Name == "Marketing")
+		parsedSubject := utils.ReplaceVariables(campaign.Template.Subject, variables, campaign.ID, h.cfg, false, false)
 
 		parsedSubject, err = base64.DecodeFromBase64(parsedSubject)
 		if err != nil {

@@ -12,15 +12,15 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	JWT      JWTConfig
-	Storage  StorageConfig
-	Worker   WorkerConfig
-	Redis    RedisConfig
-	S3       S3Config
-	Crypto   CryptoConfig
-	SMTP     SMTPConfig
+	Server     ServerConfig
+	Database   DatabaseConfig
+	JWT        JWTConfig
+	Storage    StorageConfig
+	Worker     WorkerConfig
+	Redis      RedisConfig
+	S3         S3Config
+	Crypto     CryptoConfig
+	SMTP       SMTPConfig
 	Monitor    MonitorConfig
 	Airley     AirleyConfig
 	AI         AIConfig

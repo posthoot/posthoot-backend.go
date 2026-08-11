@@ -67,6 +67,8 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
+	services.Initialize(cfg)
+
 	// Initialize keys
 	if err := crypto.InitializeKeys(
 		cfg.Crypto.PrivateKey); err != nil {
@@ -96,7 +98,7 @@ func main() {
 	db_instance := db.GetDB()
 
 	// Initialize task handlers
-	taskHandler := tasks.NewTaskHandler(db_instance)
+	taskHandler := tasks.NewTaskHandler(db_instance, cfg)
 
 	// Initialize task client for automation engine
 	taskClient := tasks.NewTaskClient(cfg.Redis.Addr, cfg.Redis.Username, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.UseTLS)

@@ -20,9 +20,23 @@ import (
 
 var (
 	log        = logger.New("EMAIL")
-	cfg, _     = config.Load()
+	cfg        *config.Config
 	taskClient *tasks.TaskClient
 )
+
+// Initialize sets up email services after Infisical and config are loaded in main.
+func Initialize(appCfg *config.Config) {
+	cfg = appCfg
+	taskClient = tasks.NewTaskClient(
+		cfg.Redis.Addr,
+		cfg.Redis.Username,
+		cfg.Redis.Password,
+		cfg.Redis.DB,
+		cfg.Redis.UseTLS,
+	)
+
+	registerEmailEventHandlers()
+}
 
 type sendEmailHandlerBody struct {
 	teamId         string
@@ -43,17 +57,7 @@ type sendEmailHandlerBody struct {
 	isWelcomeEmail bool
 }
 
-func init() {
-	// Initialize taskClient after config is loaded
-	taskClient = tasks.NewTaskClient(
-		cfg.Redis.Addr, // Use cfg instead of empty Config struct
-		cfg.Redis.Username,
-		cfg.Redis.Password,
-		cfg.Redis.DB,
-		cfg.Redis.UseTLS,
-	)
-
-	// Register event handlers
+func registerEmailEventHandlers() {
 	events.On("invite.created", func(data interface{}) {
 		invite := data.(*models.TeamInvite)
 		log.Info("Sending invite email to %s", invite.Email)
