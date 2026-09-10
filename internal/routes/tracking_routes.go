@@ -55,6 +55,7 @@ func RegisterTrackingRoutes(e *echo.Echo, h *handlers.TrackingHandler, cfg *conf
 	// @Summary Get audience insights
 	// @Description Get audience insights
 	analyticsGroup.GET("/report", h.AudienceReport)
+	analyticsGroup.GET("/email-overview", h.EmailOverview)
 	analyticsGroup.GET("/breakdown", h.AnalyticsBreakdown)
 	analyticsGroup.GET("/people", h.AnalyticsPeople)
 	analyticsGroup.GET("/options", h.AnalyticsOptions)

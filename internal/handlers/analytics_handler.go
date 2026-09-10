@@ -89,3 +89,21 @@ func (h *TrackingHandler) AnalyticsOptions(c echo.Context) error {
 	}
 	return c.JSON(200, map[string]interface{}{"lists": lists, "tags": tags})
 }
+
+func (h *TrackingHandler) EmailOverview(c echo.Context) error {
+	f, err := h.analyticsFilter(c)
+	if err != nil {
+		return err
+	}
+	if f.List != "" || f.Tag != "" || f.Campaign != "" {
+		return echo.NewHTTPError(400, "Use campaign analytics for audience filters")
+	}
+	ctx, cancel := context.WithTimeout(c.Request().Context(), 20*time.Second)
+	defer cancel()
+	report, err := analytics.BuildEmailReport(ctx, h.db, f)
+	if err != nil {
+		trackingLog.Error("Email overview failed", err)
+		return echo.NewHTTPError(500, "Unable to load email activity. Please try again.")
+	}
+	return c.JSON(http.StatusOK, report)
+}
