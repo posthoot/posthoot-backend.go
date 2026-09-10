@@ -66,10 +66,10 @@ func (p *TagProcessor) Process(ctx *automation.ExecutionContext, node *models.Au
 		for _, tagName := range data.Tags {
 			// Find or create tag
 			var tag models.Tag
-			err := p.db.Where("name = ?", tagName).First(&tag).Error
+			err := p.db.Where("team_id = ? AND name = ? AND is_deleted = false", ctx.Contact.TeamID, tagName).First(&tag).Error
 			if err == gorm.ErrRecordNotFound {
 				// Create new tag
-				tag = models.Tag{Name: tagName}
+				tag = models.Tag{Name: tagName, TeamID: ctx.Contact.TeamID}
 				if err := p.db.Create(&tag).Error; err != nil {
 					return nil, fmt.Errorf("failed to create tag '%s': %w", tagName, err)
 				}
@@ -88,7 +88,7 @@ func (p *TagProcessor) Process(ctx *automation.ExecutionContext, node *models.Au
 		// Remove tags from contact
 		for _, tagName := range data.Tags {
 			var tag models.Tag
-			err := p.db.Where("name = ?", tagName).First(&tag).Error
+			err := p.db.Where("team_id = ? AND name = ? AND is_deleted = false", ctx.Contact.TeamID, tagName).First(&tag).Error
 			if err == gorm.ErrRecordNotFound {
 				// Tag doesn't exist, skip
 				continue
@@ -125,9 +125,9 @@ func (p *TagProcessor) Process(ctx *automation.ExecutionContext, node *models.Au
 		NextNodeIDs: nextNodeIDs,
 		Message:     fmt.Sprintf("%s %d tag(s) %s contact", action, len(processedTags), data.Action),
 		Data: map[string]interface{}{
-			"action":         data.Action,
-			"processedTags":  processedTags,
-			"requestedTags":  data.Tags,
+			"action":        data.Action,
+			"processedTags": processedTags,
+			"requestedTags": data.Tags,
 		},
 	}, nil
 }

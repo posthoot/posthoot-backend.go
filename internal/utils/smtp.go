@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"crypto/tls"
 	"fmt"
 	"kori/internal/db"
 	"kori/internal/models"
@@ -69,6 +68,11 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 	m.SetHeader("From", email.From)
 	m.SetHeader("To", email.To)
 	m.SetHeader("Subject", email.Subject)
+	m.SetHeader("Message-ID", "<"+email.ID+"@posthoot.local>")
+	if email.UnsubscribeURL != "" {
+		m.SetHeader("List-Unsubscribe", "<"+email.UnsubscribeURL+">")
+		m.SetHeader("List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
+	}
 
 	if email.ReplyTo != "" {
 		m.SetHeader("Reply-To", email.ReplyTo)
@@ -89,22 +93,13 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 	}
 	m.SetBody("text/html", decodedBody)
 
-	// Create dialer
-	d := gomail.NewDialer(
-		email.SMTPConfig.Host,
-		email.SMTPConfig.Port,
-		email.SMTPConfig.Username,
-		email.SMTPConfig.Password,
-	)
-
-	if email.SMTPConfig.SupportsTLS {
-		d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	}
-
 	// Send email
-	if err := d.DialAndSend(m); err != nil {
+	if err := sendSecureSMTP(m, email); err != nil {
 		email.Error = err.Error()
 		email.Status = models.EmailStatusFailed
+		if strings.Contains(err.Error(), "delivery outcome unknown") {
+			email.Status = "DELIVERY_UNKNOWN"
+		}
 		if dbErr := h.UpdateEmail(email); dbErr != nil {
 			return h.logger.Error("❌ Failed to update email status", dbErr)
 		}
@@ -116,7 +111,7 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 	email.Error = ""
 
 	if err := h.UpdateEmail(email); err != nil {
-		return fmt.Errorf("❌ failed to update email: %w", err)
+		return fmt.Errorf("delivery outcome unknown: failed to persist SMTP acknowledgement: %w", err)
 	}
 
 	h.logger.Success("✅ Email sent successfully to: %s", email.To)

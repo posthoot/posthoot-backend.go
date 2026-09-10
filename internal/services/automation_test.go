@@ -114,7 +114,7 @@ func TestAutomationService_ValidateGraph_OrphanedNodes(t *testing.T) {
 
 	err := service.ValidateGraph(automation)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "orphaned node detected")
+	assert.Contains(t, err.Error(), "all steps must be reachable")
 }
 
 func TestAutomationService_ValidateGraph_NoStartNode(t *testing.T) {

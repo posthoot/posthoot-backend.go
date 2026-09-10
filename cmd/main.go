@@ -191,6 +191,7 @@ func main() {
 		cfg.Redis.Password,
 		cfg.Redis.DB,
 		logger,
+		cfg.Redis.UseTLS,
 	)
 
 	// Start task scheduler
@@ -202,6 +203,8 @@ func main() {
 
 	// Initialize API server
 	apiServer := api.NewServer(cfg, db_instance)
+
+	routes.SetupMarketingRoutes(apiServer.GetEcho(), db_instance, cfg)
 
 	// Register automation routes
 	routes.SetupAutomationRoutes(apiServer.GetEcho(), db_instance, cfg, taskClient)

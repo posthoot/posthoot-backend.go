@@ -10,6 +10,7 @@ import (
 
 	"kori/internal/utils/logger"
 
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 
@@ -307,6 +308,9 @@ func (c *TaskClient) EnqueueLLMEmailWriterTask(ctx context.Context, task LLMEmai
 
 // EnqueueAutomationTask enqueues an automation execution task
 func (c *TaskClient) EnqueueAutomationTask(ctx context.Context, task AutomationExecuteTask, processIn time.Duration) error {
+	if task.ExecutionID == "" {
+		task.ExecutionID = uuid.NewString()
+	}
 	payload, err := json.Marshal(task)
 	if err != nil {
 		return fmt.Errorf("failed to marshal automation task: %w", err)

@@ -89,28 +89,29 @@ type TeamInvite struct {
 
 type Contact struct {
 	Base
-	Email     string           `gorm:"not null" json:"email" validate:"required,email"`
-	FirstName string           `json:"firstName" validate:"omitempty,min=2"`
-	LastName  string           `json:"lastName" validate:"omitempty,min=2"`
-	Metadata  datatypes.JSON   `gorm:"type:jsonb;default:'{}'" json:"metadata" validate:"omitempty,json"`
-	LinkedIn  string           `json:"linkedin" validate:"omitempty,url"`
-	Twitter   string           `json:"twitter" validate:"omitempty,url"`
-	Facebook  string           `json:"facebook" validate:"omitempty,url"`
-	Instagram string           `json:"instagram" validate:"omitempty,url"`
-	Tags      []Tag            `gorm:"many2many:contact_tags;" json:"tags"`
-	Country   string           `json:"country" validate:"omitempty"`
-	Phone     string           `json:"phone" validate:"omitempty"`
-	City      string           `json:"city" validate:"omitempty"`
-	State     string           `json:"state" validate:"omitempty"`
-	Zip       string           `json:"zip" validate:"omitempty"`
-	Address   string           `json:"address" validate:"omitempty"`
-	Company   string           `json:"company" validate:"omitempty"`
-	ListID    string           `gorm:"type:uuid;not null" json:"listId" validate:"required,uuid"`
-	TeamID    string           `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
-	List      *MailingList     `json:"list,omitempty"`
-	ImportID  string           `gorm:"type:uuid;default:NULL;" json:"importId" validate:"omitempty,uuid"`
-	Import    *ContactImport   `json:"import,omitempty"`
-	Status    SubscriberStatus `gorm:"not null;default:'ACTIVE'" json:"status" validate:"required,oneof=ACTIVE UNSUBSCRIBED BOUNCED COMPLAINED"`
+	LifecycleStage string           `gorm:"default:LEAD" json:"lifecycleStage"`
+	Email          string           `gorm:"not null" json:"email" validate:"required,email"`
+	FirstName      string           `json:"firstName" validate:"omitempty,min=2"`
+	LastName       string           `json:"lastName" validate:"omitempty,min=2"`
+	Metadata       datatypes.JSON   `gorm:"type:jsonb;default:'{}'" json:"metadata" validate:"omitempty,json"`
+	LinkedIn       string           `json:"linkedin" validate:"omitempty,url"`
+	Twitter        string           `json:"twitter" validate:"omitempty,url"`
+	Facebook       string           `json:"facebook" validate:"omitempty,url"`
+	Instagram      string           `json:"instagram" validate:"omitempty,url"`
+	Tags           []Tag            `gorm:"many2many:contact_tags;" json:"tags"`
+	Country        string           `json:"country" validate:"omitempty"`
+	Phone          string           `json:"phone" validate:"omitempty"`
+	City           string           `json:"city" validate:"omitempty"`
+	State          string           `json:"state" validate:"omitempty"`
+	Zip            string           `json:"zip" validate:"omitempty"`
+	Address        string           `json:"address" validate:"omitempty"`
+	Company        string           `json:"company" validate:"omitempty"`
+	ListID         string           `gorm:"type:uuid;not null" json:"listId" validate:"required,uuid"`
+	TeamID         string           `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
+	List           *MailingList     `json:"list,omitempty"`
+	ImportID       string           `gorm:"type:uuid;default:NULL;" json:"importId" validate:"omitempty,uuid"`
+	Import         *ContactImport   `json:"import,omitempty"`
+	Status         SubscriberStatus `gorm:"not null;default:'ACTIVE'" json:"status" validate:"required,oneof=ACTIVE UNSUBSCRIBED BOUNCED COMPLAINED"`
 }
 
 type ContactImport struct {
@@ -164,8 +165,9 @@ func (f *File) AfterFind(tx *gorm.DB) error {
 
 type Tag struct {
 	Base
-	Name  string `gorm:"not null" json:"name" validate:"required,min=1"`
-	Value string `json:"value" validate:"omitempty"`
+	TeamID string `gorm:"type:uuid;index" json:"teamId"`
+	Name   string `gorm:"not null" json:"name" validate:"required,min=1"`
+	Value  string `json:"value" validate:"omitempty"`
 }
 
 type MailingList struct {
@@ -188,7 +190,7 @@ type SMTPConfig struct {
 	FromEmail    string `json:"fromEmail" validate:"required"`
 	Password     string `json:"password" validate:"required,min=8"`
 	IsDefault    bool   `gorm:"not null;default:false" json:"isDefault"`
-	IsActive     bool   `gorm:"not null;default:true" json:"isActive"`
+	IsActive     bool   `gorm:"not null;default:false" json:"isActive"`
 	SupportsTLS  bool   `gorm:"not null;default:true" json:"supportsTls"`
 	RequiresAuth bool   `gorm:"not null;default:true" json:"requiresAuth"`
 	MaxSendRate  int    `gorm:"not null;default:10" json:"maxSendRate" validate:"required,min=1"`
@@ -201,7 +203,7 @@ type IMAPConfig struct {
 	Port     int    `gorm:"not null" json:"port" validate:"required,min=1,max=65535"`
 	Username string `json:"username" validate:"required"`
 	Password string `json:"password" validate:"required,min=8"`
-	IsActive bool   `gorm:"not null;default:true" json:"isActive"`
+	IsActive bool   `gorm:"not null;default:false" json:"isActive"`
 	TeamID   string `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team     *Team  `json:"team,omitempty"`
 }
@@ -280,7 +282,7 @@ type Webhook struct {
 	Name       string         `gorm:"not null" json:"name" validate:"required,min=2"`
 	URL        string         `gorm:"not null" json:"url" validate:"required,url"`
 	Events     pq.StringArray `gorm:"type:text[]" json:"events" validate:"required,min=1,dive,oneof=click open reply bounce complaint"`
-	IsActive   bool           `gorm:"not null;default:true" json:"isActive"`
+	IsActive   bool           `gorm:"not null;default:false" json:"isActive"`
 	Secret     string         `json:"secret" validate:"required,min=16"`
 	TeamID     string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Deliveries []Delivery     `gorm:"foreignKey:WebhookID" json:"deliveries,omitempty"`
@@ -309,9 +311,11 @@ type EmailCategory struct {
 
 type Template struct {
 	Base
+	HTMLBody   string         `gorm:"type:text" json:"htmlBody"`
+	StarterKey string         `json:"starterKey"`
 	Name       string         `gorm:"not null" json:"name" validate:"required,min=2"`
 	Subject    string         `gorm:"not null" json:"subject" validate:"required"`
-	HtmlFileID string         `gorm:"type:uuid" json:"htmlFileId" validate:"omitempty,uuid"`
+	HtmlFileID string         `gorm:"type:uuid;default:NULL" json:"htmlFileId" validate:"omitempty,uuid"`
 	HtmlFile   *File          `json:"htmlFile,omitempty"`
 	DesignJSON string         `gorm:"not null;default:''" json:"designJson" validate:"omitempty"`
 	TeamID     string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
@@ -324,31 +328,33 @@ type Template struct {
 
 type Email struct {
 	Base
-	From         string         `gorm:"not null" json:"from" validate:"required,email"`
-	To           string         `gorm:"not null" json:"to" validate:"required,email"`
-	Subject      string         `gorm:"not null" json:"subject" validate:"required"`
-	Body         string         `gorm:"not null" json:"body" validate:"required"`
-	Status       EmailStatus    `gorm:"not null" json:"status" validate:"required,oneof=DRAFT QUEUED SENDING SENT FAILED"`
-	Error        string         `json:"error" validate:"omitempty"`
-	Data         datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"data" validate:"omitempty,json"`
-	TemplateID   string         `gorm:"type:uuid;default:NULL" json:"templateId" validate:"omitempty,uuid"`
-	Template     *Template      `json:"template,omitempty"`
-	TeamID       string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
-	Team         *Team          `json:"team,omitempty"`
-	ContactID    string         `gorm:"type:uuid;default:NULL" json:"contactId" validate:"omitempty,uuid"`
-	Contact      *Contact       `json:"contact,omitempty"`
-	SMTPConfigID string         `gorm:"type:uuid;not null" json:"smtpConfigId" validate:"required,uuid"`
-	SMTPConfig   *SMTPConfig    `json:"smtpConfig,omitempty"`
-	SentAt       time.Time      `json:"sentAt" validate:"omitempty"`
-	SendAt       time.Time      `json:"sendAt" validate:"omitempty"`
-	CategoryID   string         `gorm:"type:uuid;not null" json:"categoryId" validate:"required,uuid"`
-	Category     *EmailCategory `json:"category,omitempty"`
-	CampaignID   string         `gorm:"type:uuid;default:NULL" json:"campaignId" validate:"omitempty,uuid"`
-	Campaign     *Campaign      `json:"campaign,omitempty"`
-	CC           string         `json:"cc" validate:"omitempty,email"`
-	BCC          string         `json:"bcc" validate:"omitempty,email"`
-	ReplyTo      string         `json:"replyTo" validate:"omitempty,email"`
-	Test         bool           `gorm:"not null;default:false" json:"test"`
+	DeliveryKey    *string        `gorm:"uniqueIndex" json:"-"`
+	UnsubscribeURL string         `json:"-"`
+	From           string         `gorm:"not null" json:"from" validate:"required,email"`
+	To             string         `gorm:"not null" json:"to" validate:"required,email"`
+	Subject        string         `gorm:"not null" json:"subject" validate:"required"`
+	Body           string         `gorm:"not null" json:"body" validate:"required"`
+	Status         EmailStatus    `gorm:"not null" json:"status" validate:"required,oneof=DRAFT QUEUED SENDING SENT FAILED"`
+	Error          string         `json:"error" validate:"omitempty"`
+	Data           datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"data" validate:"omitempty,json"`
+	TemplateID     string         `gorm:"type:uuid;default:NULL" json:"templateId" validate:"omitempty,uuid"`
+	Template       *Template      `json:"template,omitempty"`
+	TeamID         string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
+	Team           *Team          `json:"team,omitempty"`
+	ContactID      string         `gorm:"type:uuid;default:NULL" json:"contactId" validate:"omitempty,uuid"`
+	Contact        *Contact       `json:"contact,omitempty"`
+	SMTPConfigID   string         `gorm:"type:uuid;not null" json:"smtpConfigId" validate:"required,uuid"`
+	SMTPConfig     *SMTPConfig    `json:"smtpConfig,omitempty"`
+	SentAt         time.Time      `json:"sentAt" validate:"omitempty"`
+	SendAt         time.Time      `json:"sendAt" validate:"omitempty"`
+	CategoryID     string         `gorm:"type:uuid;not null" json:"categoryId" validate:"required,uuid"`
+	Category       *EmailCategory `json:"category,omitempty"`
+	CampaignID     string         `gorm:"type:uuid;default:NULL" json:"campaignId" validate:"omitempty,uuid"`
+	Campaign       *Campaign      `json:"campaign,omitempty"`
+	CC             string         `json:"cc" validate:"omitempty,email"`
+	BCC            string         `json:"bcc" validate:"omitempty,email"`
+	ReplyTo        string         `json:"replyTo" validate:"omitempty,email"`
+	Test           bool           `gorm:"not null;default:false" json:"test"`
 }
 
 func (e *Email) BeforeUpdate(tx *gorm.DB) error {
@@ -362,7 +368,7 @@ func (e *Email) AfterUpdate(tx *gorm.DB) error {
 }
 
 func (e *Email) AfterCreate(tx *gorm.DB) error {
-	if e.CampaignID != "" {
+	if e.CampaignID != "" || e.DeliveryKey != nil {
 		// If the email is part of a campaign, we don't need to send it immediately this is handled in the campaign handler
 		return nil
 	}
@@ -447,6 +453,12 @@ type APIKeyUsage struct {
 
 type Campaign struct {
 	Base
+	NewsletterID      *string                   `gorm:"type:uuid;index" json:"newsletterId,omitempty"`
+	HTMLBody          string                    `gorm:"type:text" json:"htmlBody,omitempty"`
+	Subject           string                    `json:"subject"`
+	PostalAddress     string                    `json:"postalAddress"`
+	AudienceCursor    string                    `json:"-"`
+	AudienceCutoff    *time.Time                `json:"-"`
 	Name              string                    `gorm:"not null" json:"name"`
 	Description       string                    `json:"description"`
 	TemplateID        string                    `gorm:"type:uuid;not null" json:"templateId"`
@@ -481,13 +493,14 @@ type RateLimit struct {
 
 type Automation struct {
 	Base
-	Name        string               `gorm:"not null" json:"name"`
-	Description string               `json:"description"`
-	TeamID      string               `gorm:"type:uuid;not null" json:"teamId"`
-	Team        *Team                `json:"team,omitempty"`
-	Nodes       []AutomationNode     `gorm:"foreignKey:AutomationID" json:"nodes,omitempty"`
-	Edges       []AutomationNodeEdge `gorm:"foreignKey:AutomationID" json:"edges,omitempty"`
-	IsActive    bool                 `gorm:"not null;default:true" json:"isActive"`
+	TriggerEvent string               `gorm:"default:manual" json:"triggerEvent"`
+	Name         string               `gorm:"not null" json:"name"`
+	Description  string               `json:"description"`
+	TeamID       string               `gorm:"type:uuid;not null" json:"teamId"`
+	Team         *Team                `json:"team,omitempty"`
+	Nodes        []AutomationNode     `gorm:"foreignKey:AutomationID" json:"nodes,omitempty"`
+	Edges        []AutomationNodeEdge `gorm:"foreignKey:AutomationID" json:"edges,omitempty"`
+	IsActive     bool                 `gorm:"not null;default:false" json:"isActive"`
 }
 
 type Model struct {

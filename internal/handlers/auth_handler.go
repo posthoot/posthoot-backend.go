@@ -21,6 +21,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AuthHandler struct {
@@ -703,15 +704,15 @@ func (h *AuthHandler) AcceptInvite(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to hash password"})
 	}
 
-	// 🔍 Find invitation
+	tx := h.db.WithContext(c.Request().Context()).Begin()
+	if tx.Error != nil {
+		return echo.NewHTTPError(500, "Unable to accept invitation")
+	}
+	defer tx.Rollback()
 	var invite models.TeamInvite
-	if err := h.db.Where("code = ? AND status = ? AND expires_at > ?",
-		code, models.InviteStatusPending, time.Now()).First(&invite).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("code = ? AND status = ? AND expires_at > ?", code, models.InviteStatusPending, time.Now()).First(&invite).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid or expired invitation"})
 	}
-
-	// Start transaction
-	tx := h.db.Begin()
 
 	// 👤 Create new user
 	newUser := models.User{
@@ -723,12 +724,12 @@ func (h *AuthHandler) AcceptInvite(c echo.Context) error {
 		Role:      invite.Role, // Default role for invited users
 	}
 
-	if err := h.db.Create(&newUser).Error; err != nil {
+	if err := tx.Create(&newUser).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
 	}
 
 	// ✅ Update invitation status
-	invite.Status = "accepted"
+	invite.Status = models.InviteStatusAccepted
 	if err := tx.Save(&invite).Error; err != nil {
 		tx.Rollback()
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update invitation"})

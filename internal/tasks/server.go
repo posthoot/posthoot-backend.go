@@ -59,6 +59,8 @@ func NewServer(redisAddr, username, password string, db int, useTLS bool, handle
 func (s *Server) Start(ctx context.Context) error {
 	mux := asynq.NewServeMux()
 
+	mux.HandleFunc(TaskTypeNewsletterTick, s.handler.HandleNewsletterTick)
+
 	// Register task handlers
 	mux.HandleFunc(TaskTypeEmailSend, s.handler.HandleEmailSend)
 	mux.HandleFunc(TaskTypeEmailRetry, s.handler.HandleEmailSend)

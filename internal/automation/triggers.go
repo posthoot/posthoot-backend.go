@@ -119,6 +119,9 @@ func (tm *TriggerManager) handleContactEvent(eventName string, contact *models.C
 	}
 
 	for _, automation := range automations {
+		if automation.TriggerEvent != eventName {
+			continue
+		}
 		// Parse trigger config from automation data/metadata
 		// For now, we'll check if automation should be triggered
 		// In production, you'd parse trigger config from Automation.Data field
@@ -155,6 +158,9 @@ func (tm *TriggerManager) handleEmailEvent(eventName string, email *models.Email
 	}
 
 	for _, automation := range automations {
+		if automation.TriggerEvent != eventName {
+			continue
+		}
 		if email.ContactID == "" {
 			continue // Skip if no contact associated
 		}
@@ -201,6 +207,9 @@ func (tm *TriggerManager) handleTrackingEvent(eventName string, tracking *models
 	}
 
 	for _, automation := range automations {
+		if automation.TriggerEvent != eventName {
+			continue
+		}
 		triggerLog.Info("Triggering automation %s for contact %s on event %s",
 			automation.ID, tracking.ContactID, eventName)
 
@@ -241,6 +250,9 @@ func (tm *TriggerManager) handleCampaignEvent(eventName string, campaign *models
 	}
 
 	for _, automation := range automations {
+		if automation.TriggerEvent != eventName {
+			continue
+		}
 		for _, contact := range contacts {
 			task := tasks.AutomationExecuteTask{
 				AutomationID: automation.ID,

@@ -241,6 +241,7 @@ func runMigrations() error {
 		&models.PasswordReset{},
 		&models.TeamSettings{},
 		&models.Contact{},
+		&models.Tag{},
 		&models.MailingList{},
 		&models.SMTPConfig{},
 		&models.Domain{},
@@ -251,6 +252,7 @@ func runMigrations() error {
 		&models.RateLimit{},
 		&models.AuthTransaction{},
 		&models.Campaign{},
+		&models.Newsletter{}, &models.ContactNote{}, &models.FormReceipt{},
 
 		// Subscriber models
 		&models.ContactImport{},
@@ -323,6 +325,10 @@ func runMigrations() error {
 		return err
 	}
 
+	if err := models.BackfillTagWorkspaces(tx); err != nil {
+		tx.Rollback()
+		return err
+	}
 	return tx.Commit().Error
 }
 

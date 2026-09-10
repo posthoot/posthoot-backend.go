@@ -2,11 +2,10 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"kori/internal/automation"
-	"kori/internal/config"
 	"kori/internal/models"
-	"kori/internal/services"
+	"kori/internal/tasks"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -55,10 +54,8 @@ func setupTestDB(t *testing.T) *gorm.DB {
 func setupTestHandler(t *testing.T) (*AutomationHandler, *gorm.DB, *echo.Echo) {
 	db := setupTestDB(t)
 	mockClient := &MockTaskClient{}
-	automationService := services.NewAutomationService(db)
-	cfg := &config.Config{}
 
-	handler := NewAutomationHandler(db, cfg, mockClient)
+	handler := NewAutomationHandler(db, mockClient)
 	e := echo.New()
 
 	return handler, db, e
@@ -75,10 +72,10 @@ func createTestTeam(t *testing.T, db *gorm.DB) *models.Team {
 
 func createTestContact(t *testing.T, db *gorm.DB, teamID string) *models.Contact {
 	contact := &models.Contact{
-		Base:   models.Base{ID: uuid.New().String()},
-		TeamID: teamID,
-		Email:  "test@example.com",
-		Name:   "Test Contact",
+		Base:      models.Base{ID: uuid.New().String()},
+		TeamID:    teamID,
+		Email:     "test@example.com",
+		FirstName: "Test Contact",
 	}
 	require.NoError(t, db.Create(contact).Error)
 	return contact
@@ -93,20 +90,20 @@ func TestAutomationHandler_CreateAutomation(t *testing.T) {
 		"description": "Test Description",
 		"nodes": []map[string]interface{}{
 			{
-				"id":   "start",
+				"id":   "00000000-0000-4000-8000-000000000001",
 				"type": "START",
 				"data": map[string]interface{}{},
 			},
 			{
-				"id":   "exit",
+				"id":   "00000000-0000-4000-8000-000000000002",
 				"type": "EXIT",
 				"data": map[string]interface{}{},
 			},
 		},
 		"edges": []map[string]interface{}{
 			{
-				"sourceId": "start",
-				"targetId": "exit",
+				"sourceId": "00000000-0000-4000-8000-000000000001",
+				"targetId": "00000000-0000-4000-8000-000000000002",
 			},
 		},
 	}
@@ -126,7 +123,7 @@ func TestAutomationHandler_CreateAutomation(t *testing.T) {
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	require.NoError(t, err)
 
-	data := response["data"].(map[string]interface{})
+	data := response
 	assert.Equal(t, "Test Automation", data["name"])
 	assert.NotEmpty(t, data["id"])
 }
@@ -143,7 +140,7 @@ func TestAutomationHandler_GetAutomation(t *testing.T) {
 		Description: "Test",
 		Nodes: []models.AutomationNode{
 			{
-				Base: models.Base{ID: "start"},
+				Base: models.Base{ID: "00000000-0000-4000-8000-000000000001"},
 				Type: models.NodeTypeStart,
 				Data: datatypes.JSON(`{}`),
 			},
@@ -168,7 +165,7 @@ func TestAutomationHandler_GetAutomation(t *testing.T) {
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	require.NoError(t, err)
 
-	data := response["data"].(map[string]interface{})
+	data := response
 	assert.Equal(t, automation.ID, data["id"])
 	assert.Equal(t, "Test Automation", data["name"])
 }
@@ -198,11 +195,9 @@ func TestAutomationHandler_ListAutomations(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	var response map[string]interface{}
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	var data []interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &data)
 	require.NoError(t, err)
-
-	data := response["data"].([]interface{})
 	assert.Len(t, data, 3)
 }
 
@@ -223,6 +218,7 @@ func TestAutomationHandler_UpdateAutomation(t *testing.T) {
 	updateBody := map[string]interface{}{
 		"name":        "Updated Name",
 		"description": "Updated Description",
+		"nodes":       []map[string]interface{}{{"id": "00000000-0000-4000-8000-000000000001", "type": "START", "data": map[string]interface{}{}}},
 	}
 
 	body, _ := json.Marshal(updateBody)
@@ -275,7 +271,7 @@ func TestAutomationHandler_DeleteAutomation(t *testing.T) {
 
 	// Verify deletion
 	var count int64
-	db.Model(&models.Automation{}).Where("id = ?", automation.ID).Count(&count)
+	db.Model(&models.Automation{}).Where("id = ? AND is_deleted = ?", automation.ID, false).Count(&count)
 	assert.Equal(t, int64(0), count)
 }
 
@@ -292,18 +288,18 @@ func TestAutomationHandler_ActivateAutomation(t *testing.T) {
 		IsActive:    false,
 		Nodes: []models.AutomationNode{
 			{
-				Base: models.Base{ID: "start"},
+				Base: models.Base{ID: "00000000-0000-4000-8000-000000000001"},
 				Type: models.NodeTypeStart,
 				Data: datatypes.JSON(`{}`),
 			},
 			{
-				Base: models.Base{ID: "exit"},
+				Base: models.Base{ID: "00000000-0000-4000-8000-000000000002"},
 				Type: models.NodeTypeExit,
 				Data: datatypes.JSON(`{}`),
 			},
 		},
 		Edges: []models.AutomationNodeEdge{
-			{SourceID: "start", TargetID: "exit"},
+			{SourceID: "00000000-0000-4000-8000-000000000001", TargetID: "00000000-0000-4000-8000-000000000002"},
 		},
 	}
 	require.NoError(t, db.Create(automation).Error)
@@ -376,7 +372,7 @@ func TestAutomationHandler_TriggerAutomation(t *testing.T) {
 		IsActive:    true,
 		Nodes: []models.AutomationNode{
 			{
-				Base: models.Base{ID: "start"},
+				Base: models.Base{ID: "00000000-0000-4000-8000-000000000001"},
 				Type: models.NodeTypeStart,
 				Data: datatypes.JSON(`{}`),
 			},
@@ -452,10 +448,12 @@ func TestAutomationHandler_GetExecutions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	var response map[string]interface{}
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	var data []interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &data)
 	require.NoError(t, err)
-
-	data := response["data"].([]interface{})
 	assert.Len(t, data, 3)
+}
+
+func (m *MockTaskClient) EnqueueAutomationTask(ctx context.Context, task tasks.AutomationExecuteTask, delay time.Duration) error {
+	return nil
 }

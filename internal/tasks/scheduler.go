@@ -1,7 +1,9 @@
 package tasks
 
 import (
+	"crypto/tls"
 	"fmt"
+	"time"
 
 	"kori/internal/utils/logger"
 
@@ -15,14 +17,17 @@ type Scheduler struct {
 }
 
 // NewScheduler creates a new task scheduler
-func NewScheduler(redisAddr, username, password string, db int, logger *logger.Logger) *Scheduler {
-	scheduler := asynq.NewScheduler(
-		asynq.RedisClientOpt{
-			Addr:     redisAddr,
-			Username: username,
-			Password: password,
-			DB:       db,
-		},
+func NewScheduler(redisAddr, username, password string, db int, logger *logger.Logger, useTLS ...bool) *Scheduler {
+	opt := asynq.RedisClientOpt{
+		Addr:     redisAddr,
+		Username: username,
+		Password: password,
+		DB:       db,
+	}
+	if len(useTLS) > 0 && useTLS[0] {
+		opt.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+	scheduler := asynq.NewScheduler(opt,
 		&asynq.SchedulerOpts{},
 	)
 
@@ -50,6 +55,9 @@ func (s *Scheduler) Stop() {
 
 // registerTasks registers all periodic tasks
 func (s *Scheduler) registerTasks() error {
+	if _, err := s.scheduler.Register("@every 1m", asynq.NewTask(TaskTypeNewsletterTick, nil), asynq.Queue(QueueDefault), asynq.Unique(50*time.Second)); err != nil {
+		return err
+	}
 	// // Campaign scheduling (every minute)
 	// entryID, err := s.scheduler.Register("*/1 * * * *", asynq.NewTask(
 	// 	TaskTypeCampaignSchedule,

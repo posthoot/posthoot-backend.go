@@ -58,13 +58,16 @@ func (c *ContactImport) AfterCreate(tx *gorm.DB) error {
 }
 
 func (c *Campaign) AfterCreate(tx *gorm.DB) error {
-	log.Info("Campaign created %v", c)
+	if c.NewsletterID != nil {
+		return nil
+	}
+	log.Info("Campaign created %s", c.ID)
 	events.Emit("campaign.created", c)
 	return nil
 }
 
 func (c *Contact) AfterCreate(tx *gorm.DB) error {
-	log.Info("Contact created %v", c)
+	log.Info("Contact created %s", c.ID)
 	events.Emit("contact.created", c)
 	if err := SyncSubscribersCountByID(tx, c.ListID); err != nil {
 		return err
@@ -73,7 +76,7 @@ func (c *Contact) AfterCreate(tx *gorm.DB) error {
 }
 
 func (c *Contact) AfterDelete(tx *gorm.DB) error {
-	log.Info("Contact deleted %v", c)
+	log.Info("Contact deleted %s", c.ID)
 	events.Emit("contact.deleted", c)
 	if err := SyncSubscribersCountByID(tx, c.ListID); err != nil {
 		return err
@@ -82,7 +85,7 @@ func (c *Contact) AfterDelete(tx *gorm.DB) error {
 }
 
 func (c *Contact) AfterUpdate(tx *gorm.DB) error {
-	log.Info("Contact updated %v", c)
+	log.Info("Contact updated %s", c.ID)
 	events.Emit("contact.updated", c)
 	if err := SyncSubscribersCountByID(tx, c.ListID); err != nil {
 		return err

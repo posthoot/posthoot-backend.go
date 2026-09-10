@@ -16,11 +16,11 @@ var automationHandlerLog = logger.New("AUTOMATION_HANDLER")
 
 type AutomationHandler struct {
 	service    *services.AutomationService
-	taskClient *tasks.TaskClient
+	taskClient tasks.AutomationEnqueuer
 	db         *gorm.DB
 }
 
-func NewAutomationHandler(db *gorm.DB, taskClient *tasks.TaskClient) *AutomationHandler {
+func NewAutomationHandler(db *gorm.DB, taskClient tasks.AutomationEnqueuer) *AutomationHandler {
 	return &AutomationHandler{
 		service:    services.NewAutomationService(db),
 		taskClient: taskClient,
@@ -36,10 +36,11 @@ func (h *AutomationHandler) CreateAutomation(c echo.Context) error {
 	}
 
 	automation.TeamID = c.Get("teamID").(string)
+	automation.ID = ""
 	automation.IsActive = false // Start as inactive
 
-	if err := h.service.Create(context.Background(), &automation, "Nodes", "Edges"); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	if err := h.service.SaveGraph(c.Request().Context(), &automation); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	automationHandlerLog.Success("Created automation %s for team %s", automation.ID, automation.TeamID)
@@ -83,7 +84,7 @@ func (h *AutomationHandler) ListAutomations(c echo.Context) error {
 	)
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, automations)
@@ -112,8 +113,8 @@ func (h *AutomationHandler) UpdateAutomation(c echo.Context) error {
 	automation.ID = id
 	automation.TeamID = teamID
 
-	if err := h.service.Update(context.Background(), id, &automation, "Nodes", "Edges"); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	if err := h.service.SaveGraph(c.Request().Context(), &automation); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	automationHandlerLog.Success("Updated automation %s", id)
@@ -137,7 +138,7 @@ func (h *AutomationHandler) DeleteAutomation(c echo.Context) error {
 	}
 
 	if err := h.service.Delete(context.Background(), id); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	automationHandlerLog.Success("Deleted automation %s", id)
@@ -185,7 +186,7 @@ func (h *AutomationHandler) DeactivateAutomation(c echo.Context) error {
 	}
 
 	if err := h.service.Deactivate(context.Background(), id); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	automationHandlerLog.Success("Deactivated automation %s", id)
@@ -214,7 +215,7 @@ func (h *AutomationHandler) TriggerAutomation(c echo.Context) error {
 
 	// Parse request body
 	var req struct {
-		ContactIDs []string               `json:"contactIds" validate:"required,min=1"`
+		ContactIDs  []string               `json:"contactIds" validate:"required,min=1"`
 		TriggerData map[string]interface{} `json:"triggerData"`
 	}
 
@@ -226,6 +227,23 @@ func (h *AutomationHandler) TriggerAutomation(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "At least one contactId is required"})
 	}
 
+	if len(req.ContactIDs) > 100 {
+		return bad("Select at most 100 contacts")
+	}
+	var count int64
+	if err := h.db.Model(&models.Contact{}).Where("id IN ? AND team_id = ? AND is_deleted = ? AND status = ?", req.ContactIDs, teamID, false, models.SubscriberStatusActive).Count(&count).Error; err != nil {
+		return err
+	}
+	unique := map[string]bool{}
+	for _, id := range req.ContactIDs {
+		unique[id] = true
+	}
+	if count != int64(len(unique)) {
+		return bad("Select active contacts from this workspace")
+	}
+	if h.taskClient == nil {
+		return echo.NewHTTPError(503, "Queue is unavailable")
+	}
 	// Enqueue execution tasks for each contact
 	tasksEnqueued := 0
 	for _, contactID := range req.ContactIDs {
@@ -283,7 +301,7 @@ func (h *AutomationHandler) GetExecutions(c echo.Context) error {
 	}
 
 	if err := query.Limit(100).Find(&executions).Error; err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, executions)
@@ -305,7 +323,7 @@ func (h *AutomationHandler) GetExecutionDetail(c echo.Context) error {
 	}
 
 	// Verify team ownership through automation
-	if execution.Automation.TeamID != teamID {
+	if execution.Automation == nil || execution.Automation.TeamID != teamID {
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Access denied"})
 	}
 

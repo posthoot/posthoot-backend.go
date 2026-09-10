@@ -8,6 +8,7 @@ import (
 
 type User struct {
 	Base
+	Bio              string           `json:"bio"`
 	Email            string           `gorm:"uniqueIndex;not null" json:"email"`
 	Password         string           `gorm:"not null" json:"-"`
 	FirstName        string           `json:"firstName"`

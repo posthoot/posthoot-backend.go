@@ -53,7 +53,7 @@ func (s *AutomationService) GetWithNodesAndEdges(ctx context.Context, id string)
 	var automation models.Automation
 
 	if err := s.db.WithContext(ctx).
-		Preload("Nodes").
+		Preload("Nodes", "is_deleted = ?", false).
 		Preload("Edges").
 		Preload("Edges.Source").
 		Preload("Edges.Target").
@@ -72,17 +72,22 @@ func (s *AutomationService) ValidateGraph(automation *models.Automation) error {
 	}
 
 	// Check for START node
-	hasStart := false
+	startCount := 0
+	startID := ""
 	nodeIDs := make(map[string]bool)
 
 	for _, node := range automation.Nodes {
+		if node.ID == "" || nodeIDs[node.ID] {
+			return fmt.Errorf("node IDs must be unique")
+		}
 		nodeIDs[node.ID] = true
 		if node.Type == models.NodeTypeStart {
-			hasStart = true
+			startCount++
+			startID = node.ID
 		}
 	}
 
-	if !hasStart {
+	if startCount != 1 {
 		return fmt.Errorf("automation must have exactly one START node")
 	}
 
@@ -96,6 +101,24 @@ func (s *AutomationService) ValidateGraph(automation *models.Automation) error {
 		}
 	}
 
+	// Every step must be reachable from the single trigger.
+	reached := map[string]bool{}
+	var visit func(string)
+	visit = func(id string) {
+		if reached[id] {
+			return
+		}
+		reached[id] = true
+		for _, e := range automation.Edges {
+			if e.SourceID == id {
+				visit(e.TargetID)
+			}
+		}
+	}
+	visit(startID)
+	if len(reached) != len(automation.Nodes) {
+		return fmt.Errorf("all steps must be reachable from the trigger")
+	}
 	// Check for cycles using DFS
 	if hasCycle := s.detectCycle(automation.Nodes, automation.Edges); hasCycle {
 		return fmt.Errorf("automation graph contains cycles")
@@ -194,6 +217,10 @@ func (s *AutomationService) Activate(ctx context.Context, id string) error {
 		return fmt.Errorf("automation validation failed: %w", err)
 	}
 
+	if err := s.ValidateConfiguration(automation); err != nil {
+		return err
+	}
+
 	// Update status
 	if err := s.db.WithContext(ctx).
 		Model(&models.Automation{}).
@@ -208,6 +235,7 @@ func (s *AutomationService) Activate(ctx context.Context, id string) error {
 
 // Deactivate safely deactivates a running automation
 func (s *AutomationService) Deactivate(ctx context.Context, id string) error {
+
 	// Update status
 	if err := s.db.WithContext(ctx).
 		Model(&models.Automation{}).
@@ -227,7 +255,7 @@ func (s *AutomationService) GetActiveAutomations(ctx context.Context, teamID str
 
 	if err := s.db.WithContext(ctx).
 		Where("team_id = ? AND is_active = ? AND is_deleted = ?", teamID, true, false).
-		Preload("Nodes").
+		Preload("Nodes", "is_deleted = ?", false).
 		Preload("Edges").
 		Find(&automations).Error; err != nil {
 		return nil, err

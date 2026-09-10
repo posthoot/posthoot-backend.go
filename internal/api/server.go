@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/go-advanced-admin/admin"
@@ -49,7 +51,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	e.Use(echomiddleware.Logger())
 	e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
-		AllowOrigins: []string{"*"},
+		AllowOrigins: strings.Split(envOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000"), ","),
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderContentLength},
 	}))
@@ -109,7 +111,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		request admin.PermissionRequest, ctx interface{},
 	) (bool, error) {
 		// Implement your permission logic here
-		return true, nil
+		return false, nil
 	}
 
 	// Create a new admin panel
@@ -252,4 +254,11 @@ func formatValidationErrors(errors validator.ValidationErrors) map[string]string
 		}
 	}
 	return errMap
+}
+
+func envOrDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }

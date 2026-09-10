@@ -1,16 +1,21 @@
 package processors
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
+	"gorm.io/gorm/clause"
+	"html"
 	"kori/internal/automation"
 	"kori/internal/config"
+	"kori/internal/marketing"
 	"kori/internal/models"
 	"kori/internal/tasks"
 	"kori/internal/utils"
 	"kori/internal/utils/base64"
 	"maps"
+	"os"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -25,11 +30,12 @@ type EmailProcessor struct {
 
 // EmailNodeData represents the data structure for EMAIL nodes
 type EmailNodeData struct {
-	TemplateID   string `json:"templateId"`
-	SMTPConfigID string `json:"smtpConfigId"`
-	Subject      string `json:"subject,omitempty"`      // Override template subject
-	CustomBody   string `json:"customBody,omitempty"`   // Override template body
-	Variables    map[string]string `json:"variables,omitempty"` // Additional variables
+	TemplateID    string            `json:"templateId"`
+	SMTPConfigID  string            `json:"smtpConfigId"`
+	PostalAddress string            `json:"postalAddress,omitempty"`
+	Subject       string            `json:"subject,omitempty"`    // Override template subject
+	CustomBody    string            `json:"customBody,omitempty"` // Override template body
+	Variables     map[string]string `json:"variables,omitempty"`  // Additional variables
 }
 
 // NewEmailProcessor creates a new EMAIL node processor
@@ -75,6 +81,10 @@ func (p *EmailProcessor) Process(ctx *automation.ExecutionContext, node *models.
 		return nil, fmt.Errorf("failed to parse email node data: %w", err)
 	}
 
+	if ctx.Contact == nil || ctx.Contact.Status != models.SubscriberStatusActive {
+		return &automation.ProcessResult{Complete: true, Message: "Contact is suppressed"}, nil
+	}
+
 	// Get SMTP config
 	smtpConfig, err := models.GetSMTPConfig(ctx.TeamID, data.SMTPConfigID, "", p.db)
 	if err != nil {
@@ -87,12 +97,18 @@ func (p *EmailProcessor) Process(ctx *automation.ExecutionContext, node *models.
 	var subject string
 
 	if data.TemplateID != "" {
-		if err := p.db.Preload("HtmlFile").Preload("Category").Where("id = ?", data.TemplateID).First(&template).Error; err != nil {
+		if err := p.db.Preload("HtmlFile").Preload("Category").Where("id = ? AND team_id = ? AND is_deleted = ?", data.TemplateID, ctx.TeamID, false).First(&template).Error; err != nil {
 			return nil, fmt.Errorf("failed to load template: %w", err)
 		}
 
 		// Get HTML content from template
-		htmlBody, err = utils.GetHTMLFromURL(template.HtmlFile.SignedURL)
+		if template.HTMLBody != "" {
+			htmlBody = template.HTMLBody
+		} else if template.HtmlFile != nil {
+			htmlBody, err = utils.GetHTMLFromURL(template.HtmlFile.SignedURL)
+		} else {
+			return nil, fmt.Errorf("template has no HTML")
+		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to get HTML from template: %w", err)
 		}
@@ -100,6 +116,10 @@ func (p *EmailProcessor) Process(ctx *automation.ExecutionContext, node *models.
 		subject = template.Subject
 	} else {
 		htmlBody = data.CustomBody
+		subject = data.Subject
+	}
+
+	if data.Subject != "" {
 		subject = data.Subject
 	}
 
@@ -134,15 +154,33 @@ func (p *EmailProcessor) Process(ctx *automation.ExecutionContext, node *models.
 		}
 	}
 
+	// One immutable email per execution step, even after queue retries.
+	if ctx.Execution == nil || ctx.Execution.ID == "" {
+		return nil, fmt.Errorf("execution identity is required")
+	}
+	deliveryKey := "automation:" + ctx.Execution.ID + ":" + node.ID
+	emailID := uuid.NewString()
+	bodyVariables := make(map[string]string, len(variables))
+	for k, v := range variables {
+		bodyVariables[k] = html.EscapeString(v)
+	}
 	// Replace variables in body and subject
-	isMarketing := template != nil && template.Category.Name == "Marketing"
-	parsedBody := utils.ReplaceVariables(htmlBody, variables, ctx.AutomationID, p.cfg, true, isMarketing)
-	parsedSubject := utils.ReplaceVariables(subject, variables, ctx.AutomationID, p.cfg, false, false)
+	isMarketing := template != nil && template.Category != nil && template.Category.Name == "Marketing"
+	unsub := ""
+	if isMarketing {
+		service := marketing.New(p.db, p.cfg.JWT.Secret, os.Getenv("PUBLIC_API_URL"))
+		if len(service.Secret) < 32 || !strings.HasPrefix(service.PublicURL, "https://") || len(strings.TrimSpace(data.PostalAddress)) < 8 {
+			return nil, fmt.Errorf("marketing email requires HTTPS public URL, signing secret and sender postal address")
+		}
+		unsub = service.PublicURL + "/public/unsubscribe/" + ctx.TeamID + "/" + ctx.ContactID + "/" + service.Token(ctx.TeamID, ctx.ContactID)
+		htmlBody += `<footer style="padding:24px;text-align:center;font:12px Arial">` + html.EscapeString(data.PostalAddress) + `<br><a href="` + unsub + `">Unsubscribe</a></footer>`
+	}
+	parsedBody := utils.ReplaceVariables(htmlBody, bodyVariables, emailID, p.cfg, true, false)
+	parsedSubject := utils.ReplaceVariables(subject, variables, emailID, p.cfg, false, false)
 
-	// Decode subject if base64 encoded
 	parsedSubject, err = base64.DecodeFromBase64(parsedSubject)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode subject: %w", err)
+		return nil, err
 	}
 
 	// Serialize variables for email data
@@ -153,39 +191,33 @@ func (p *EmailProcessor) Process(ctx *automation.ExecutionContext, node *models.
 
 	// Create email record
 	email := &models.Email{
-		From:         smtpConfig.FromEmail,
-		To:           ctx.Contact.Email,
-		Subject:      parsedSubject,
-		Body:         parsedBody,
-		Data:         jsonData,
-		Status:       models.EmailStatusPending,
-		TeamID:       ctx.TeamID,
-		TemplateID:   data.TemplateID,
-		ContactID:    ctx.ContactID,
-		SMTPConfigID: smtpConfig.ID,
-		CategoryID:   "",
+		Base:           models.Base{ID: emailID},
+		DeliveryKey:    &deliveryKey,
+		UnsubscribeURL: unsub,
+		From:           smtpConfig.FromEmail,
+		To:             ctx.Contact.Email,
+		Subject:        parsedSubject,
+		Body:           parsedBody,
+		Data:           jsonData,
+		Status:         models.EmailStatusPending,
+		TeamID:         ctx.TeamID,
+		TemplateID:     data.TemplateID,
+		ContactID:      ctx.ContactID,
+		SMTPConfigID:   smtpConfig.ID,
+		CategoryID:     "",
 	}
 
 	if template != nil {
 		email.CategoryID = template.CategoryID
 	}
 
-	// Save email to database
-	if err := p.db.Create(email).Error; err != nil {
-		return nil, fmt.Errorf("failed to create email: %w", err)
+	// The database outbox dispatches committed emails and survives Redis outages.
+	if err := p.db.Omit(clause.Associations).Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "delivery_key"}}, DoNothing: true}).Create(email).Error; err != nil {
+		return nil, fmt.Errorf("failed to persist email: %w", err)
 	}
-
-	// Enqueue email sending task
-	emailTask := tasks.EmailTask{
-		EmailID:      email.ID,
-		AttemptNum:   1,
-		SMTPConfigID: smtpConfig.ID,
-		MaxSendRate:  smtpConfig.MaxSendRate,
-		SendAt:       time.Now(),
-	}
-
-	if err := p.taskClient.EnqueueEmailTask(context.Background(), emailTask); err != nil {
-		return nil, fmt.Errorf("failed to enqueue email task: %w", err)
+	email = &models.Email{}
+	if err := p.db.Where("delivery_key = ?", deliveryKey).First(email).Error; err != nil {
+		return nil, err
 	}
 
 	// Get next nodes

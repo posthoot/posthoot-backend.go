@@ -10,7 +10,9 @@ import (
 	"kori/internal/utils/logger"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var engineLog = logger.New("AUTOMATION_ENGINE")
@@ -18,13 +20,13 @@ var engineLog = logger.New("AUTOMATION_ENGINE")
 // Engine orchestrates automation execution
 type Engine struct {
 	db         *gorm.DB
-	taskClient *tasks.TaskClient
+	taskClient tasks.AutomationEnqueuer
 	registry   *ProcessorRegistry
 	eventBus   *events.EventBus
 }
 
 // NewEngine creates a new automation engine
-func NewEngine(db *gorm.DB, taskClient *tasks.TaskClient) *Engine {
+func NewEngine(db *gorm.DB, taskClient tasks.AutomationEnqueuer) *Engine {
 	engine := &Engine{
 		db:         db,
 		taskClient: taskClient,
@@ -46,16 +48,22 @@ func (e *Engine) Execute(ctx context.Context, automationID, contactID string, tr
 	// Load automation with nodes and edges
 	var automation models.Automation
 	if err := e.db.WithContext(ctx).
-		Preload("Nodes").
+		Preload("Nodes", "is_deleted = ?", false).
 		Preload("Edges").
-		Where("id = ?", automationID).
+		Where("id = ? AND is_deleted = ?", automationID, false).
 		First(&automation).Error; err != nil {
 		return fmt.Errorf("failed to load automation: %w", err)
 	}
 
 	// Check if automation is active
-	if !automation.IsActive {
+	if !automation.IsActive && currentNodeID == "" {
 		return fmt.Errorf("automation is not active")
+	}
+
+	// Load contact
+	var contact models.Contact
+	if err := e.db.WithContext(ctx).Where("id = ? AND team_id = ? AND is_deleted = ?", contactID, automation.TeamID, false).First(&contact).Error; err != nil {
+		return fmt.Errorf("failed to load contact: %w", err)
 	}
 
 	// Load or create execution record
@@ -64,10 +72,8 @@ func (e *Engine) Execute(ctx context.Context, automationID, contactID string, tr
 		return fmt.Errorf("failed to get execution: %w", err)
 	}
 
-	// Load contact
-	var contact models.Contact
-	if err := e.db.WithContext(ctx).Where("id = ?", contactID).First(&contact).Error; err != nil {
-		return fmt.Errorf("failed to load contact: %w", err)
+	if execution.Status == models.ExecutionStatusCompleted || (execution.Status == models.ExecutionStatusWaiting && currentNodeID == "") {
+		return nil
 	}
 
 	// Create execution context
@@ -108,7 +114,9 @@ func (e *Engine) Execute(ctx context.Context, automationID, contactID string, tr
 		execution.Status = models.ExecutionStatusFailed
 		execution.Error = err.Error()
 		execution.CompletedAt = time.Now()
-		e.saveExecution(ctx, execution, execCtx)
+		if saveErr := e.saveExecution(ctx, execution, execCtx); saveErr != nil {
+			return fmt.Errorf("%v; save execution: %w", err, saveErr)
+		}
 		events.Emit("automation.execution.failed", execution)
 		return err
 	}
@@ -166,7 +174,9 @@ func (e *Engine) executeWorkflow(ctx context.Context, execCtx *ExecutionContext,
 		if result.Complete {
 			execCtx.Execution.Status = models.ExecutionStatusCompleted
 			execCtx.Execution.CompletedAt = time.Now()
-			e.saveExecution(ctx, execCtx.Execution, execCtx)
+			if err := e.saveExecution(ctx, execCtx.Execution, execCtx); err != nil {
+				return err
+			}
 			events.Emit("automation.execution.completed", execCtx.Execution)
 			engineLog.Success("Automation execution completed: %s", execCtx.Execution.ID)
 			return nil
@@ -176,13 +186,20 @@ func (e *Engine) executeWorkflow(ctx context.Context, execCtx *ExecutionContext,
 		if result.Wait != nil && *result.Wait > 0 {
 			// Save current state
 			execCtx.Execution.Status = models.ExecutionStatusWaiting
-			e.saveExecution(ctx, execCtx.Execution, execCtx)
+			if err := e.saveExecution(ctx, execCtx.Execution, execCtx); err != nil {
+				return err
+			}
 
 			// Schedule resume task
 			if len(result.NextNodeIDs) > 0 {
-				e.scheduleResume(ctx, automation.ID, execCtx.ContactID, result.NextNodeIDs[0], *result.Wait)
+				if err := e.scheduleResume(ctx, automation.ID, execCtx.ContactID, result.NextNodeIDs[0], *result.Wait, execCtx.Execution.ID); err != nil {
+					return err
+				}
 			}
 
+			if len(result.NextNodeIDs) == 0 {
+				return fmt.Errorf("delay step has no continuation")
+			}
 			engineLog.Info("Execution paused for %s, will resume at node %s", result.Wait, result.NextNodeIDs[0])
 			return nil
 		}
@@ -192,7 +209,9 @@ func (e *Engine) executeWorkflow(ctx context.Context, execCtx *ExecutionContext,
 			// No next node, workflow complete
 			execCtx.Execution.Status = models.ExecutionStatusCompleted
 			execCtx.Execution.CompletedAt = time.Now()
-			e.saveExecution(ctx, execCtx.Execution, execCtx)
+			if err := e.saveExecution(ctx, execCtx.Execution, execCtx); err != nil {
+				return err
+			}
 			events.Emit("automation.execution.completed", execCtx.Execution)
 			return nil
 		}
@@ -208,7 +227,9 @@ func (e *Engine) executeWorkflow(ctx context.Context, execCtx *ExecutionContext,
 
 		// Save intermediate state
 		execCtx.Execution.Status = models.ExecutionStatusRunning
-		e.saveExecution(ctx, execCtx.Execution, execCtx)
+		if err := e.saveExecution(ctx, execCtx.Execution, execCtx); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -216,8 +237,28 @@ func (e *Engine) executeWorkflow(ctx context.Context, execCtx *ExecutionContext,
 
 // getOrCreateExecution retrieves existing execution or creates a new one
 func (e *Engine) getOrCreateExecution(ctx context.Context, automationID, contactID string, triggerData map[string]interface{}, currentNodeID string) (*models.AutomationExecution, bool, error) {
-	// Check for existing running execution
+	// Queue retries and wait continuations retain their execution identity.
 	var execution models.AutomationExecution
+	if id, _ := triggerData["_execution_id"].(string); id != "" {
+		if uuid.Validate(id) != nil {
+			return nil, false, fmt.Errorf("invalid execution ID")
+		}
+		data, err := json.Marshal(triggerData)
+		if err != nil {
+			return nil, false, err
+		}
+		execution = models.AutomationExecution{Base: models.Base{ID: id}, AutomationID: automationID, ContactID: contactID, Status: models.ExecutionStatusRunning, CurrentNodeID: currentNodeID, ExecutionLog: []byte("[]"), Variables: data, TriggerData: data, StartedAt: time.Now(), TriggerType: "event"}
+		result := e.db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).Create(&execution)
+		if result.Error != nil {
+			return nil, false, result.Error
+		}
+		created := result.RowsAffected > 0
+		if err := e.db.WithContext(ctx).Where("id = ? AND automation_id = ? AND contact_id = ?", id, automationID, contactID).First(&execution).Error; err != nil {
+			return nil, false, err
+		}
+		return &execution, created, nil
+	}
+	// Compatibility for callers created before durable execution IDs.
 	err := e.db.WithContext(ctx).
 		Where("automation_id = ? AND contact_id = ? AND status IN ?",
 			automationID, contactID, []string{string(models.ExecutionStatusRunning), string(models.ExecutionStatusWaiting)}).
@@ -286,8 +327,9 @@ func (e *Engine) saveExecution(ctx context.Context, execution *models.Automation
 }
 
 // scheduleResume schedules a task to resume execution after a delay
-func (e *Engine) scheduleResume(ctx context.Context, automationID, contactID, nextNodeID string, delay time.Duration) error {
+func (e *Engine) scheduleResume(ctx context.Context, automationID, contactID, nextNodeID string, delay time.Duration, executionID string) error {
 	task := tasks.AutomationExecuteTask{
+		ExecutionID:   executionID,
 		AutomationID:  automationID,
 		ContactID:     contactID,
 		TriggerData:   make(map[string]interface{}),

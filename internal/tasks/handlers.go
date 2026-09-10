@@ -60,8 +60,31 @@ func (h *TaskHandler) HandleEmailSend(ctx context.Context, t *asynq.Task) error 
 		return h.logger.Error("❌ failed to get email: %w", err)
 	}
 
+	// Suppression is checked at delivery time, including messages prepared before opt-out.
+	if email.Status == models.EmailStatusSent || email.Status == models.EmailStatusOpened || email.Status == models.EmailStatusClicked || email.Status == "SUPPRESSED" {
+		return nil
+	}
+	if email.ContactID != "" {
+		var contact models.Contact
+		if err := h.db.Where("id = ? AND team_id = ? AND is_deleted = ?", email.ContactID, email.TeamID, false).First(&contact).Error; err != nil {
+			return err
+		}
+		if contact.Status != models.SubscriberStatusActive {
+			return h.db.Model(email).UpdateColumn("status", "SUPPRESSED").Error
+		}
+	}
 	h.logger.Info("📧 Processing email task ID: %s (Attempt: %d)", task.EmailID, task.AttemptNum)
 
+	// Claim outbox deliveries atomically. Ambiguous deliveries require review.
+	if email.DeliveryKey != nil {
+		result := h.db.Model(&models.Email{}).Where("id = ? AND status IN ?", email.ID, []string{"PENDING", "FAILED"}).UpdateColumn("status", "SENDING")
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return nil
+		}
+	}
 	// Send email using SMTP handler
 	if err := h.mailHandler.SendEmail(email); err != nil {
 		task.Error = err.Error()
@@ -169,7 +192,13 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 	}
 
 	// Get HTML content outside transaction since it's an external operation
-	htmlFromTemplate, err := utils.GetHTMLFromURL(campaign.Template.HtmlFile.SignedURL)
+	htmlFromTemplate := campaign.Template.HTMLBody
+	if htmlFromTemplate == "" {
+		if campaign.Template.HtmlFile == nil {
+			return fmt.Errorf("template has no HTML")
+		}
+		htmlFromTemplate, err = utils.GetHTMLFromURL(campaign.Template.HtmlFile.SignedURL)
+	}
 	if err != nil {
 		return h.logger.Error("❌ failed to get html from template: %w", err)
 	}
@@ -489,6 +518,13 @@ func (h *TaskHandler) HandleAutomationExecute(ctx context.Context, t *asynq.Task
 		}
 
 		if engine, ok := h.engine.(AutomationEngine); ok {
+			if task.TriggerData == nil {
+				task.TriggerData = map[string]interface{}{}
+			}
+			delete(task.TriggerData, "_execution_id")
+			if task.ExecutionID != "" {
+				task.TriggerData["_execution_id"] = task.ExecutionID
+			}
 			if err := engine.Execute(ctx, task.AutomationID, task.ContactID, task.TriggerData, task.CurrentNodeID); err != nil {
 				h.logger.Error("❌ Automation execution failed: %v", err)
 				return fmt.Errorf("automation execution failed: %w", err)

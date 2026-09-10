@@ -5,6 +5,7 @@ import (
 
 	"kori/internal/api/controllers"
 	"kori/internal/api/middleware"
+	"kori/internal/handlers"
 	"kori/internal/models"
 	"kori/internal/services"
 
@@ -723,8 +724,7 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	apiKeyWriteGroup.DELETE("/:id", apiKeyController.Delete)
 
 	// API KEY USAGE with team-specific permissions
-	apiKeyUsageService := services.NewBaseService(db, models.APIKeyUsage{})
-	apiKeyUsageController := controllers.NewBaseController(apiKeyUsageService)
+	apiKeyUsageController := handlers.NewMarketingHandler(db, "", "")
 	apiKeyUsageGroup := g.Group("/api-key-usage")
 	apiKeyUsageGroup.Use(middleware.RequirePermissions(db, "api_key_usage:read"))
 	// @Summary List API key usage
@@ -736,7 +736,7 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	// @Failure 403 {object} map[string]string "Forbidden"
 	// @Failure 500 {object} map[string]string "Internal server error"
 	// @Router /api/v1/api-key-usage [get]
-	apiKeyUsageGroup.GET("", apiKeyUsageController.List)
+	apiKeyUsageGroup.GET("", apiKeyUsageController.APIKeyUsage)
 	// @Summary Get API key usage
 	// @Description Get API key usage by ID
 	// @Accept json
@@ -748,7 +748,7 @@ func RegisterCRUDRoutes(g *echo.Group, db *gorm.DB) {
 	// @Failure 404 {object} map[string]string "Not found"
 	// @Failure 500 {object} map[string]string "Internal server error"
 	// @Router /api/v1/api-key-usage/{id} [get]
-	apiKeyUsageGroup.GET("/:id", apiKeyUsageController.Get)
+	apiKeyUsageGroup.GET("/:id", apiKeyUsageController.APIKeyUsage)
 
 	// Campaigns with team-specific permissions
 	campaignService := services.NewBaseService(db, models.Campaign{})

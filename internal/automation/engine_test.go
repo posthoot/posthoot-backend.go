@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"kori/internal/events"
 	"kori/internal/models"
+	"kori/internal/tasks"
 	"os"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -62,20 +65,20 @@ func setupTestEngine(t *testing.T) (*Engine, *MockTaskClient, *gorm.DB) {
 	engine := NewEngine(db, mockTaskClient)
 
 	// Register mock processors
-	engine.RegisterProcessor(&MockStartProcessor{})
-	engine.RegisterProcessor(&MockEmailProcessor{})
+	engine.RegisterProcessor(&MockStartProcessor{db: db})
+	engine.RegisterProcessor(&MockEmailProcessor{db: db})
 	engine.RegisterProcessor(&MockExitProcessor{})
-	engine.RegisterProcessor(&MockWaitProcessor{})
+	engine.RegisterProcessor(&MockWaitProcessor{db: db})
 	engine.RegisterProcessor(&MockConditionProcessor{})
 
 	return engine, mockTaskClient, db
 }
 
 // Mock Processors
-type MockStartProcessor struct{}
+type MockStartProcessor struct{ db *gorm.DB }
 
 func (p *MockStartProcessor) Process(ctx *ExecutionContext, node *models.AutomationNode) (*ProcessResult, error) {
-	return &ProcessResult{Complete: false}, nil
+	return &ProcessResult{Complete: false, NextNodeIDs: testNextNodes(p.db, node)}, nil
 }
 
 func (p *MockStartProcessor) Validate(node *models.AutomationNode) error {
@@ -86,10 +89,10 @@ func (p *MockStartProcessor) Type() models.NodeType {
 	return models.NodeTypeStart
 }
 
-type MockEmailProcessor struct{}
+type MockEmailProcessor struct{ db *gorm.DB }
 
 func (p *MockEmailProcessor) Process(ctx *ExecutionContext, node *models.AutomationNode) (*ProcessResult, error) {
-	return &ProcessResult{Complete: false}, nil
+	return &ProcessResult{Complete: false, NextNodeIDs: testNextNodes(p.db, node)}, nil
 }
 
 func (p *MockEmailProcessor) Validate(node *models.AutomationNode) error {
@@ -114,13 +117,14 @@ func (p *MockExitProcessor) Type() models.NodeType {
 	return models.NodeTypeExit
 }
 
-type MockWaitProcessor struct{}
+type MockWaitProcessor struct{ db *gorm.DB }
 
 func (p *MockWaitProcessor) Process(ctx *ExecutionContext, node *models.AutomationNode) (*ProcessResult, error) {
 	duration := 5 * time.Minute
 	return &ProcessResult{
-		Complete: false,
-		Wait:     &duration,
+		Complete:    false,
+		Wait:        &duration,
+		NextNodeIDs: testNextNodes(p.db, node),
 	}, nil
 }
 
@@ -183,10 +187,10 @@ func createTestAutomation(t *testing.T, db *gorm.DB, nodes []models.AutomationNo
 
 func createTestContact(t *testing.T, db *gorm.DB, teamID string) *models.Contact {
 	contact := &models.Contact{
-		Base:   models.Base{ID: uuid.New().String()},
-		TeamID: teamID,
-		Email:  "test@example.com",
-		Name:   "Test Contact",
+		Base:      models.Base{ID: uuid.New().String()},
+		TeamID:    teamID,
+		Email:     "test@example.com",
+		FirstName: "Test Contact",
 	}
 	require.NoError(t, db.Create(contact).Error)
 	return contact
@@ -314,8 +318,8 @@ func TestEngine_Execute_ResumeFromWait(t *testing.T) {
 	err := engine.Execute(context.Background(), automation.ID, contact.ID, nil, "")
 	require.NoError(t, err)
 
-	// Resume from WAIT node (simulating scheduled task)
-	err = engine.Execute(context.Background(), automation.ID, contact.ID, nil, "wait")
+	// Resume at the continuation node selected by the WAIT processor.
+	err = engine.Execute(context.Background(), automation.ID, contact.ID, nil, "exit")
 	require.NoError(t, err)
 
 	// Verify execution is now completed
@@ -393,7 +397,7 @@ func TestEngine_Execute_NonExistentAutomation(t *testing.T) {
 
 	err := engine.Execute(context.Background(), fakeAutomationID, fakeContactID, nil, "")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "automation not found")
+	assert.Contains(t, err.Error(), "failed to load automation")
 
 	// Verify no execution was created
 	var count int64
@@ -406,13 +410,20 @@ func TestEngine_Execute_EventEmission(t *testing.T) {
 
 	// Track emitted events
 	var emittedEvents []string
+	var eventMu sync.Mutex
 	events.On("automation.execution.started", func(data interface{}) {
+		eventMu.Lock()
+		defer eventMu.Unlock()
 		emittedEvents = append(emittedEvents, "started")
 	})
 	events.On("automation.execution.completed", func(data interface{}) {
+		eventMu.Lock()
+		defer eventMu.Unlock()
 		emittedEvents = append(emittedEvents, "completed")
 	})
 	events.On("automation.node.executed", func(data interface{}) {
+		eventMu.Lock()
+		defer eventMu.Unlock()
 		emittedEvents = append(emittedEvents, "node_executed")
 	})
 
@@ -441,10 +452,12 @@ func TestEngine_Execute_EventEmission(t *testing.T) {
 	err := engine.Execute(context.Background(), automation.ID, contact.ID, nil, "")
 	require.NoError(t, err)
 
-	// Verify events were emitted
-	assert.Contains(t, emittedEvents, "started")
-	assert.Contains(t, emittedEvents, "completed")
-	assert.Contains(t, emittedEvents, "node_executed")
+	assert.Eventually(t, func() bool {
+		eventMu.Lock()
+		defer eventMu.Unlock()
+		return slices.Contains(emittedEvents, "started") && slices.Contains(emittedEvents, "completed") && slices.Contains(emittedEvents, "node_executed")
+	}, time.Second, 5*time.Millisecond)
+
 }
 
 func TestEngine_Execute_ExecutionLogCreation(t *testing.T) {
@@ -501,12 +514,43 @@ func TestEngine_RegisterProcessor(t *testing.T) {
 	engine, _, _ := setupTestEngine(t)
 
 	// Verify processors are registered
-	processor := engine.registry.Get(models.NodeTypeStart)
+	processor, _ := engine.registry.Get(models.NodeTypeStart)
 	assert.NotNil(t, processor)
 
-	processor = engine.registry.Get(models.NodeTypeEmail)
+	processor, _ = engine.registry.Get(models.NodeTypeEmail)
 	assert.NotNil(t, processor)
 
-	processor = engine.registry.Get(models.NodeTypeExit)
+	processor, _ = engine.registry.Get(models.NodeTypeExit)
 	assert.NotNil(t, processor)
+}
+
+func (m *MockTaskClient) EnqueueAutomationTask(ctx context.Context, task tasks.AutomationExecuteTask, delay time.Duration) error {
+	return m.EnqueueAutomationExecute(task.AutomationID, task.ContactID, task.TriggerData, task.CurrentNodeID, delay)
+}
+
+func testNextNodes(db *gorm.DB, node *models.AutomationNode) []string {
+	var edges []models.AutomationNodeEdge
+	db.Where("source_id = ? AND automation_id = ?", node.ID, node.AutomationID).Find(&edges)
+	ids := []string{}
+	for _, edge := range edges {
+		ids = append(ids, edge.TargetID)
+	}
+	return ids
+}
+
+func TestQueueRetryRetainsExecutionIdentity(t *testing.T) {
+	db := setupTestDB(t)
+	engine := NewEngine(db, &MockTaskClient{})
+	id, workflow, contact := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	data := map[string]interface{}{"_execution_id": id}
+	first, created, err := engine.getOrCreateExecution(context.Background(), workflow, contact, data, "")
+	require.NoError(t, err)
+	require.True(t, created)
+	require.NoError(t, db.Model(first).Update("status", models.ExecutionStatusFailed).Error)
+	retried, created, err := engine.getOrCreateExecution(context.Background(), workflow, contact, data, "")
+	require.NoError(t, err)
+	require.False(t, created)
+	require.Equal(t, first.ID, retried.ID)
+	_, _, err = engine.getOrCreateExecution(context.Background(), workflow, uuid.NewString(), data, "")
+	require.Error(t, err)
 }

@@ -48,6 +48,8 @@ func (c *BaseController[T]) Create(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body "+err.Error())
 	}
 
+	enforceOwner(ctx, &entity, ctx.Request().Method == "POST")
+
 	if err := ctx.Validate(&entity); err != nil {
 		return err
 	}
@@ -65,6 +67,9 @@ func (c *BaseController[T]) Get(ctx echo.Context) error {
 	id := ctx.Param("id")
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id parameter")
+	}
+	if err := c.authorizeEntity(ctx, id); err != nil {
+		return err
 	}
 	includes := parseIncludes(ctx)
 	entity, err := c.service.Get(ctx.Request().Context(), id, includes...)
@@ -108,6 +113,9 @@ func (c *BaseController[T]) List(ctx echo.Context) error {
 	}
 	if limit < 1 {
 		limit = 10
+	}
+	if limit > 200 {
+		limit = 200
 	}
 
 	// Parse filters from query parameters
@@ -163,10 +171,15 @@ func (c *BaseController[T]) Update(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id parameter")
 	}
 
+	if err := c.authorizeEntity(ctx, id); err != nil {
+		return err
+	}
 	var entity T
 	if err := ctx.Bind(&entity); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
+
+	enforceOwner(ctx, &entity, ctx.Request().Method == "POST")
 
 	if err := ctx.Validate(&entity); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -187,6 +200,9 @@ func (c *BaseController[T]) Delete(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id parameter")
 	}
 
+	if err := c.authorizeEntity(ctx, id); err != nil {
+		return err
+	}
 	if err := c.service.Delete(ctx.Request().Context(), id); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}

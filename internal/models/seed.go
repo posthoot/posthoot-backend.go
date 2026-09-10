@@ -17,6 +17,7 @@ var log = console.New("SEEDER")
 
 // Default resources and their actions
 var defaultResources = []Resource{
+	{Name: "marketing", Action: "read"}, {Name: "marketing", Action: "create"},
 	// Campaign resources
 	{Name: "campaigns", Action: "create"},
 	{Name: "campaigns", Action: "read"},
@@ -152,7 +153,7 @@ var defaultResources = []Resource{
 var rolePermissions = map[UserRole][]string{
 	UserRoleAdmin: {
 		// Admin has all permissions
-		"campaigns:*", "templates:*", "lists:*", "contacts:*",
+		"marketing:*", "campaigns:*", "templates:*", "lists:*", "contacts:*",
 		"teams:*", "users:*", "api_keys:*", "automations:*",
 		"smtp_configs:*", "domains:*",
 		"permissions:*",
@@ -171,7 +172,7 @@ var rolePermissions = map[UserRole][]string{
 	},
 	UserRoleMember: {
 		// Member has limited permissions
-		"campaigns:read", "campaigns:create",
+		"marketing:read", "marketing:create", "campaigns:read", "campaigns:create",
 		"templates:read",
 		"lists:read",
 		"contacts:read", "contacts:create",

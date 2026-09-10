@@ -17,6 +17,8 @@ func SetupAutomationRoutes(e *echo.Echo, db *gorm.DB, cfg *config.Config, taskCl
 
 	handler := handlers.NewAutomationHandler(db, taskClient)
 
+	automationGroup.POST("/validate", handler.ValidateAutomation)
+
 	// CRUD operations
 	automationGroup.POST("", handler.CreateAutomation)
 	automationGroup.GET("", handler.ListAutomations)

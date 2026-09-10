@@ -1,6 +1,13 @@
 package tasks
 
-import "time"
+import (
+	"context"
+	"time"
+)
+
+type AutomationEnqueuer interface {
+	EnqueueAutomationTask(context.Context, AutomationExecuteTask, time.Duration) error
+}
 
 // Task Types
 const (
@@ -115,6 +122,7 @@ type LLMEmailWriterTask struct {
 }
 
 type AutomationExecuteTask struct {
+	ExecutionID   string                 `json:"execution_id"`
 	AutomationID  string                 `json:"automation_id"`
 	ContactID     string                 `json:"contact_id"`
 	TriggerData   map[string]interface{} `json:"trigger_data"`

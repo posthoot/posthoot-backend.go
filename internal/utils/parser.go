@@ -37,7 +37,7 @@ func ParseVariables(html string) (map[string]string, error) {
 func ReplaceVariables(input string, variables map[string]string, mailId string, cfg *config.Config, trackLinks bool, isMarketing bool) string {
 	for variable, value := range variables {
 		re := regexp.MustCompile(`{{\s*` + regexp.QuoteMeta(variable) + `(?:\.\w+)*\s*}}`)
-		input = re.ReplaceAllString(input, value)
+		input = re.ReplaceAllStringFunc(input, func(string) string { return value })
 	}
 
 	if trackLinks {

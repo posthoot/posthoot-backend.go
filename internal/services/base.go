@@ -3,8 +3,11 @@ package services
 import (
 	"context"
 	"fmt"
+	"gorm.io/gorm/clause"
 	"kori/internal/events"
 	"reflect"
+	"regexp"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -106,24 +109,27 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 
 	// Apply filters
 	for key, value := range filters {
-		query = query.Where(key+" = ?", value)
+		if !regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`).MatchString(key) {
+			return nil, 0, fmt.Errorf("invalid filter column")
+		}
+		query = query.Where(clause.Eq{Column: clause.Column{Name: key}, Value: value})
 	}
 
 	// Apply includes
 	query = s.applyIncludes(query, includes...)
-
-	// Apply pagination
-	if page > 0 && limit > 0 {
-		offset := (page - 1) * limit
-		query = query.Offset(offset).Limit(limit)
-	}
 
 	// Apply excludes
 	query = s.applyExcludes(query, excludes)
 
 	// Apply sort
 	if len(sortFields) > 0 {
-		query = query.Order(fmt.Sprintf("%s %s", sortFields[0], order))
+		if !regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`).MatchString(sortFields[0]) {
+			return nil, 0, fmt.Errorf("invalid sort column")
+		}
+		if order != "" && !strings.EqualFold(order, "ASC") && !strings.EqualFold(order, "DESC") {
+			return nil, 0, fmt.Errorf("invalid sort order")
+		}
+		query = query.Order(clause.OrderByColumn{Column: clause.Column{Name: sortFields[0]}, Desc: strings.EqualFold(order, "DESC")})
 	}
 
 	// filter deleted entities
@@ -132,6 +138,12 @@ func (s *BaseServiceImpl[T]) List(ctx context.Context, page, limit int, filters 
 	// Get total count
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
+	}
+
+	// Apply pagination
+	if page > 0 && limit > 0 {
+		offset := (page - 1) * limit
+		query = query.Offset(offset).Limit(limit)
 	}
 
 	// Execute query
