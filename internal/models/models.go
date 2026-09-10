@@ -328,33 +328,34 @@ type Template struct {
 
 type Email struct {
 	Base
-	DeliveryKey    *string        `gorm:"uniqueIndex" json:"-"`
-	UnsubscribeURL string         `json:"-"`
-	From           string         `gorm:"not null" json:"from" validate:"required,email"`
-	To             string         `gorm:"not null" json:"to" validate:"required,email"`
-	Subject        string         `gorm:"not null" json:"subject" validate:"required"`
-	Body           string         `gorm:"not null" json:"body" validate:"required"`
-	Status         EmailStatus    `gorm:"not null" json:"status" validate:"required,oneof=DRAFT QUEUED SENDING SENT FAILED"`
-	Error          string         `json:"error" validate:"omitempty"`
-	Data           datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"data" validate:"omitempty,json"`
-	TemplateID     string         `gorm:"type:uuid;default:NULL" json:"templateId" validate:"omitempty,uuid"`
-	Template       *Template      `json:"template,omitempty"`
-	TeamID         string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
-	Team           *Team          `json:"team,omitempty"`
-	ContactID      string         `gorm:"type:uuid;default:NULL" json:"contactId" validate:"omitempty,uuid"`
-	Contact        *Contact       `json:"contact,omitempty"`
-	SMTPConfigID   string         `gorm:"type:uuid;not null" json:"smtpConfigId" validate:"required,uuid"`
-	SMTPConfig     *SMTPConfig    `json:"smtpConfig,omitempty"`
-	SentAt         time.Time      `json:"sentAt" validate:"omitempty"`
-	SendAt         time.Time      `json:"sendAt" validate:"omitempty"`
-	CategoryID     string         `gorm:"type:uuid;not null" json:"categoryId" validate:"required,uuid"`
-	Category       *EmailCategory `json:"category,omitempty"`
-	CampaignID     string         `gorm:"type:uuid;default:NULL" json:"campaignId" validate:"omitempty,uuid"`
-	Campaign       *Campaign      `json:"campaign,omitempty"`
-	CC             string         `json:"cc" validate:"omitempty,email"`
-	BCC            string         `json:"bcc" validate:"omitempty,email"`
-	ReplyTo        string         `json:"replyTo" validate:"omitempty,email"`
-	Test           bool           `gorm:"not null;default:false" json:"test"`
+	ClickTrackingEnabled *bool          `json:"-"`
+	DeliveryKey          *string        `gorm:"uniqueIndex" json:"-"`
+	UnsubscribeURL       string         `json:"-"`
+	From                 string         `gorm:"not null" json:"from" validate:"required,email"`
+	To                   string         `gorm:"not null" json:"to" validate:"required,email"`
+	Subject              string         `gorm:"not null" json:"subject" validate:"required"`
+	Body                 string         `gorm:"not null" json:"body" validate:"required"`
+	Status               EmailStatus    `gorm:"not null" json:"status" validate:"required,oneof=DRAFT QUEUED SENDING SENT FAILED"`
+	Error                string         `json:"error" validate:"omitempty"`
+	Data                 datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"data" validate:"omitempty,json"`
+	TemplateID           string         `gorm:"type:uuid;default:NULL" json:"templateId" validate:"omitempty,uuid"`
+	Template             *Template      `json:"template,omitempty"`
+	TeamID               string         `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
+	Team                 *Team          `json:"team,omitempty"`
+	ContactID            string         `gorm:"type:uuid;default:NULL" json:"contactId" validate:"omitempty,uuid"`
+	Contact              *Contact       `json:"contact,omitempty"`
+	SMTPConfigID         string         `gorm:"type:uuid;not null" json:"smtpConfigId" validate:"required,uuid"`
+	SMTPConfig           *SMTPConfig    `json:"smtpConfig,omitempty"`
+	SentAt               time.Time      `json:"sentAt" validate:"omitempty"`
+	SendAt               time.Time      `json:"sendAt" validate:"omitempty"`
+	CategoryID           string         `gorm:"type:uuid;not null" json:"categoryId" validate:"required,uuid"`
+	Category             *EmailCategory `json:"category,omitempty"`
+	CampaignID           string         `gorm:"type:uuid;default:NULL" json:"campaignId" validate:"omitempty,uuid"`
+	Campaign             *Campaign      `json:"campaign,omitempty"`
+	CC                   string         `json:"cc" validate:"omitempty,email"`
+	BCC                  string         `json:"bcc" validate:"omitempty,email"`
+	ReplyTo              string         `json:"replyTo" validate:"omitempty,email"`
+	Test                 bool           `gorm:"not null;default:false" json:"test"`
 }
 
 func (e *Email) BeforeUpdate(tx *gorm.DB) error {

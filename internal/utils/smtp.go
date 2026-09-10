@@ -106,6 +106,10 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 		return h.logger.Error("❌ failed to send email: %w", err)
 	}
 
+	if email.ClickTrackingEnabled == nil {
+		tracked := strings.Contains(decodedBody, "/t/click/")
+		email.ClickTrackingEnabled = &tracked
+	}
 	email.SentAt = time.Now()
 	email.Status = models.EmailStatusSent
 	email.Error = ""

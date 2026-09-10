@@ -202,7 +202,7 @@ func UnsubscribeTemplate(email string, emailID string) string {
         gap:10px;
         z-index:1;
       ">
-      <a href="/t/resubscribe?id=%s" style="
+      <a href="/t/resubscribe?token=%s" style="
           flex:1 1 140px;
           position:relative;
           display:inline-flex;

@@ -258,3 +258,36 @@ func TestAutomationEmailRetryUsesOneOutboxRecord(t *testing.T) {
 	require.Contains(t, string(decoded), "&lt;b&gt;$1&lt;/b&gt;")
 	require.Equal(t, models.EmailStatusPending, rows[0].Status)
 }
+
+func TestNewsletterUnsubscribeAttributionIsSignedAndIdempotent(t *testing.T) {
+	db := testDB(t)
+	require.NoError(t, db.AutoMigrate(&models.EmailTracking{}))
+	team, list, contactID, messageID, campaignID := uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString()
+	seed(t, db, &models.MailingList{Base: models.Base{ID: list}, TeamID: team, Name: "Newsletter"})
+	seed(t, db, &models.Contact{Base: models.Base{ID: contactID}, TeamID: team, ListID: list, Email: "reader@example.com", Status: models.SubscriberStatusActive})
+	seed(t, db, &models.Email{Base: models.Base{ID: messageID}, TeamID: team, ContactID: contactID, CampaignID: campaignID, To: "reader@example.com", From: "news@example.com", SMTPConfigID: uuid.NewString(), CategoryID: uuid.NewString(), Status: models.EmailStatusSent})
+	secret := strings.Repeat("s", 32)
+	service := marketing.New(db, secret, "https://api.example.com")
+	handler := handlers.NewMarketingHandler(db, secret, "https://api.example.com")
+	e := echo.New()
+	e.GET("/unsubscribe/:team/:contact/:token", handler.Unsubscribe)
+	e.POST("/unsubscribe/:team/:contact/:token", handler.Unsubscribe)
+	target := "/unsubscribe/" + team + "/" + contactID + "/" + service.MessageToken(team, contactID, messageID) + "?message=" + messageID
+	call := func(method, path string) int {
+		r := httptest.NewRecorder()
+		e.ServeHTTP(r, httptest.NewRequest(method, path, nil))
+		return r.Code
+	}
+	require.Equal(t, 200, call("GET", target))
+	var count int64
+	require.NoError(t, db.Model(&models.EmailTracking{}).Count(&count).Error)
+	require.Zero(t, count)
+	require.Equal(t, 404, call("POST", strings.Replace(target, "?message="+messageID, "?message="+uuid.NewString(), 1)))
+	require.Equal(t, 200, call("POST", target))
+	require.Equal(t, 200, call("POST", target))
+	require.NoError(t, db.Model(&models.EmailTracking{}).Where("email_id=? AND event='unsubscribe'", messageID).Count(&count).Error)
+	require.EqualValues(t, 1, count)
+	var contact models.Contact
+	require.NoError(t, db.First(&contact, "id=?", contactID).Error)
+	require.Equal(t, models.SubscriberStatusUnsubscribed, contact.Status)
+}

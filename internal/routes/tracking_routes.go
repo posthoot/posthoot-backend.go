@@ -16,7 +16,9 @@ func RegisterTrackingRoutes(e *echo.Echo, h *handlers.TrackingHandler, cfg *conf
 	trackGroup.GET("/click/*", h.HandleEmailClick) // The * captures the rest of the URL
 	trackGroup.GET("/open", h.HandleEmailOpen)
 	trackGroup.GET("/unsubscribe", h.HandleEmailUnsubscribe)
-	trackGroup.GET("/resubscribe", h.HandleEmailResubscribe) // Resubscribe to an email list
+	trackGroup.POST("/unsubscribe", h.HandleEmailUnsubscribe)
+	trackGroup.GET("/resubscribe", h.HandleEmailResubscribe)
+	trackGroup.POST("/resubscribe", h.HandleEmailResubscribe) // Resubscribe to an email list
 
 	// Analytics endpoints (require auth)
 	analyticsGroup := e.Group("/api/v1/analytics")
@@ -24,7 +26,7 @@ func RegisterTrackingRoutes(e *echo.Echo, h *handlers.TrackingHandler, cfg *conf
 	auth := middleware.NewAuthMiddleware(cfg.JWT.Secret)
 	analyticsGroup.Use(auth.Middleware())
 
-	analyticsGroup.Use(middleware.RequirePermissions(db, "analytics:read"))
+	analyticsGroup.Use(middleware.AnalyticsAccess(db))
 
 	// Basic analytics
 	// @Summary Get email analytics
@@ -52,7 +54,11 @@ func RegisterTrackingRoutes(e *echo.Echo, h *handlers.TrackingHandler, cfg *conf
 
 	// @Summary Get audience insights
 	// @Description Get audience insights
-	analyticsGroup.GET("/audience", h.GetAudienceInsights) // Audience insights
+	analyticsGroup.GET("/report", h.AudienceReport)
+	analyticsGroup.GET("/breakdown", h.AnalyticsBreakdown)
+	analyticsGroup.GET("/people", h.AnalyticsPeople)
+	analyticsGroup.GET("/options", h.AnalyticsOptions)
+	analyticsGroup.GET("/audience", h.AudienceReport) // Audience insights
 
 	// @Summary Get trend analysis
 	// @Description Get trend analysis

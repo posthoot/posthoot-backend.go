@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/csv"
 	"fmt"
+	"kori/internal/analytics"
 	"kori/internal/config"
 	"kori/internal/models"
 	"kori/internal/utils"
@@ -207,41 +208,15 @@ func (h *TrackingHandler) HandleEmailOpen(c echo.Context) error {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/v1/analytics/email [get]
 func (h *TrackingHandler) GetEmailAnalytics(c echo.Context) error {
-	emailID := c.QueryParam("emailId")
-	if emailID == "" {
-		return c.String(http.StatusBadRequest, "Missing emailId")
+	id := c.QueryParam("emailId")
+	if id == "" {
+		return echo.NewHTTPError(400, "Missing emailId")
 	}
-
-	// Time-based filtering
-	startTime := c.QueryParam("startTime")
-	endTime := c.QueryParam("endTime")
-	timeZone := c.QueryParam("timezone")
-
-	var tracking []models.EmailTracking
-	query := h.db.Where("email_id = ?", emailID)
-
-	// Apply time filters if provided
-	if startTime != "" {
-		start, err := time.Parse(time.RFC3339, startTime)
-		if err == nil {
-			query = query.Where("timestamp >= ?", start)
-		}
+	result, err := h.legacyDetail(c, id, "")
+	if err != nil {
+		return err
 	}
-	if endTime != "" {
-		end, err := time.Parse(time.RFC3339, endTime)
-		if err == nil {
-			query = query.Where("timestamp <= ?", end)
-		}
-	}
-
-	if err := query.Find(&tracking).Error; err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to fetch analytics")
-	}
-
-	// Process analytics with timezone
-	analytics := processEmailAnalytics(tracking, timeZone)
-
-	return c.JSON(http.StatusOK, analytics)
+	return c.JSON(200, result)
 }
 
 // 📊 GetCampaignAnalytics returns analytics for a campaign
@@ -255,26 +230,23 @@ func (h *TrackingHandler) GetEmailAnalytics(c echo.Context) error {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/v1/analytics/campaign [get]
 func (h *TrackingHandler) GetCampaignAnalytics(c echo.Context) error {
-	campaignID := c.QueryParam("campaignId")
-	if campaignID == "" {
-		return c.String(http.StatusBadRequest, "Missing campaignId")
+	id := c.QueryParam("campaignId")
+	if id == "" {
+		return echo.NewHTTPError(400, "Missing campaignId")
 	}
-
-	var tracking []models.EmailTracking
-	if err := h.db.Where("campaign_id = ?", campaignID).Find(&tracking).Error; err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to fetch analytics")
+	result, err := h.legacyDetail(c, "", id)
+	if err != nil {
+		return err
 	}
-
-	// Process analytics
-	analytics := processCampaignAnalytics(tracking)
-
-	return c.JSON(http.StatusOK, analytics)
+	return c.JSON(200, result)
 }
 
 // Analytics response structures
 // 📊 EmailAnalytics represents email analytics data
 // @Description Email analytics data
 type EmailAnalytics struct {
+	AcceptedMessages int64   `json:"acceptedMessages"`
+	ClickToOpenRate  float64 `json:"clickToOpenRate"`
 	// 📊 Basic Metrics
 	OpenCount      int     `json:"openCount"`
 	ClickCount     int     `json:"clickCount"`
@@ -361,6 +333,7 @@ func processEmailAnalytics(tracking []models.EmailTracking, timeZone string) Ema
 	uniqueOpens := make(map[string]bool)
 	uniqueClicks := make(map[string]bool)
 	clickedLinks := make(map[string]*LinkAnalytics)
+	linkClickers := map[string]map[string]bool{}
 	userOpenTimes := make(map[string][]time.Time)
 	userClickTimes := make(map[string][]time.Time)
 
@@ -395,8 +368,8 @@ func processEmailAnalytics(tracking []models.EmailTracking, timeZone string) Ema
 		switch t.Event {
 		case models.EmailTrackingEventOpen:
 			analytics.OpenCount++
-			uniqueOpens[t.ContactID] = true
-			userOpenTimes[t.ContactID] = append(userOpenTimes[t.ContactID], t.Timestamp)
+			uniqueOpens[t.EmailID] = true
+			userOpenTimes[t.EmailID] = append(userOpenTimes[t.EmailID], t.Timestamp)
 
 			if firstOpenTime.IsZero() || t.Timestamp.Before(firstOpenTime) {
 				firstOpenTime = t.Timestamp
@@ -404,8 +377,8 @@ func processEmailAnalytics(tracking []models.EmailTracking, timeZone string) Ema
 
 		case models.EmailTrackingEventClick:
 			analytics.ClickCount++
-			uniqueClicks[t.ContactID] = true
-			userClickTimes[t.ContactID] = append(userClickTimes[t.ContactID], t.Timestamp)
+			uniqueClicks[t.EmailID] = true
+			userClickTimes[t.EmailID] = append(userClickTimes[t.EmailID], t.Timestamp)
 
 			// Track link analytics
 			if _, exists := clickedLinks[t.URL]; !exists {
@@ -415,6 +388,10 @@ func processEmailAnalytics(tracking []models.EmailTracking, timeZone string) Ema
 					FirstClickTime:  t.Timestamp.Format(time.RFC3339),
 				}
 			}
+			if linkClickers[t.URL] == nil {
+				linkClickers[t.URL] = map[string]bool{}
+			}
+			linkClickers[t.URL][t.EmailID] = true
 			link := clickedLinks[t.URL]
 			link.ClickCount++
 			link.DeviceBreakdown[t.DeviceType]++
@@ -435,7 +412,13 @@ func processEmailAnalytics(tracking []models.EmailTracking, timeZone string) Ema
 	analytics.RepeatClicks = analytics.ClickCount - analytics.UniqueClicks
 
 	if analytics.UniqueOpens > 0 {
-		analytics.ClickRate = float64(analytics.UniqueClicks) / float64(analytics.UniqueOpens) * 100
+		both := 0
+		for id := range uniqueClicks {
+			if uniqueOpens[id] {
+				both++
+			}
+		}
+		analytics.ClickToOpenRate = float64(both) / float64(analytics.UniqueOpens) * 100
 	}
 
 	// Calculate average read time (time between open and click)
@@ -462,16 +445,9 @@ func processEmailAnalytics(tracking []models.EmailTracking, timeZone string) Ema
 
 	// Process clicked links
 	for _, link := range clickedLinks {
-		uniqueClicksCount := 0
-		for userID := range uniqueClicks {
-			if len(userClickTimes[userID]) > 0 {
-				uniqueClicksCount++
-			}
-		}
+		uniqueClicksCount := len(linkClickers[link.URL])
 		link.UniqueClicks = uniqueClicksCount
-		if analytics.UniqueOpens > 0 {
-			link.ClickRate = float64(uniqueClicksCount) / float64(analytics.UniqueOpens) * 100
-		}
+
 		analytics.ClickedLinks = append(analytics.ClickedLinks, *link)
 	}
 
@@ -633,88 +609,23 @@ type PreferenceMetrics struct {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/v1/analytics/team/overview [get]
 func (h *TrackingHandler) GetTeamOverview(c echo.Context) error {
-	teamID := c.QueryParam("teamId")
-	if teamID == "" {
-		return c.String(http.StatusBadRequest, "Missing teamId")
+	f, err := h.legacyFilter(c)
+	if err != nil {
+		return err
 	}
-
-	// Get date range
-	startDate := c.QueryParam("startDate")
-	endDate := c.QueryParam("endDate")
-
-	// Build query with date range if provided
-	query := h.db.Table("email_trackings").
-		Joins("JOIN emails ON email_trackings.email_id = emails.id").
-		Where("emails.team_id = ?", teamID)
-
-	if startDate != "" {
-		query = query.Where("email_trackings.timestamp >= ?", startDate)
+	r, err := analytics.Build(c.Request().Context(), h.db, f)
+	if err != nil {
+		return err
 	}
-	if endDate != "" {
-		query = query.Where("email_trackings.timestamp <= ?", endDate)
+	overview := TeamOverview{TotalEmails: int(r.Summary.Accepted), TotalOpens: int(r.Summary.Opened), TotalClicks: int(r.Summary.ClickedMessages), DeviceStats: map[string]int{}, GeoStats: map[string]int{}, TopCampaigns: []CampaignSummary{}}
+	if r.Summary.ClickRate.Value != nil {
+		overview.AverageClickRate = *r.Summary.ClickRate.Value * 100
 	}
-
-	// Get overview metrics
-	overview := TeamOverview{
-		DeviceStats: make(map[string]int),
-		GeoStats:    make(map[string]int),
+	if r.Summary.OpenRate.Value != nil {
+		overview.AverageOpenRate = *r.Summary.OpenRate.Value * 100
 	}
-
-	// Get total emails
-	var totalEmails int64
-	h.db.Model(&models.Email{}).Where("team_id = ?", teamID).Count(&totalEmails)
-	overview.TotalEmails = int(totalEmails)
-
-	// Get engagement metrics
-	var tracking []models.EmailTracking
-	if err := query.Find(&tracking).Error; err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to fetch tracking data")
-	}
-
-	// Process tracking data
-	uniqueOpens := make(map[string]bool)
-	uniqueClicks := make(map[string]bool)
-	for _, t := range tracking {
-		switch t.Event {
-		case models.EmailTrackingEventOpen:
-			overview.TotalOpens++
-			uniqueOpens[t.EmailID] = true
-			overview.DeviceStats[t.DeviceType]++
-			if t.Country != "" {
-				overview.GeoStats[t.Country]++
-			}
-		case models.EmailTrackingEventClick:
-			overview.TotalClicks++
-			uniqueClicks[t.EmailID] = true
-		}
-	}
-
-	// Calculate rates
-	if overview.TotalEmails > 0 {
-		overview.AverageOpenRate = float64(len(uniqueOpens)) / float64(overview.TotalEmails) * 100
-		overview.AverageClickRate = float64(len(uniqueClicks)) / float64(overview.TotalEmails) * 100
-	}
-
-	// Get top campaigns
-	var campaigns []models.Campaign
-	h.db.Where("team_id = ?", teamID).
-		Order("created_at DESC").
-		Limit(5).
-		Find(&campaigns)
-
-	for _, campaign := range campaigns {
-		summary := CampaignSummary{
-			CampaignID: campaign.ID,
-			Name:       campaign.Name,
-		}
-		// Calculate campaign metrics
-		var campaignTracking []models.EmailTracking
-		h.db.Where("campaign_id = ?", campaign.ID).Find(&campaignTracking)
-		summary.EngagementScore = calculateEngagementScore(processEmailAnalytics(campaignTracking, "UTC"))
-		overview.TopCampaigns = append(overview.TopCampaigns, summary)
-	}
-
-	return c.JSON(http.StatusOK, overview)
+	c.Response().Header().Set("Deprecation", "true")
+	return c.JSON(200, overview)
 }
 
 // 🔄 CompareCampaigns compares multiple campaigns
@@ -728,21 +639,19 @@ func (h *TrackingHandler) GetTeamOverview(c echo.Context) error {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/v1/analytics/campaign/compare [get]
 func (h *TrackingHandler) CompareCampaigns(c echo.Context) error {
-	campaignIDs := strings.Split(c.QueryParam("campaignIds"), ",")
-	if len(campaignIDs) == 0 {
-		return c.String(http.StatusBadRequest, "Missing campaignIds")
+	ids := strings.Split(c.QueryParam("campaignIds"), ",")
+	if len(ids) == 0 || ids[0] == "" {
+		return echo.NewHTTPError(400, "Missing campaignIds")
 	}
-
-	results := make(map[string]EmailAnalytics)
-	for _, campaignID := range campaignIDs {
-		var tracking []models.EmailTracking
-		if err := h.db.Where("campaign_id = ?", campaignID).Find(&tracking).Error; err != nil {
-			continue
+	results := map[string]EmailAnalytics{}
+	for _, id := range ids {
+		r, err := h.legacyDetail(c, "", id)
+		if err != nil {
+			return err
 		}
-		results[campaignID] = processEmailAnalytics(tracking, "UTC")
+		results[id] = r
 	}
-
-	return c.JSON(http.StatusOK, results)
+	return c.JSON(200, results)
 }
 
 // 🎯 GetClickHeatmap returns click heatmap data
@@ -861,7 +770,7 @@ func (h *TrackingHandler) GetEngagementTimes(c echo.Context) error {
 	}
 
 	// Calculate optimal send times
-	timeData.OptimalSendTimes = calculateOptimalSendTimes(timeData)
+	timeData.OptimalSendTimes = []OptimalTimeSlot{} // Observed activity is not evidence of an optimal send time.
 
 	return c.JSON(http.StatusOK, timeData)
 }
@@ -877,53 +786,7 @@ func (h *TrackingHandler) GetEngagementTimes(c echo.Context) error {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/v1/analytics/audience [get]
 func (h *TrackingHandler) GetAudienceInsights(c echo.Context) error {
-	teamID := c.QueryParam("teamId")
-	if teamID == "" {
-		return c.String(http.StatusBadRequest, "Missing teamId")
-	}
-
-	insights := AudienceInsights{
-		Demographics: make(map[string]int),
-		Behaviors:    make(map[string]BehaviorMetrics),
-		Preferences:  make(map[string]PreferenceMetrics),
-	}
-
-	// Get all contacts and their tracking data
-	var contacts []models.Contact
-	if err := h.db.Where("team_id = ?", teamID).Find(&contacts).Error; err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to fetch contacts")
-	}
-
-	// Process contact data
-	for _, contact := range contacts {
-		// Get tracking data for contact
-		var tracking []models.EmailTracking
-		h.db.Where("contact_id = ?", contact.ID).Find(&tracking)
-
-		// Calculate engagement metrics
-		openCount := 0
-		clickCount := 0
-		for _, t := range tracking {
-			switch t.Event {
-			case models.EmailTrackingEventOpen:
-				openCount++
-			case models.EmailTrackingEventClick:
-				clickCount++
-			}
-		}
-
-		// Create behavior metrics
-		if len(tracking) > 0 {
-			engagementRate := float64(openCount+clickCount) / float64(len(tracking))
-			insights.Behaviors[contact.ID] = BehaviorMetrics{
-				Count:          len(tracking),
-				EngagementRate: engagementRate,
-				Trend:          calculateEngagementTrend(tracking),
-			}
-		}
-	}
-
-	return c.JSON(http.StatusOK, insights)
+	return h.AudienceReport(c)
 }
 
 // 📈 GetTrendAnalysis returns trend analysis
@@ -937,37 +800,22 @@ func (h *TrackingHandler) GetAudienceInsights(c echo.Context) error {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/v1/analytics/trends [get]
 func (h *TrackingHandler) GetTrendAnalysis(c echo.Context) error {
-	teamID := c.QueryParam("teamId")
-	if teamID == "" {
-		return c.String(http.StatusBadRequest, "Missing teamId")
+	f, err := h.legacyFilter(c)
+	if err != nil {
+		return err
 	}
-
-	// Get date range for trend analysis
-	startDate := c.QueryParam("startDate")
-	endDate := c.QueryParam("endDate")
-	interval := c.QueryParam("interval") // daily, weekly, monthly
-
-	// Build query with date range
-	query := h.db.Table("email_trackings").
-		Joins("JOIN emails ON email_trackings.email_id = emails.id").
-		Where("emails.team_id = ?", teamID)
-
-	if startDate != "" {
-		query = query.Where("email_trackings.timestamp >= ?", startDate)
+	interval := c.QueryParam("interval")
+	if interval == "" {
+		interval = "daily"
 	}
-	if endDate != "" {
-		query = query.Where("email_trackings.timestamp <= ?", endDate)
+	if interval != "daily" && interval != "weekly" && interval != "monthly" {
+		return echo.NewHTTPError(400, "Invalid interval")
 	}
-
-	var tracking []models.EmailTracking
-	if err := query.Find(&tracking).Error; err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to fetch tracking data")
+	data, err := analytics.Trends(c.Request().Context(), h.db, f, interval)
+	if err != nil {
+		return err
 	}
-
-	// Process tracking data into trends
-	trends := processTrends(tracking, interval)
-
-	return c.JSON(http.StatusOK, trends)
+	return c.JSON(200, data)
 }
 
 // 📊 ExportEmailAnalytics exports email analytics
@@ -988,10 +836,13 @@ func (h *TrackingHandler) ExportEmailAnalytics(c echo.Context) error {
 
 	format := c.QueryParam("format") // csv, xlsx
 	var tracking []models.EmailTracking
-	if err := h.db.Where("email_id = ?", emailID).Find(&tracking).Error; err != nil {
+	if err := h.db.Where("email_id = ?", emailID).Order("timestamp,id").Limit(100001).Find(&tracking).Error; err != nil {
 		return c.String(http.StatusInternalServerError, "Failed to fetch tracking data")
 	}
 
+	if len(tracking) > 100000 {
+		return echo.NewHTTPError(400, "Export is too large; use filtered aggregate reports")
+	}
 	// Generate export data
 	data := generateExportData(tracking, format)
 
@@ -1025,10 +876,13 @@ func (h *TrackingHandler) ExportCampaignAnalytics(c echo.Context) error {
 
 	format := c.QueryParam("format") // csv, xlsx
 	var tracking []models.EmailTracking
-	if err := h.db.Where("campaign_id = ?", campaignID).Find(&tracking).Error; err != nil {
+	if err := h.db.Where("campaign_id = ?", campaignID).Order("timestamp,id").Limit(100001).Find(&tracking).Error; err != nil {
 		return c.String(http.StatusInternalServerError, "Failed to fetch tracking data")
 	}
 
+	if len(tracking) > 100000 {
+		return echo.NewHTTPError(400, "Export is too large; use filtered aggregate reports")
+	}
 	// Generate export data
 	data := generateExportData(tracking, format)
 
@@ -1147,7 +1001,13 @@ func calculateEngagementTrend(tracking []models.EmailTracking) string {
 
 	// Analyze trend
 	var rates []float64
-	for _, metrics := range periods {
+	keys := make([]string, 0, len(periods))
+	for key := range periods {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		metrics := periods[key]
 		if metrics.total > 0 {
 			rate := float64(metrics.opens+metrics.clicks) / float64(metrics.total)
 			rates = append(rates, rate)
@@ -1165,6 +1025,12 @@ func calculateEngagementTrend(tracking []models.EmailTracking) string {
 	firstAvg := average(firstHalf)
 	secondAvg := average(secondHalf)
 
+	if firstAvg == 0 {
+		if secondAvg > 0 {
+			return "increasing"
+		}
+		return "stable"
+	}
 	changePct := ((secondAvg - firstAvg) / firstAvg) * 100
 
 	switch {

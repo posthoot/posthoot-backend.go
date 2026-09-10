@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"kori/internal/config"
 	"kori/internal/models"
 	"kori/internal/utils"
@@ -236,7 +237,8 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 		}
 		maps.Copy(variables, data)
 
-		parsedBody := utils.ReplaceVariables(htmlFromTemplate, variables, campaign.ID, h.cfg, true, campaign.Template.Category.Name == "Marketing")
+		messageID := uuid.NewString()
+		parsedBody := utils.ReplaceVariables(htmlFromTemplate, variables, messageID, h.cfg, true, campaign.Template.Category.Name == "Marketing")
 		parsedSubject := utils.ReplaceVariables(campaign.Template.Subject, variables, campaign.ID, h.cfg, false, false)
 
 		parsedSubject, err = base64.DecodeFromBase64(parsedSubject)
@@ -250,7 +252,9 @@ func (h *TaskHandler) HandleCampaignProcess(ctx context.Context, t *asynq.Task) 
 			return h.logger.Error("❌ failed to convert variables to json: %w", err)
 		}
 
+		tracked := true
 		email := &models.Email{
+			Base: models.Base{ID: messageID}, ClickTrackingEnabled: &tracked,
 			From:         smtpConfig.FromEmail,
 			To:           contact.Email,
 			Subject:      parsedSubject,

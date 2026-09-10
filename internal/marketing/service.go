@@ -118,6 +118,14 @@ func (s *Service) Token(team, contact string) string {
 	mac.Write([]byte("unsubscribe:" + team + ":" + contact))
 	return hex.EncodeToString(mac.Sum(nil))
 }
+func (s *Service) MessageToken(team, contact, message string) string {
+	mac := hmac.New(sha256.New, []byte(s.Secret))
+	mac.Write([]byte("unsubscribe:" + team + ":" + contact + ":" + message))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+func (s *Service) CheckMessageToken(team, contact, message, token string) bool {
+	return len(s.Secret) >= 32 && hmac.Equal([]byte(s.MessageToken(team, contact, message)), []byte(token))
+}
 func (s *Service) CheckToken(team, contact, token string) bool {
 	return len(s.Secret) >= 32 && hmac.Equal([]byte(s.Token(team, contact)), []byte(token))
 }
@@ -225,9 +233,12 @@ func (s *Service) PrepareEdition(ctx context.Context, id string) error {
 		}
 		for _, contact := range contacts {
 			key := c.ID + ":" + contact.ID
-			unsub := s.PublicURL + "/public/unsubscribe/" + c.TeamID + "/" + contact.ID + "/" + s.Token(c.TeamID, contact.ID)
+			messageID := uuid.NewString()
+			unsub := s.PublicURL + "/public/unsubscribe/" + c.TeamID + "/" + contact.ID + "/" + s.MessageToken(c.TeamID, contact.ID, messageID) + "?message=" + messageID
 			body := personalize(c.HTMLBody, contact) + `<footer style="padding:24px;text-align:center;color:#71717a;font:12px Arial">` + html.EscapeString(c.PostalAddress) + `<br><a href="` + unsub + `">Unsubscribe</a></footer>`
-			email := models.Email{DeliveryKey: &key, UnsubscribeURL: unsub, From: sender.FromEmail, To: contact.Email, Subject: personalize(c.Subject, contact), Body: base64.StdEncoding.EncodeToString([]byte(body)), Status: models.EmailStatusPending, TeamID: c.TeamID, ContactID: contact.ID, TemplateID: c.TemplateID, SMTPConfigID: c.SMTPConfigID, CategoryID: tpl.CategoryID, CampaignID: c.ID}
+			body = utils.TrackEmailHTML(body, messageID, s.PublicURL, s.Secret)
+			tracking := true
+			email := models.Email{Base: models.Base{ID: messageID}, ClickTrackingEnabled: &tracking, DeliveryKey: &key, UnsubscribeURL: unsub, From: sender.FromEmail, To: contact.Email, Subject: personalize(c.Subject, contact), Body: base64.StdEncoding.EncodeToString([]byte(body)), Status: models.EmailStatusPending, TeamID: c.TeamID, ContactID: contact.ID, TemplateID: c.TemplateID, SMTPConfigID: c.SMTPConfigID, CategoryID: tpl.CategoryID, CampaignID: c.ID}
 			if err := tx.Omit(clause.Associations).Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "delivery_key"}}, DoNothing: true}).Create(&email).Error; err != nil {
 				return err
 			}

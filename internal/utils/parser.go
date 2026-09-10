@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"kori/internal/config"
 	"kori/internal/utils/base64"
 	"kori/internal/utils/logger"
@@ -68,40 +69,47 @@ func MapToJSON(data map[string]string) (datatypes.JSON, error) {
 
 // ReplaceLinksWithRedirect usecase is to replace all the links in the html with our redirect url
 // so we can track the number of clicks
-func ReplaceLinksWithRedirect(html string, mailId string, cfg *config.Config, isMarketing bool) string {
-	// Replace anchor href links with tracking URL to track clicks
-	hrefRe := regexp.MustCompile(`<a[^>]+href="([^"]+)"`)
-
-	// hash mailId into jwt
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"mailId": mailId,
-	})
-	tokenString, err := token.SignedString([]byte(cfg.JWT.Secret))
-	if err != nil {
-		console.Error("Error signing token: %v", err)
-		return html
-	}
-
-	html = hrefRe.ReplaceAllStringFunc(html, func(match string) string {
-		// Extract the URL from href attribute
-		url := hrefRe.FindStringSubmatch(match)[1]
-
-		// Base64 encode the URL with token
-		encodedURL := base64.EncodeToBase64(url)
-
-		// Return the replaced string
-		return fmt.Sprintf(`<a href="%s/t/click/%s?token=%s"`, cfg.Server.PublicURL, encodedURL, tokenString)
-	})
-
-	// Add tracking pixel at bottom of email to track opens
-	html = html + fmt.Sprintf(`<img src="%s/t/open?token=%s" style="display:none" width="1" height="1">`, cfg.Server.PublicURL, tokenString)
-
+func ReplaceLinksWithRedirect(body string, mailID string, cfg *config.Config, isMarketing bool) string {
 	if isMarketing {
-		// add unsubscribe link to the input this needs to go before the closing body tag
-		html = strings.Replace(html, "</body>", fmt.Sprintf(`<table style="font-family:helvetica,sans-serif;" cellpadding="0" cellspacing="0" width="100%%" border="0">
-  <tbody>
-    <tr><td><a style="color: #888888; font-size: 14px; text-align: center;" href="%s/t/unsubscribe?token=%s">Unsubscribe from this list</a></td></tr></table></body>`, cfg.Server.PublicURL, tokenString), 1)
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"mailId": mailID})
+		signed, err := token.SignedString([]byte(cfg.JWT.Secret))
+		if err == nil {
+			footer := fmt.Sprintf(`<p><a href="%s/t/unsubscribe?token=%s">Unsubscribe from this list</a></p>`, cfg.Server.PublicURL, signed)
+			if strings.Contains(body, "</body>") {
+				body = strings.Replace(body, "</body>", footer+"</body>", 1)
+			} else {
+				body += footer
+			}
+		}
 	}
+	return TrackEmailHTML(body, mailID, cfg.Server.PublicURL, cfg.JWT.Secret)
+}
 
-	return html
+// TrackEmailHTML keeps original attributes and does not count opt-out links as engagement.
+func TrackEmailHTML(body, messageID, publicURL, secret string) string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"mailId": messageID})
+	signed, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return body
+	}
+	links := regexp.MustCompile(`(?i)<a\b[^>]*\bhref\s*=\s*(?:"[^"]*"|'[^']*')[^>]*>`)
+	href := regexp.MustCompile(`(?i)\shref\s*=\s*(?:"([^"]*)"|'([^']*)')`)
+	body = links.ReplaceAllStringFunc(body, func(tag string) string {
+		parts := href.FindStringSubmatch(tag)
+		if len(parts) < 3 {
+			return tag
+		}
+		target := parts[1]
+		if target == "" {
+			target = parts[2]
+		}
+		target = html.UnescapeString(target)
+		lower := strings.ToLower(target)
+		if (!strings.HasPrefix(lower, "https://") && !strings.HasPrefix(lower, "http://")) || strings.Contains(lower, "unsubscribe") || strings.Contains(lower, "/t/click/") {
+			return tag
+		}
+		tracking := fmt.Sprintf(` href="%s/t/click/%s?token=%s"`, publicURL, base64.EncodeToBase64(target), signed)
+		return href.ReplaceAllStringFunc(tag, func(string) string { return tracking })
+	})
+	return body + fmt.Sprintf(`<img alt="" src="%s/t/open?token=%s" width="1" height="1">`, publicURL, signed)
 }

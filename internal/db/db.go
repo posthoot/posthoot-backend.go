@@ -17,6 +17,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	"kori/internal/analytics"
 	"kori/internal/config"
 	"kori/internal/models"
 	console "kori/internal/utils/logger"
@@ -326,6 +327,10 @@ func runMigrations() error {
 	}
 
 	if err := models.BackfillTagWorkspaces(tx); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := analytics.Install(tx); err != nil {
 		tx.Rollback()
 		return err
 	}

@@ -363,7 +363,12 @@ func (h *MarketingHandler) SubmitForm(c echo.Context) error {
 	return c.JSON(200, map[string]interface{}{"ok": true, "message": f.SuccessMessage})
 }
 func (h *MarketingHandler) Unsubscribe(c echo.Context) error {
-	if !h.service.CheckToken(c.Param("team"), c.Param("contact"), c.Param("token")) {
+	messageID := c.QueryParam("message")
+	valid := h.service.CheckToken(c.Param("team"), c.Param("contact"), c.Param("token"))
+	if messageID != "" {
+		valid = h.service.CheckMessageToken(c.Param("team"), c.Param("contact"), messageID, c.Param("token"))
+	}
+	if !valid {
 		return missing()
 	}
 	if c.Request().Method == http.MethodGet {
@@ -372,8 +377,17 @@ func (h *MarketingHandler) Unsubscribe(c echo.Context) error {
 	}
 	var contact models.Contact
 	err := h.service.DB.Transaction(func(tx *gorm.DB) error {
-		if err := marketing.Scope(tx, c.Param("team")).First(&contact, "id = ?", c.Param("contact")).Error; err != nil {
+		if err := marketing.Scope(tx, c.Param("team")).Clauses(clause.Locking{Strength: "UPDATE"}).First(&contact, "id = ?", c.Param("contact")).Error; err != nil {
 			return err
+		}
+		if messageID != "" && contact.Status != models.SubscriberStatusUnsubscribed {
+			var message models.Email
+			if err := tx.Where("id=? AND team_id=? AND contact_id=?", messageID, contact.TeamID, contact.ID).First(&message).Error; err != nil {
+				return err
+			}
+			if err := tx.Create(&models.EmailTracking{EmailID: message.ID, CampaignID: message.CampaignID, ContactID: contact.ID, Event: models.EmailTrackingEventUnsubscribe, Timestamp: time.Now().UTC()}).Error; err != nil {
+				return err
+			}
 		}
 		if err := tx.Model(&contact).UpdateColumn("status", models.SubscriberStatusUnsubscribed).Error; err != nil {
 			return err
