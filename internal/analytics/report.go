@@ -165,6 +165,7 @@ type Report struct {
 	Cohorts  []Cohort  `json:"cohorts"`
 	Growth   Growth    `json:"growth"`
 	Warnings []string  `json:"warnings"`
+	Charts   Charts    `json:"charts"`
 }
 
 func (f Filter) args() map[string]interface{} {
@@ -271,6 +272,9 @@ func Build(ctx context.Context, db *gorm.DB, f Filter) (Report, error) {
 				}
 			}
 			r.Cohorts = append(r.Cohorts, c)
+		}
+		if err := loadCharts(tx, f, &r.Charts); err != nil {
+			return err
 		}
 		return loadGrowth(tx, f, &r.Growth)
 	}, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})

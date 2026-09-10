@@ -218,6 +218,8 @@ func TestReportScale(t *testing.T) {
 	require.NoError(t, db.Exec(`INSERT INTO campaigns(id,team_id,list_id,name,template_id,smtp_config_id,created_at,is_deleted) SELECT md5('edition'||i)::uuid,?,md5('list'||i)::uuid,'September dispatch '||i,md5('template')::uuid,md5('smtp')::uuid,'2026-09-02',false FROM generate_series(1,15) i`, team).Error)
 	require.NoError(t, db.Exec(`INSERT INTO emails(id,team_id,campaign_id,contact_id,"to","from",subject,body,status,sent_at,created_at,test,is_deleted,click_tracking_enabled,smtp_config_id,category_id) SELECT md5('message'||i)::uuid,?,md5('edition'||(1+(1+(i-1)%10000)%15))::uuid,md5('person'||(1+(i-1)%10000))::uuid,'reader'||(1+(i-1)%10000)||'@example.com','news@example.com','Dispatch','','SENT','2026-09-03'::timestamptz+(i%6)*interval '1 day','2026-09-02',false,false,true,md5('smtp')::uuid,md5('category')::uuid FROM generate_series(1,50000) i`, team).Error)
 	require.NoError(t, db.Exec(`INSERT INTO email_trackings(id,email_id,event,timestamp,url,is_deleted) SELECT md5('click'||i)::uuid,md5('message'||i)::uuid,'click','2026-09-03'::timestamptz+(i%6)*interval '1 day'+interval '1 hour','https://example.com/stories/'||(i%3),false FROM generate_series(1,50000) i WHERE i%7=0`).Error)
+	require.NoError(t, db.Exec(`UPDATE campaigns SET newsletter_id=md5('newsletter-'||name)::uuid WHERE name IN ('September dispatch 3','September dispatch 6','September dispatch 9','September dispatch 12','September dispatch 15')`).Error)
+	require.NoError(t, db.Exec(`UPDATE email_trackings SET device_type=CASE WHEN substring(id::text,1,1) IN ('0','1','2','3','4','5','6','7') THEN 'mobile' WHEN substring(id::text,1,1) IN ('8','9','a','b') THEN 'desktop' WHEN substring(id::text,1,1) IN ('c','d') THEN 'tablet' ELSE '' END, timestamp=timestamp+(ascii(substring(id::text,1,1))%20)*interval '1 hour'`).Error)
 	require.NoError(t, db.Exec(`ANALYZE`).Error)
 	f, err := analytics.Parse(url.Values{"from": {"2026-09-01"}, "to": {"2026-09-10"}}, team, time.Date(2026, 9, 10, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
@@ -287,4 +289,76 @@ func TestTagSuppressionAndHistoryTombstones(t *testing.T) {
 	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Where("id=?", b).Delete(&models.Contact{}).Error)
 	require.NoError(t, db.Table("subscription_events").Where("contact_id=? AND kind='delete' AND is_deleted=true", b).Count(&deleted).Error)
 	require.EqualValues(t, 1, deleted)
+}
+
+func TestChartBucketsUseTenantScopeSendCohortsAndEventTime(t *testing.T) {
+	db := database(t)
+	team, foreign, list, otherList, campaign, edition, newsletter := uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString()
+	put(t, db, &models.MailingList{Base: base(list), TeamID: team, Name: "Journal"})
+	put(t, db, &models.MailingList{Base: base(otherList), TeamID: team, Name: "Other"})
+	put(t, db, &models.Campaign{Base: base(campaign), TeamID: team, ListID: list, Name: "Launch", TemplateID: uuid.NewString(), SMTPConfigID: uuid.NewString()})
+	put(t, db, &models.Campaign{Base: base(edition), TeamID: team, ListID: otherList, Name: "Edition", NewsletterID: &newsletter, TemplateID: uuid.NewString(), SMTPConfigID: uuid.NewString()})
+	stamp := time.Date(2026, 9, 5, 23, 30, 0, 0, time.UTC)
+	message, news, old, corrupt := uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString()
+	for _, v := range []struct {
+		id, team, campaign string
+		sent               time.Time
+	}{{message, team, campaign, stamp}, {news, team, edition, stamp}, {old, team, campaign, stamp.AddDate(0, 0, -7)}, {corrupt, foreign, campaign, stamp}} {
+		put(t, db, &models.Email{Base: base(v.id), TeamID: v.team, CampaignID: v.campaign, To: "reader@example.com", From: "sender@example.com", SentAt: v.sent, Status: models.EmailStatusSent})
+	}
+	click := func(email, device string, at time.Time) {
+		put(t, db, &models.EmailTracking{Base: base(uuid.NewString()), EmailID: email, Event: models.EmailTrackingEventClick, Timestamp: at, DeviceType: device})
+	}
+	click(message, "mobile", stamp.Add(time.Hour))
+	click(message, "mobile", stamp.Add(2*time.Hour))
+	click(news, "desktop", stamp.Add(time.Hour))
+	click(old, "", stamp.Add(time.Hour))
+	click(corrupt, "tablet", stamp.Add(time.Hour))    // Foreign email pointing to this team's campaign.
+	click(message, "desktop", stamp.Add(-time.Hour))  // Before message was sent.
+	click(message, "desktop", stamp.AddDate(0, 0, 8)) // Beyond report cutoff.
+	f, err := analytics.Parse(url.Values{"from": {"2026-09-01"}, "to": {"2026-09-10"}, "timezone": {"Asia/Kolkata"}}, team, time.Date(2026, 9, 10, 0, 0, 0, 0, time.UTC))
+	require.NoError(t, err)
+	r, err := analytics.Build(context.Background(), db, f)
+	require.NoError(t, err)
+	require.EqualValues(t, 2, r.Summary.Accepted)
+	require.Len(t, r.Charts.Volume, 9)
+	require.Len(t, r.Charts.ClickHours, 168)
+	require.Len(t, r.Charts.Devices, 5)
+	require.Equal(t, "2026-09-06", r.Charts.Volume[5].Date)
+	require.EqualValues(t, 1, r.Charts.Volume[5].Campaigns)
+	require.EqualValues(t, 1, r.Charts.Volume[5].Newsletters)
+	require.EqualValues(t, 1, r.Charts.Volume[5].CampaignClicks)
+	require.EqualValues(t, 1, r.Charts.Volume[5].NewsletterClicks)
+	require.EqualValues(t, 4, r.Charts.ClickEvents)
+	var deviceTotal, hourTotal, volumeTotal, clickedTotal int64
+	for _, d := range r.Charts.Devices {
+		deviceTotal += d.Count
+		if d.Device == "unknown" {
+			require.EqualValues(t, 1, d.Count)
+		}
+	}
+	for _, h := range r.Charts.ClickHours {
+		hourTotal += h.Count
+		if h.Day == 6 && h.Hour == 6 {
+			require.EqualValues(t, 3, h.Count)
+		}
+	}
+	for _, v := range r.Charts.Volume {
+		volumeTotal += v.Campaigns + v.Newsletters
+		clickedTotal += v.CampaignClicks + v.NewsletterClicks
+	}
+	require.Equal(t, r.Charts.ClickEvents, deviceTotal)
+	require.Equal(t, deviceTotal, hourTotal)
+	require.Equal(t, r.Summary.Accepted, volumeTotal)
+	require.Equal(t, r.Summary.ClickedMessages, clickedTotal)
+	f.List = list
+	r, err = analytics.Build(context.Background(), db, f)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, r.Summary.Accepted)
+	require.EqualValues(t, 3, r.Charts.ClickEvents)
+	f.Campaign = edition
+	r, err = analytics.Build(context.Background(), db, f)
+	require.NoError(t, err)
+	require.Zero(t, r.Summary.Accepted)
+	require.Zero(t, r.Charts.ClickEvents)
 }
