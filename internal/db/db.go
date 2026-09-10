@@ -85,8 +85,9 @@ func Connect(cfg *config.Config) error {
 	gormCfg := &gorm.Config{
 		Logger:                                   logger.Default.LogMode(logger.Info),
 		DisableForeignKeyConstraintWhenMigrating: true,
-		PrepareStmt:                              true,
-		AllowGlobalUpdate:                        false,
+		// Schema migrations change result shapes; do not cache prepared statements.
+		PrepareStmt:       false,
+		AllowGlobalUpdate: false,
 	}
 
 	var err error
@@ -120,7 +121,7 @@ func connectWithDSN(cfg *config.Config, gormCfg *gorm.Config) error {
 
 	log.Info("Using direct Postgres connection with DSN")
 
-	gormDB, err := gorm.Open(postgres.Open(dsn), gormCfg)
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{DSN: dsn, PreferSimpleProtocol: true}), gormCfg)
 	if err != nil {
 		return err
 	}
@@ -168,6 +169,10 @@ func connectWithCloudSQL(cfg *config.Config, gormCfg *gorm.Config) error {
 		dialer.Close()
 		return fmt.Errorf("failed to parse pgx config: %w", err)
 	}
+
+	// Conn is supplied below, so the GORM driver cannot configure pgx for us.
+	// Match the direct connection: no implicit prepared-statement cache.
+	pgxConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
 	pgxConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		return dialer.Dial(ctx, cfg.Database.InstanceConnectionName)
@@ -223,12 +228,9 @@ func runMigrations() error {
 		return tx.Error
 	}
 
-	// Defer rollback in case of error
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
+	// Rollback on every unsuccessful exit, including panics. After commit this
+	// is a harmless no-op; panics must propagate to the caller.
+	defer tx.Rollback()
 
 	if err := tx.AutoMigrate(
 		// Base models without foreign keys
