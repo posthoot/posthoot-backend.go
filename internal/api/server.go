@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/go-advanced-admin/admin"
@@ -50,11 +48,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	// Configure middleware
 	e.Use(echomiddleware.Logger())
 	e.Use(echomiddleware.Recover())
-	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
-		AllowOrigins: strings.Split(envOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000"), ","),
-		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderContentLength},
-	}))
+	e.Use(echomiddleware.CORSWithConfig(corsConfig()))
 	e.Use(echomiddleware.RequestID())
 	e.Use(echomiddleware.Secure())
 	e.Use(echomiddleware.TimeoutWithConfig(echomiddleware.TimeoutConfig{
@@ -254,11 +248,4 @@ func formatValidationErrors(errors validator.ValidationErrors) map[string]string
 		}
 	}
 	return errMap
-}
-
-func envOrDefault(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
