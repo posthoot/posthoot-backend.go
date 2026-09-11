@@ -155,12 +155,13 @@ func (h *MarketingHandler) ImportTemplateStarter(c echo.Context) error {
 }
 
 type formInput struct {
-	Name           string `json:"name"`
-	Description    string `json:"description"`
-	ListID         string `json:"listId"`
-	Status         string `json:"status"`
-	SuccessMessage string `json:"successMessage"`
-	ButtonText     string `json:"buttonText"`
+	Theme          *formTheme `json:"theme"`
+	Name           string     `json:"name"`
+	Description    string     `json:"description"`
+	ListID         string     `json:"listId"`
+	Status         string     `json:"status"`
+	SuccessMessage string     `json:"successMessage"`
+	ButtonText     string     `json:"buttonText"`
 	Fields         []struct {
 		Label    string `json:"label"`
 		Type     string `json:"type"`
@@ -195,6 +196,16 @@ func (h *MarketingHandler) SaveForm(c echo.Context) error {
 		if err := h.scoped(c).First(&f, "id = ?", id).Error; err != nil {
 			return missing()
 		}
+	}
+	if in.Theme != nil {
+		if err := in.Theme.validate(); err != nil {
+			return err
+		}
+		encoded, err := json.Marshal(in.Theme)
+		if err != nil {
+			return err
+		}
+		f.Theme = encoded
 	}
 	f.Name = in.Name
 	f.Description = in.Description
@@ -269,20 +280,15 @@ func (h *MarketingHandler) PublicForm(c echo.Context) error {
 		return err
 	}
 	// Explicit public projection: never serialize internal routing or submission data.
-	return c.JSON(200, map[string]interface{}{"name": f.Name, "description": f.Description, "fields": f.Fields, "buttonText": f.SubmitButtonText, "successMessage": f.SuccessMessage})
+	return c.JSON(200, map[string]interface{}{"name": f.Name, "description": f.Description, "fields": f.Fields, "buttonText": f.SubmitButtonText, "successMessage": f.SuccessMessage, "theme": f.Theme})
 }
-func (h *MarketingHandler) SubmitForm(c echo.Context) error {
-	var in struct {
-		Fields    map[string]string `json:"fields"`
-		Consent   bool              `json:"consent"`
-		Website   string            `json:"website"`
-		RequestID string            `json:"requestId"`
-	}
-	if err := c.Bind(&in); err != nil {
+func (h *MarketingHandler) submitForm(c echo.Context) error {
+	in, err := bindFormSubmission(c)
+	if err != nil {
 		return bad("Invalid submission")
 	}
 	if in.Website != "" {
-		return c.JSON(200, map[string]bool{"ok": true})
+		return formSubmissionSuccess(c, "Thanks for joining us!")
 	}
 	if !in.Consent || uuid.Validate(in.RequestID) != nil {
 		return bad("Consent and a submission identifier are required")
@@ -315,7 +321,7 @@ func (h *MarketingHandler) SubmitForm(c echo.Context) error {
 	created := false
 	sum := sha256.Sum256([]byte(f.ID + ":" + in.RequestID))
 	receipt := models.FormReceipt{ID: hex.EncodeToString(sum[:]), FormID: f.ID}
-	err := h.service.DB.Transaction(func(tx *gorm.DB) error {
+	err = h.service.DB.Transaction(func(tx *gorm.DB) error {
 		// Serialize edits/capture, then lock the audience shared by different forms.
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&f, "id = ?", f.ID).Error; err != nil {
 			return err
@@ -360,7 +366,7 @@ func (h *MarketingHandler) SubmitForm(c echo.Context) error {
 	if created {
 		events.Emit("contact.created", &contact)
 	}
-	return c.JSON(200, map[string]interface{}{"ok": true, "message": f.SuccessMessage})
+	return formSubmissionSuccess(c, f.SuccessMessage)
 }
 func (h *MarketingHandler) Unsubscribe(c echo.Context) error {
 	messageID := c.QueryParam("message")
