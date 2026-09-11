@@ -7,13 +7,30 @@ import (
 	"gorm.io/gorm"
 	"kori/internal/ai"
 	"kori/internal/api/middleware"
+	"kori/internal/assistant"
 	"kori/internal/config"
 	"kori/internal/handlers"
+	"kori/internal/models"
 	"os"
 )
 
 func SetupMarketingRoutes(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	e.GET("/api/v1/mcp/authorize", handlers.MCPAuthorize(db), em.RateLimiter(em.NewRateLimiterMemoryStore(rate.Limit(10))))
+	e.POST("/api/v1/assistant/credential", func(c echo.Context) error {
+		var user models.User
+		if db.WithContext(c.Request().Context()).Where("id = ? AND team_id = ? AND is_deleted = false", c.Get("userID"), c.Get("teamID")).First(&user).Error != nil {
+			return echo.NewHTTPError(401, "Sign in required")
+		}
+		key, expires, err := assistant.Issue(db.WithContext(c.Request().Context()), user)
+		if err != nil {
+			return echo.NewHTTPError(503, "Assistant access unavailable")
+		}
+		c.Response().Header().Set("Cache-Control", "no-store")
+		return c.JSON(200, map[string]interface{}{"key": key, "expiresAt": expires, "teamId": user.TeamID, "userId": user.ID, "canWrite": user.Role == models.UserRoleAdmin || user.Role == models.UserRoleSuperAdmin})
+	}, em.BodyLimit("1K"), middleware.NewAuthMiddleware(cfg.JWT.Secret).SessionMiddleware(), em.RateLimiterWithConfig(em.RateLimiterConfig{
+		Store:               em.NewRateLimiterMemoryStoreWithConfig(em.RateLimiterMemoryStoreConfig{Rate: rate.Limit(.5), Burst: 10}),
+		IdentifierExtractor: func(c echo.Context) (string, error) { return c.Get("userID").(string), nil },
+	}))
 	h := handlers.NewMarketingHandler(db, cfg.JWT.Secret, os.Getenv("PUBLIC_API_URL"))
 	g := e.Group("/api/v1/marketing", middleware.NewAuthMiddleware(cfg.JWT.Secret).Middleware())
 	endpoint := os.Getenv("AI_PROXY_BASE_URL")

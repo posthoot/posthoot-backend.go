@@ -7,6 +7,9 @@ import (
 )
 
 func (a *APIKey) AfterCreate(tx *gorm.DB) error {
+	if a.AssistantUserID != "" {
+		return nil
+	}
 
 	// 🔍 Get resources for read and create actions
 	var resources []Resource

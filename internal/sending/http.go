@@ -24,7 +24,13 @@ func admin(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		api, _ := c.Get("isAPIKey").(bool)
 		allowed, _ := c.Get("hasAdminAccess").(bool)
-		if api || !allowed || uuid.Validate(workspace(c)) != nil {
+		assistantWrite, _ := c.Get("assistantWrite").(bool)
+		// Assistant credentials can inspect and manage sending, but never mint
+		// reusable SMTP secrets. They have already passed actor and scope checks.
+		if api {
+			allowed = assistantWrite && !(c.Request().Method == "POST" && strings.HasSuffix(c.Path(), "/credentials"))
+		}
+		if (api && !assistantWrite) || !allowed || uuid.Validate(workspace(c)) != nil {
 			return echo.NewHTTPError(403, "Workspace administrator access is required")
 		}
 		return next(c)
