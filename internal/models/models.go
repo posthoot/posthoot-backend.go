@@ -418,14 +418,16 @@ type EmailTracking struct {
 
 type APIKey struct {
 	Base
-	Name        string             `gorm:"not null" json:"name"`
-	Key         string             `gorm:"not null" json:"key"`
-	TeamID      string             `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
-	Team        *Team              `json:"team,omitempty"`
-	CreatedAt   time.Time          `json:"createdAt"`
-	LastUsedAt  time.Time          `json:"lastUsedAt"`
-	ExpiresAt   time.Time          `json:"expiresAt"`
-	Permissions []APIKeyPermission `gorm:"foreignKey:KeyID" json:"permissions,omitempty"`
+	AssistantUserID string             `gorm:"index" json:"-"`
+	AssistantWrite  bool               `json:"-"`
+	Name            string             `gorm:"not null" json:"name"`
+	Key             string             `gorm:"not null" json:"key"`
+	TeamID          string             `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
+	Team            *Team              `json:"team,omitempty"`
+	CreatedAt       time.Time          `json:"createdAt"`
+	LastUsedAt      time.Time          `json:"lastUsedAt"`
+	ExpiresAt       time.Time          `json:"expiresAt"`
+	Permissions     []APIKeyPermission `gorm:"foreignKey:KeyID" json:"permissions,omitempty"`
 }
 
 func (a *APIKey) BeforeCreate(tx *gorm.DB) error {

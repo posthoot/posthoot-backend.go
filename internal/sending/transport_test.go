@@ -158,3 +158,28 @@ func TestRecoveryUpdatesSourceEmailAndExpiresQueuedContent(t *testing.T) {
 		})
 	}
 }
+
+func TestAssistantSendingAccessCannotMintCredentials(t *testing.T) {
+	for _, item := range []struct {
+		path    string
+		write   bool
+		allowed bool
+	}{
+		{"/api/v1/sending", true, true},
+		{"/api/v1/sending/pause", true, true},
+		{"/api/v1/sending/credentials", true, false},
+		{"/api/v1/sending", false, false},
+	} {
+		c := echo.New().NewContext(httptest.NewRequest("POST", item.path, nil), httptest.NewRecorder())
+		c.SetPath(item.path)
+		c.Set("teamID", uuid.NewString())
+		c.Set("isAPIKey", true)
+		c.Set("assistantWrite", item.write)
+		called := false
+		err := admin(func(echo.Context) error { called = true; return nil })(c)
+		require.Equal(t, item.allowed, called)
+		if !item.allowed {
+			require.Error(t, err)
+		}
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"kori/internal/assistant"
 	"kori/internal/db"
 	"kori/internal/models"
 	"kori/internal/utils/logger"
@@ -73,7 +74,7 @@ func (m *AuthMiddleware) Middleware() echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			return m.validateJWT(c, tokenParts[1], next)
+			return m.validateJWT(c, tokenParts[1], next, true)
 		}
 	}
 }
@@ -81,8 +82,12 @@ func (m *AuthMiddleware) Middleware() echo.MiddlewareFunc {
 func (m *AuthMiddleware) validateAPIKey(c echo.Context, key string, next echo.HandlerFunc) error {
 
 	apiKey := &models.APIKey{}
-	if err := db.DB.Where("key = ? AND is_deleted = false", key).Preload("Permissions").First(apiKey).Error; err != nil {
+	if err := db.DB.Where("key = ? AND is_deleted = false", assistant.Lookup(key)).Preload("Permissions").First(apiKey).Error; err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid API key")
+	}
+
+	if !assistant.ValidateActor(db.DB.WithContext(c.Request().Context()), apiKey) {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Assistant access has changed")
 	}
 
 	// Check expiration
@@ -96,6 +101,10 @@ func (m *AuthMiddleware) validateAPIKey(c echo.Context, key string, next echo.Ha
 	}
 
 	// Set context values
+	if apiKey.AssistantUserID != "" {
+		c.Set("userID", apiKey.AssistantUserID)
+		c.Set("assistantWrite", apiKey.AssistantWrite)
+	}
 	c.Set("teamID", apiKey.TeamID)
 	c.Set("isAPIKey", true)
 	c.Set("permissions", apiKey.Permissions)
@@ -168,7 +177,7 @@ func (m *AuthMiddleware) getResourceFromPath(path string) string {
 	return "unknown"
 }
 
-func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next echo.HandlerFunc) error {
+func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next echo.HandlerFunc, checkMethod bool) error {
 
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
@@ -248,7 +257,7 @@ func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next ec
 	// Admin role has all permissions
 	if user.Role == models.UserRoleAdmin || user.Role == models.UserRoleSuperAdmin {
 		c.Set("hasAdminAccess", true)
-	} else {
+	} else if checkMethod {
 		// Check if user has the required scope
 		hasPermission := false
 		for _, scope := range claims.Scopes {
@@ -267,7 +276,7 @@ func (m *AuthMiddleware) validateJWT(c echo.Context, tokenString string, next ec
 	c.Set("userID", claims.UserID)
 	c.Set("teamID", claims.TeamID)
 	c.Set("email", claims.Email)
-	c.Set("role", claims.Role)
+	c.Set("role", string(user.Role))
 	c.Set("scopes", claims.Scopes)
 	c.Set("isAPIKey", false)
 
@@ -335,4 +344,18 @@ func HasPermission(c echo.Context, requiredScope string) bool {
 		}
 	}
 	return false
+}
+
+// SessionMiddleware authenticates a current human membership. The dedicated
+// credential handler derives read/write scope itself; API keys cannot mint keys.
+func (m *AuthMiddleware) SessionMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			parts := strings.Split(c.Request().Header.Get("Authorization"), " ")
+			if len(parts) != 2 || parts[0] != "Bearer" || c.Request().Header.Get("X-API-Key") != "" {
+				return echo.NewHTTPError(401, "Sign in required")
+			}
+			return m.validateJWT(c, parts[1], next, false)
+		}
+	}
 }

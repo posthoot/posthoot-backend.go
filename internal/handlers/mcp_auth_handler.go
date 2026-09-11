@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
+	"kori/internal/assistant"
 	"kori/internal/models"
 )
 
@@ -19,13 +20,16 @@ func MCPAuthorize(db *gorm.DB) echo.HandlerFunc {
 		if key == "" || len(key) > 4096 {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid API key")
 		}
-		var count int64
+		var row models.APIKey
 		if err := db.WithContext(c.Request().Context()).Model(&models.APIKey{}).
-			Where("key = ? AND is_deleted = false AND team_id IS NOT NULL", key).
-			Where("expires_at IS NULL OR expires_at = ? OR expires_at > ?", time.Time{}, time.Now()).Count(&count).Error; err != nil {
+			Where("key = ? AND is_deleted = false AND team_id IS NOT NULL", assistant.Lookup(key)).
+			Where("expires_at IS NULL OR expires_at = ? OR expires_at > ?", time.Time{}, time.Now().UTC()).First(&row).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return echo.NewHTTPError(401, "Invalid API key")
+			}
 			return echo.NewHTTPError(503, "Authentication unavailable")
 		}
-		if count != 1 {
+		if !assistant.ValidateActor(db.WithContext(c.Request().Context()), &row) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid API key")
 		}
 		return c.NoContent(http.StatusNoContent)
