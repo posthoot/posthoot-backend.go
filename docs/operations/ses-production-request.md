@@ -2,7 +2,9 @@
 
 Target: `xem` AWS profile, `us-east-2`. Mail type: MARKETING. Website: https://xem.email.
 
-Draft prepared for submission after domain verification, as authorized by the project owner. No additional contact addresses are supplied; AWS uses the account contact.
+Submitted on 12 September 2026 (Asia/Kolkata) after SES confirmed identity, DKIM, and custom MAIL FROM verification, as authorized by the project owner. AWS granted production access under case `178915636800118`. A subsequent account check confirmed production access and sending enabled, with a quota of 50,000 recipients/day and 14/second. No additional contact addresses were supplied; AWS uses the account contact. The approved provider quota does not change the controlled pilot target described below.
+
+## Submitted use case
 
 Xem is an open-source email campaign and customer communication application at https://xem.email. We are preparing a limited, manually approved pilot of an optional Amazon SES managed-sending integration in us-east-2. The initial use is permission-based newsletters, product updates, and customer communications sent by approved workspaces from domains they own. We also plan to support transactional application mail through authenticated SMTP submission. This is not an unauthenticated relay.
 
