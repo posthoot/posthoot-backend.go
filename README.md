@@ -495,4 +495,7 @@ For new permissions, add the resource in `defaultResources`, add permissions in 
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+See [LICENSE](LICENSE) for the project’s license terms (GNU GPLv3).
+## Managed sending
+
+Optional SES-backed delivery, domain setup, SMTP credentials, and onboarding are documented in [the managed sending runbook](docs/managed-sending.md). The integration is disabled by default and requires operator approval before a workspace can send.

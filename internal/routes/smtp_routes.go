@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"kori/internal/api/middleware"
 	"kori/internal/config"
 	"kori/internal/handlers"
 
@@ -12,7 +13,7 @@ func SetupSMTPRoutes(e *echo.Echo, config *config.Config, db *gorm.DB) {
 	smtpHandler := handlers.NewSMTPHandler()
 
 	// Create SMTP routes group
-	smtp := e.Group("/api/v1/smtp")
+	smtp := e.Group("/api/v1/smtp", middleware.NewAuthMiddleware(config.JWT.Secret).Middleware(), middleware.RequirePermissions(db, "smtp_configs:create"))
 
 	// SMTP test route
 	// @Summary Test SMTP connection

@@ -47,6 +47,10 @@ func NewEmailHandler(maxSendRate int) *EmailHandler {
 	}
 }
 
+// Registered once during startup; all delivery paths share recipient policy.
+var ManagedDelivery func(*models.Email, *gomail.Message) error
+var RecipientPolicy func(string, []string) error
+
 // SendEmail sends a single email using the configured SMTP server
 func (h *EmailHandler) SendEmail(email *models.Email) error {
 	if email == nil {
@@ -57,7 +61,7 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 		return fmt.Errorf("email is not pending or failed")
 	}
 
-	if email.SMTPConfig == nil {
+	if email.SMTPConfig == nil || email.SMTPConfig.TeamID != email.TeamID || !email.SMTPConfig.IsActive {
 		return fmt.Errorf("SMTP config is nil")
 	}
 
@@ -69,6 +73,9 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 	m.SetHeader("To", email.To)
 	m.SetHeader("Subject", email.Subject)
 	m.SetHeader("Message-ID", "<"+email.ID+"@posthoot.local>")
+	if !email.CreatedAt.IsZero() {
+		m.SetHeader("Date", email.CreatedAt.UTC().Format(time.RFC1123Z))
+	}
 	if email.UnsubscribeURL != "" {
 		m.SetHeader("List-Unsubscribe", "<"+email.UnsubscribeURL+">")
 		m.SetHeader("List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
@@ -93,6 +100,21 @@ func (h *EmailHandler) SendEmail(email *models.Email) error {
 	}
 	m.SetBody("text/html", decodedBody)
 
+	if RecipientPolicy != nil {
+		var recipients []string
+		for _, header := range []string{"To", "Cc", "Bcc"} {
+			recipients = append(recipients, m.GetHeader(header)...)
+		}
+		if err := RecipientPolicy(email.TeamID, recipients); err != nil {
+			return err
+		}
+	}
+	if email.SMTPConfig.Provider == "MANAGED" {
+		if ManagedDelivery == nil {
+			return fmt.Errorf("managed sending is disabled")
+		}
+		return ManagedDelivery(email, m)
+	}
 	// Send email
 	if err := sendSecureSMTP(m, email); err != nil {
 		email.Error = err.Error()
