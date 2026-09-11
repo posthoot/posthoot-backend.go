@@ -45,12 +45,20 @@ func SendEmail(c echo.Context) error {
 	// Get teamID from context (set by auth middleware)
 	teamID := c.Get("teamID").(string)
 
-	tx := db.GetDB().Begin()
+	if req.TemplateID != "" {
+		var count int64
+		if err := db.GetDB().Model(&models.Template{}).Where("id = ? AND team_id = ? AND is_deleted = false", req.TemplateID, teamID).Count(&count).Error; err != nil {
+			return echo.NewHTTPError(500, "Unable to validate template")
+		}
+		if count != 1 {
+			return echo.NewHTTPError(404, "Template not found")
+		}
+	}
+	tx := db.GetDB().WithContext(c.Request().Context())
 
 	smtpConfig, err := models.GetSMTPConfig(teamID, "", req.SMTPConfigProvider, tx)
 
 	if err != nil {
-		tx.Rollback()
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get SMTP config")
 	}
 

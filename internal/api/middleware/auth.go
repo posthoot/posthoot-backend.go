@@ -81,7 +81,7 @@ func (m *AuthMiddleware) Middleware() echo.MiddlewareFunc {
 func (m *AuthMiddleware) validateAPIKey(c echo.Context, key string, next echo.HandlerFunc) error {
 
 	apiKey := &models.APIKey{}
-	if err := db.DB.Where("key = ?", key).Preload("Permissions").First(apiKey).Error; err != nil {
+	if err := db.DB.Where("key = ? AND is_deleted = false", key).Preload("Permissions").First(apiKey).Error; err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid API key")
 	}
 
@@ -144,6 +144,22 @@ func (m *AuthMiddleware) getResourceFromPath(path string) string {
 	// Remove API version prefix if exists
 	path = strings.TrimPrefix(path, "/api/v1")
 
+	// Marketing routes use the existing resource permissions rather than an
+	// unrelated marketing-wide grant.
+	if strings.HasPrefix(path, "/marketing/") {
+		resource := strings.Split(strings.TrimPrefix(path, "/marketing/"), "/")[0]
+		switch resource {
+		case "newsletters", "campaign-drafts":
+			return "campaigns"
+		case "contact-batch", "contacts":
+			return "contacts"
+		case "options":
+			return "lists"
+		}
+	}
+	if path == "/mailing-lists" || strings.HasPrefix(path, "/mailing-lists/") {
+		return "lists"
+	}
 	// Split path and get the first segment
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if len(parts) > 0 {

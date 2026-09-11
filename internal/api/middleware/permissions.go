@@ -26,8 +26,9 @@ func ValidateAPIKeyPermissions(ctx context.Context, db *gorm.DB, apiKeyID string
 	log.Info("Required permissions %v", requiredPermissions)
 
 	// Get API key permissions with resource permission details
-	err := db.Where("key_id = ?", apiKeyID).
-		Preload("ResourcePermission.Resource").
+	err := db.WithContext(ctx).Where("key_id = ? AND is_deleted = false", apiKeyID).
+		Preload("ResourcePermission", "is_deleted = false").
+		Preload("ResourcePermission.Resource", "is_deleted = false").
 		Find(&permissions).Error
 	if err != nil {
 		return fmt.Errorf("failed to get permissions: %w", err)
@@ -43,6 +44,10 @@ func ValidateAPIKeyPermissions(ctx context.Context, db *gorm.DB, apiKeyID string
 
 		requiredResource := requiredParts[0]
 		requiredScope := requiredParts[1]
+		// Legacy routes call the create scope "write".
+		if requiredScope == "write" {
+			requiredScope = ScopeWrite
+		}
 
 		for _, perm := range permissions {
 			if perm.ResourcePermission == nil || perm.ResourcePermission.Resource == nil {

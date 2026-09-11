@@ -173,7 +173,7 @@ type Tag struct {
 type MailingList struct {
 	Base
 	Name             string          `gorm:"not null" json:"name" validate:"required,min=2"`
-	SubscribersCount int64           `gorm:"not null;default:0" json:"subscribersCount" validate:"required,min=0"`
+	SubscribersCount int64           `gorm:"not null;default:0" json:"subscribersCount" validate:"min=0"`
 	Description      string          `json:"description" validate:"omitempty"`
 	TeamID           string          `gorm:"type:uuid;not null" json:"teamId" validate:"required,uuid"`
 	Team             *Team           `json:"team,omitempty"`
