@@ -7,7 +7,10 @@ import (
 	"kori/internal/models"
 	"net"
 	"net/mail"
+	"net/netip"
 	"net/smtp"
+	"os"
+	"syscall"
 	"time"
 )
 
@@ -16,7 +19,19 @@ func sendSecureSMTP(message *gomail.Message, email *models.Email) error {
 	config := email.SMTPConfig
 	address := net.JoinHostPort(config.Host, fmt.Sprint(config.Port))
 	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: config.Host}
-	dialer := &net.Dialer{Timeout: 20 * time.Second}
+	dialer := &net.Dialer{Timeout: 20 * time.Second, Control: func(network, addr string, conn syscall.RawConn) error {
+		if os.Getenv("ALLOW_PRIVATE_SMTP") == "true" {
+			return nil
+		}
+		host, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			return err
+		}
+		if !publicSMTPAddress(host) {
+			return fmt.Errorf("SMTP must use a public server address")
+		}
+		return nil
+	}}
 	var conn net.Conn
 	var err error
 	if config.Port == 465 {
@@ -76,4 +91,28 @@ func sendSecureSMTP(message *gomail.Message, email *models.Email) error {
 	// DATA was acknowledged; a QUIT failure must not cause a duplicate delivery.
 	_ = client.Quit()
 	return nil
+}
+
+// TestSecureSMTP shares the same TLS and destination policy as production sends.
+func TestSecureSMTP(message *gomail.Message, email *models.Email) error {
+	return sendSecureSMTP(message, email)
+}
+
+// Public destination checks run after DNS resolution in Dialer.Control, so a
+// hostname cannot bypass them by changing its answer between lookup and dial.
+func publicSMTPAddress(host string) bool {
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		return false
+	}
+	ip = ip.Unmap()
+	if !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+		return false
+	}
+	for _, reserved := range []string{"100.64.0.0/10", "198.18.0.0/15", "192.0.0.0/24"} {
+		if netip.MustParsePrefix(reserved).Contains(ip) {
+			return false
+		}
+	}
+	return true
 }

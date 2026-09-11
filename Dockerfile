@@ -19,6 +19,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/postho
 # Build helper binary with build cache
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/helper cmd/helper/main.go
 
+# Build the operator CLI without shipping the Go toolchain
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/sending-admin ./cmd/sending-admin
+
 # Use a minimal alpine image for the final stage
 FROM gcr.io/distroless/static-debian12:nonroot
 
@@ -28,6 +31,7 @@ WORKDIR /app
 # Copy the binary from builder
 COPY --chmod=755 --from=builder /app/build/posthoot .
 COPY --chmod=755 --from=builder /app/build/helper .
+COPY --chmod=755 --from=builder /app/build/sending-admin .
 COPY --chmod=755 --from=builder /app/openapi.json .
 COPY --chmod=755 --from=builder /app/public/build-info.txt /app/public/build-info.txt
 
@@ -42,7 +46,7 @@ COPY --chmod=755 --from=builder /app/internal/models/seeder/airley/templates.jso
 COPY --chmod=755 --from=builder /app/internal/models/seeder/initial-setup/* /app/internal/models/seeder/initial-setup/
 
 # Expose ports
-EXPOSE 9001
+EXPOSE 9001 587
 
 # Set the entry point
 CMD ["/app/posthoot"]

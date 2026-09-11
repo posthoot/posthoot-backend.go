@@ -27,6 +27,9 @@ func (c *BaseController[T]) authorizeEntity(ctx echo.Context, id string) error {
 	if v.Type() == reflect.TypeOf(models.Team{}) && v.FieldByName("ID").String() != ctx.Get("teamID") {
 		return echo.NewHTTPError(http.StatusNotFound, "entity not found")
 	}
+	if sender, ok := any(entity).(*models.SMTPConfig); ok && sender.Provider == "MANAGED" && ctx.Request().Method != "GET" {
+		return echo.NewHTTPError(403, "Manage this sender from Sending settings")
+	}
 	return nil
 }
 func enforceOwner[T any](ctx echo.Context, entity *T, create bool) {

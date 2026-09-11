@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"gopkg.in/gomail.v2"
 	"kori/docs/swagger"
 	"kori/internal/handlers"
 	"kori/internal/keys"
 	"kori/internal/models/seeder/airley"
+	"kori/internal/sending"
+	"kori/internal/utils"
 	"kori/internal/utils/crypto"
 	"log"
 	"os"
@@ -97,6 +101,50 @@ func main() {
 
 	db_instance := db.GetDB()
 
+	managedConfig, err := sending.LoadConfig()
+	if err != nil {
+		log.Fatalf("Invalid managed sending configuration: %v", err)
+	}
+	if err := sending.Migrate(db_instance); err != nil {
+		log.Fatalf("Managed sending migration failed: %v", err)
+	}
+	var provider sending.Provider
+	if managedConfig.Enabled {
+		provider, err = sending.NewSES(context.Background(), managedConfig)
+		if err != nil {
+			log.Fatalf("Managed sending initialization failed: %v", err)
+		}
+	}
+	managed := sending.New(db_instance, managedConfig, provider)
+	managedCtx, stopManaged := context.WithCancel(context.Background())
+	defer stopManaged()
+	managedDone := make(chan struct{})
+	closeManagedSMTP := func() {}
+	utils.RecipientPolicy = func(team string, recipients []string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return managed.RecipientPolicy(ctx, team, recipients)
+	}
+	if managedConfig.Enabled {
+		utils.ManagedDelivery = func(email *models.Email, message *gomail.Message) error {
+			var raw bytes.Buffer
+			if _, err := message.WriteTo(&raw); err != nil {
+				return err
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			return managed.SubmitEmail(ctx, email, raw.Bytes())
+		}
+		go func() { defer close(managedDone); managed.Run(managedCtx) }()
+		if managedConfig.SMTPEnabled {
+			smtpServer, err := sending.StartSMTP(managed)
+			if err != nil {
+				log.Fatalf("Managed SMTP startup failed: %v", err)
+			}
+			closeManagedSMTP = func() { _ = smtpServer.Close() }
+			defer closeManagedSMTP()
+		}
+	}
 	// Initialize task handlers
 	taskHandler := tasks.NewTaskHandler(db_instance, cfg)
 
@@ -203,6 +251,7 @@ func main() {
 
 	// Initialize API server
 	apiServer := api.NewServer(cfg, db_instance)
+	managed.Register(apiServer.GetEcho(), cfg.JWT.Secret)
 
 	routes.SetupMarketingRoutes(apiServer.GetEcho(), db_instance, cfg)
 
@@ -292,5 +341,14 @@ func main() {
 		logger.Error("Failed to shutdown API server", err)
 	}
 
+	closeManagedSMTP()
+	stopManaged()
+	if managedConfig.Enabled {
+		select {
+		case <-managedDone:
+		case <-time.After(15 * time.Second):
+			logger.Info("Managed worker shutdown timed out; stale claims will be quarantined")
+		}
+	}
 	logger.Info("Servers shutdown gracefully")
 }

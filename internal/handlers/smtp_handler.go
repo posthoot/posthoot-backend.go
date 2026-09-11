@@ -1,7 +1,8 @@
 package handlers
 
 import (
-	"crypto/tls"
+	"kori/internal/models"
+	"kori/internal/utils"
 	"net/http"
 
 	"kori/internal/utils/logger"
@@ -51,21 +52,12 @@ func (h *SMTPHandler) TestSMTPConnection(c echo.Context) error {
 	m.SetHeader("Subject", "Test Email from Xem")
 	m.SetBody("text/html", "Hello, this is a test email from Xem!")
 
-	// Create dialer with TLS config
-	d := gomail.NewDialer(req.Host, req.Port, req.Username, req.Password)
-
-	if req.RequireTLS {
-		d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	if req.Port != 465 && req.Port != 587 {
+		return echo.NewHTTPError(400, "Use port 587 with STARTTLS or port 465 with TLS")
 	}
-
-	if req.RequireSSL {
-		d.SSL = true
-	}
-
-	// Try to send test email
-	if err := d.DialAndSend(m); err != nil {
-		log.Error("Failed to send test email", err)
-		return echo.NewHTTPError(http.StatusBadRequest, "Failed to send test email: "+err.Error())
+	config := &models.SMTPConfig{Host: req.Host, Port: req.Port, Username: req.Username, Password: req.Password}
+	if err := utils.TestSecureSMTP(m, &models.Email{From: req.From, SMTPConfig: config}); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "SMTP test failed. Check hostname, credentials, and TLS configuration.")
 	}
 
 	log.Success("SMTP connection test successful")

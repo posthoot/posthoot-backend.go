@@ -62,7 +62,7 @@ func (h *TaskHandler) HandleEmailSend(ctx context.Context, t *asynq.Task) error 
 	}
 
 	// Suppression is checked at delivery time, including messages prepared before opt-out.
-	if email.Status == models.EmailStatusSent || email.Status == models.EmailStatusOpened || email.Status == models.EmailStatusClicked || email.Status == "SUPPRESSED" {
+	if email.Status == models.EmailStatusSent || email.Status == models.EmailStatusOpened || email.Status == models.EmailStatusClicked || email.Status == "SUPPRESSED" || (email.Status == "QUEUED" && email.SMTPConfig != nil && email.SMTPConfig.Provider == "MANAGED") || email.Status == "DELIVERY_UNKNOWN" || email.Status == "DELIVERED" || email.Status == "BOUNCED" || email.Status == "COMPLAINED" {
 		return nil
 	}
 	if email.ContactID != "" {
@@ -77,7 +77,7 @@ func (h *TaskHandler) HandleEmailSend(ctx context.Context, t *asynq.Task) error 
 	h.logger.Info("📧 Processing email task ID: %s (Attempt: %d)", task.EmailID, task.AttemptNum)
 
 	// Claim outbox deliveries atomically. Ambiguous deliveries require review.
-	if email.DeliveryKey != nil {
+	if email.DeliveryKey != nil && (email.SMTPConfig == nil || email.SMTPConfig.Provider != "MANAGED") {
 		result := h.db.Model(&models.Email{}).Where("id = ? AND status IN ?", email.ID, []string{"PENDING", "FAILED"}).UpdateColumn("status", "SENDING")
 		if result.Error != nil {
 			return result.Error

@@ -252,6 +252,9 @@ func (s *IMAPConfig) BeforeUpdate(tx *gorm.DB) error {
 }
 
 func (s *SMTPConfig) AfterFind(tx *gorm.DB) error {
+	if s.Provider == "MANAGED" {
+		return nil
+	}
 	password, err := crypto.Decrypt(s.Password)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt password: %w", err)
